@@ -1,0 +1,31 @@
+# Trench Tool V1 - Backend Dependencies
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-dotenv==1.0.0
+
+# Database
+asyncpg==0.29.0
+sqlalchemy[asyncio]==2.0.25
+alembic==1.13.1
+redis==5.0.1
+
+# Blockchain
+solana>=0.35.0
+solders>=0.20.0
+websockets>=9.0
+web3>=6.15.0  # For BSC/EVM chains
+
+# Telegram
+python-telegram-bot>=20.7
+
+# Utilities
+pydantic==2.5.3
+pydantic-settings==2.1.0
+orjson==3.9.12
+aiohttp==3.9.1
+
+# Development
+pytest==7.4.4
+pytest-asyncio==0.23.3

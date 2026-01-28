@@ -1,0 +1,2933 @@
+{
+   "CA_mentioned_by": {
+      "message": "CA mentioned by @{twitterUsername}"
+   },
+   "account": {
+      "message": "Account"
+   },
+   "account_linked_successfully": {
+      "message": "Account linked successfully"
+   },
+   "account_migration": {
+      "message": "Account Migration"
+   },
+   "action": {
+      "message": "Action"
+   },
+   "activate": {
+      "message": "Activate"
+   },
+   "activate_account": {
+      "message": "Have an invite code?"
+   },
+   "active": {
+      "message": "Active"
+   },
+   "active_CA_count": {
+      "message": "{activeCACount} active CAs"
+   },
+   "active_mentions": {
+      "message": "Active Mentions"
+   },
+   "active_only": {
+      "message": "Active Only"
+   },
+   "active_tweets": {
+      "message": "Active Tweets"
+   },
+   "active_wallet_empty_top_up": {
+      "message": "An active wallet is empty. Top up."
+   },
+   "active_wallets": {
+      "message": "Active Wallets"
+   },
+   "add": {
+      "message": "Add"
+   },
+   "add_alt_wallets_to_group": {
+      "message": "Add Alt Wallets to Group"
+   },
+   "add_custom_labels_by_clicking": {
+      "message": "Add custom labels by clicking"
+   },
+   "add_label": {
+      "message": "Add Label"
+   },
+   "add_multi_wallet": {
+      "message": "Add Multi Wallet"
+   },
+   "add_order": {
+      "message": "Add Order"
+   },
+   "add_recipient": {
+      "message": "Add recipient"
+   },
+   "add_single_wallet": {
+      "message": "Add Single Wallet"
+   },
+   "add_to_group": {
+      "message": "Add to Group"
+   },
+   "add_to_selection": {
+      "message": "Add to selection"
+   },
+   "add_to_wallets": {
+      "message": "Add to Wallets"
+   },
+   "add_wallet": {
+      "message": "Add Wallet"
+   },
+   "add_wallets": {
+      "message": "Add Wallets"
+   },
+   "adding": {
+      "message": "Adding..."
+   },
+   "address": {
+      "message": "Address"
+   },
+   "addresses": {
+      "message": "Addresses"
+   },
+   "alias": {
+      "message": "Alias"
+   },
+   "alias_updated_failed": {
+      "message": "Alias updated failed"
+   },
+   "alias_updated_successfully": {
+      "message": "Alias updated successfully"
+   },
+   "all": {
+      "message": "All"
+   },
+   "all_custom_sounds_cleared": {
+      "message": "All custom sounds cleared"
+   },
+   "all_deposits_failed": {
+      "message": "All deposits failed"
+   },
+   "all_mentions_for": {
+      "message": "All mentions for"
+   },
+   "all_positions": {
+      "message": "All Positions"
+   },
+   "all_transactions_failed": {
+      "message": "All transactions failed"
+   },
+   "all_wallets": {
+      "message": "All Wallets"
+   },
+   "all_withdrawals_failed": {
+      "message": "All withdrawals failed"
+   },
+   "almost_bonded": {
+      "message": "Almost Bonded"
+   },
+   "alpha_discovery": {
+      "message": "Alpha discovery"
+   },
+   "already_signed_up_with_twitter": {
+      "message": "Already signed up with Twitter?"
+   },
+   "alt_wallet": {
+      "message": "Alt Wallet"
+   },
+   "alt_wallets_saved_successfully": {
+      "message": "Successfully saved alt wallets!"
+   },
+   "always_verify": {
+      "message": "Treat domains as clues—not proof of identity."
+   },
+   "amount": {
+      "message": "Amount"
+   },
+   "amount_exceeds_balance": {
+      "message": "Amount exceeds available balance"
+   },
+   "amount_less_than_zero": {
+      "message": "Amount is less than 0"
+   },
+   "amount_required": {
+      "message": "Amount is required"
+   },
+   "amt": {
+      "message": "Amt"
+   },
+   "anyone_can_own_a_name": {
+      "message": "Anyone can register a domain (e.g., name.sns)."
+   },
+   "appearance": {
+      "message": "Appearance"
+   },
+   "archive": {
+      "message": "archive"
+   },
+   "archive_wallet": {
+      "message": "Archive Wallet"
+   },
+   "archive_wallet_disabled": {
+      "message": "Active Wallet Cannot Be Archived"
+   },
+   "archived": {
+      "message": "Archived"
+   },
+   "are_you_sure_you_want_to_delete_these_groups": {
+      "message": "Are you sure you want to delete these groups? The wallets will be removed from all associated custom groups."
+   },
+   "are_you_sure_you_want_to_delete_this_group": {
+      "message": "Are you sure you want to delete this group?"
+   },
+   "are_you_sure_you_want_to_delete_this_label": {
+      "message": "Are you sure you want to delete this label? The wallet will be removed"
+   },
+   "are_you_sure_you_want_to_delete_this_profile": {
+      "message": "Are you sure you want to delete this profile?"
+   },
+   "are_you_sure_you_want_to_remove_this_wallet_from_group": {
+      "message": "Are you sure you want to remove this wallet from the group?"
+   },
+   "asset": {
+      "message": "Asset"
+   },
+   "assets": {
+      "message": "Assets"
+   },
+   "assets_to_send": {
+      "message": "Assets to send"
+   },
+   "associated_wallets": {
+      "message": "Linked Wallets"
+   },
+   "audio_too_long": {
+      "message": "Audio is too long. Please select an audio file no longer than {max} seconds"
+   },
+   "auto_derived_labels": {
+      "message": "Auto-Generated Labels"
+   },
+   "auto_derived_labels_tip": {
+      "message": "Show auto-generated labels based on wallet positions and PnL, like:"
+   },
+   "auto_fee": {
+      "message": "Auto Fee"
+   },
+   "auto_generate_labels_from_group_name": {
+      "message": "Auto-generate labels from group name."
+   },
+   "auto_import_labels": {
+      "message": "Auto-Sync Labels"
+   },
+   "autotrade_limit_orders_created": {
+      "message": "TP/SL order created"
+   },
+   "autotrade_settings_hint": {
+      "message": "Autotrade strategies should be configured in the trading panel"
+   },
+   "autotrade_strategy": {
+      "message": "Autotrade Strategy"
+   },
+   "available": {
+      "message": "Available"
+   },
+   "back": {
+      "message": "Back"
+   },
+   "background_file_too_large": {
+      "message": "File is too large. Please select an image file smaller than 2MB"
+   },
+   "background_image_uploaded": {
+      "message": "Background image uploaded successfully"
+   },
+   "background_invalid_file_type": {
+      "message": "Invalid file type. Please select an image file (JPEG, PNG, GIF, or WebP)"
+   },
+   "background_reset": {
+      "message": "Background reset to default"
+   },
+   "balance": {
+      "message": "Balance"
+   },
+   "batch": {
+      "message": "Batch"
+   },
+   "bind_now": {
+      "message": "Bind now"
+   },
+   "binding": {
+      "message": "Binding..."
+   },
+   "bonding_curve_completed": {
+      "message": "The bonding curve has completed. Please refresh your page"
+   },
+   "bought": {
+      "message": "Bought"
+   },
+   "bribe_fee_auto_tooltip": {
+      "message": "Real-time tip fee from network (auto calculated)"
+   },
+   "bulk_import": {
+      "message": "Bulk Import"
+   },
+   "bulk_import_placeholder": {
+      "message": "Wallet address: Label\nWallet address: Label\n\nOr paste TamperMonkey Twitter labels JSON that begins with {\"$myTwitterNoteItems\":..."
+   },
+   "bundle_check_failed": {
+      "message": "Bundle Check Failed"
+   },
+   "bundle_id": {
+      "message": "Bundle ID"
+   },
+   "bundled_with": {
+      "message": "Bundled with"
+   },
+   "buy": {
+      "message": "Buy"
+   },
+   "buy_order": {
+      "message": "Buy Order"
+   },
+   "buy_settings": {
+      "message": "Buy Settings"
+   },
+   "buy_sound_effect": {
+      "message": "Buy Sound Effect"
+   },
+   "buy_variance": {
+      "message": "Buy Variance"
+   },
+   "cache": {
+      "message": "Cache"
+   },
+   "cancel": {
+      "message": "Cancel"
+   },
+   "cancel_all": {
+      "message": "Cancel All"
+   },
+   "cancel_order": {
+      "message": "Cancel Order"
+   },
+   "cancelling_limit_order": {
+      "message": "Cancelling Limit Order"
+   },
+   "cannot_add_recipients_with_multiple_assets": {
+      "message": "Cannot add recipients when multiple assets are selected"
+   },
+   "cannot_deactivate_last_active_wallet": {
+      "message": "At least one wallet must be active"
+   },
+   "cannot_send_sol_to_the_same_address": {
+      "message": "Cannot send SOL to the same address"
+   },
+   "change_custom": {
+      "message": "Change Custom"
+   },
+   "changes_saved": {
+      "message": "Changes have been saved!"
+   },
+   "characters": {
+      "message": "characters"
+   },
+   "chat_on_telegram": {
+      "message": "Chat on Telegram"
+   },
+   "checking": {
+      "message": "Checking..."
+   },
+   "choose_wallet": {
+      "message": "Choose Wallet"
+   },
+   "clear": {
+      "message": "Clear"
+   },
+   "clear_all": {
+      "message": "Clear All"
+   },
+   "clear_cache": {
+      "message": "Clear"
+   },
+   "click_to_view_all_mentions": {
+      "message": "Click to view all mentions"
+   },
+   "close": {
+      "message": "Close"
+   },
+   "collapse": {
+      "message": "Collapse"
+   },
+   "collapse_side_panel": {
+      "message": "Collapse"
+   },
+   "community": {
+      "message": "Community"
+   },
+   "compact": {
+      "message": "Compact"
+   },
+   "confirm": {
+      "message": "Confirm"
+   },
+   "confirm_send": {
+      "message": "Confirm Send"
+   },
+   "confirmed_buy": {
+      "message": "Confirmed Buy"
+   },
+   "confirmed_sell": {
+      "message": "Confirmed Sell"
+   },
+   "continue": {
+      "message": "Continue"
+   },
+   "continue_with_google": {
+      "message": "Continue with Google"
+   },
+   "copied": {
+      "message": "Copied"
+   },
+   "copied_to_clipboard": {
+      "message": "Copied to clipboard"
+   },
+   "copy": {
+      "message": "Copy"
+   },
+   "copy_address": {
+      "message": "Copy Address"
+   },
+   "create": {
+      "message": "Create"
+   },
+   "create_limit_order_failed": {
+      "message": "Create Limit Order Failed"
+   },
+   "create_new_wallet": {
+      "message": "Enable Trading Wallet"
+   },
+   "creating": {
+      "message": "Creating..."
+   },
+   "creating_limit_order": {
+      "message": "Creating Limit Order"
+   },
+   "cross_platform_labels": {
+      "message": "Cross-Platform Labels"
+   },
+   "current_mc": {
+      "message": "Current MC"
+   },
+   "current_position": {
+      "message": "Current Position"
+   },
+   "custom": {
+      "message": "Custom"
+   },
+   "custom_image": {
+      "message": "Custom Image"
+   },
+   "custom_labels": {
+      "message": "Custom labels"
+   },
+   "custom_labels_detected": {
+      "message": "Custom labels detected"
+   },
+   "custom_sound_deleted": {
+      "message": "Custom sound deleted successfully"
+   },
+   "custom_sound_uploaded": {
+      "message": "Custom sound uploaded successfully"
+   },
+   "custom_sounds": {
+      "message": "Custom Sounds"
+   },
+   "custom_sounds_count": {
+      "message": "{count}/{max} custom sounds used"
+   },
+   "dark": {
+      "message": "Dark"
+   },
+   "default": {
+      "message": "Default"
+   },
+   "delay": {
+      "message": "Delay"
+   },
+   "delay_description": {
+      "message": "The delay between each transaction in milliseconds. 0ms means no delay."
+   },
+   "delete": {
+      "message": "Delete"
+   },
+   "delete_group": {
+      "message": "Delete Group"
+   },
+   "delete_label": {
+      "message": "Delete Label"
+   },
+   "delete_profile": {
+      "message": "Delete Profile"
+   },
+   "delete_wallet": {
+      "message": "Delete Wallet"
+   },
+   "deleted": {
+      "message": "DELETED"
+   },
+   "deleted_CA_count": {
+      "message": "{deletedCACount} deleted CAs"
+   },
+   "deleted_mentions": {
+      "message": "Deleted Mentions"
+   },
+   "deleted_tweets": {
+      "message": "{deletedTweetsCount} deleted tweets"
+   },
+   "deleted_tweets_found": {
+      "message": "Found {deletedTweetsCount} deleted tweets"
+   },
+   "deleted_tweets_title": {
+      "message": "Deleted Tweets"
+   },
+   "deleted_wallet_mentions": {
+      "message": "Deleted Wallet Mentions"
+   },
+   "deleting": {
+      "message": "Deleting..."
+   },
+   "deposit": {
+      "message": "Deposit"
+   },
+   "deposit_all": {
+      "message": "Deposit All"
+   },
+   "deposit_failed": {
+      "message": "Deposit failed"
+   },
+   "depositing": {
+      "message": "Depositing..."
+   },
+   "deposits_completed": {
+      "message": "deposits completed successfully"
+   },
+   "deselect_all": {
+      "message": "Deselect All"
+   },
+   "destination_address": {
+      "message": "Destination Address"
+   },
+   "destination_address_is_not_valid": {
+      "message": "Destination address is not valid"
+   },
+   "details": {
+      "message": "Details"
+   },
+   "details_not_available": {
+      "message": "Details not available"
+   },
+   "dev_sell": {
+      "message": "Dev Sell"
+   },
+   "disable_keyboard_shortcuts": {
+      "message": "Hold space to use hotkeys"
+   },
+   "display_settings": {
+      "message": "Customization & Display"
+   },
+   "do_not_share_your_private_key_with_anyone_frontrun_never_sees_or_stores_your_key": {
+      "message": "Do not share your private key with anyone. Frontrun never has access to your private keys."
+   },
+   "docs": {
+      "message": "Docs"
+   },
+   "done": {
+      "message": "Done"
+   },
+   "duplicate_wallet_addresses_found": {
+      "message": "Duplicate wallet addresses found"
+   },
+   "duplicated_group_name": {
+      "message": "Duplicated group name"
+   },
+   "earn": {
+      "message": "Earn"
+   },
+   "earned": {
+      "message": "earned"
+   },
+   "edit": {
+      "message": "Edit"
+   },
+   "edit_alias": {
+      "message": "Edit Alias"
+   },
+   "edit_preset_value_tooltip": {
+      "message": "Edit preset value"
+   },
+   "empty_wallets_in_use_top_up": {
+      "message": "Empty wallets in use. Top up."
+   },
+   "enable_keyboard_shortcuts": {
+      "message": "Enable keyboard shortcuts"
+   },
+   "enable_sound": {
+      "message": "Enable Sound"
+   },
+   "enable_trading": {
+      "message": "Enable Trading (Beta)"
+   },
+   "enable_trading_are_ready_to_use": {
+      "message": "are ready to use."
+   },
+   "enable_trading_beta_notice": {
+      "message": "Trading is in Beta. We're shipping fast to give you early access. Expect ongoing improvements."
+   },
+   "enable_trading_confirm_password_placeholder": {
+      "message": "Confirm Password"
+   },
+   "enable_trading_create_password_description": {
+      "message": "Create a password to securely unlock your wallet."
+   },
+   "enable_trading_create_password_title": {
+      "message": "Create Password"
+   },
+   "enable_trading_enter_password_placeholder": {
+      "message": "Enter password"
+   },
+   "enable_trading_enter_private_key_below": {
+      "message": "Enter your private key below."
+   },
+   "enable_trading_import_existing_wallet": {
+      "message": "Import an existing wallet"
+   },
+   "enable_trading_intro_custodial_title": {
+      "message": "Same infra as Axiom, Padre, and Moonshot"
+   },
+   "enable_trading_intro_fast_title": {
+      "message": "Trade instantly across any platform"
+   },
+   "enable_trading_intro_fee_title": {
+      "message": "Most transparent fee structure"
+   },
+   "enable_trading_is_ready_to_use": {
+      "message": "is ready to use."
+   },
+   "enable_trading_label_wallet_description": {
+      "message": "Add a short label for your default wallet."
+   },
+   "enable_trading_label_wallet_title": {
+      "message": "Label Your Wallet"
+   },
+   "enable_trading_password_min_length_fallback": {
+      "message": "Password must be at least 6 characters"
+   },
+   "enable_trading_password_warning": {
+      "message": "Only you can access or recover this password. Frontrun cannot restore your password if it's lost."
+   },
+   "enable_trading_report_issue": {
+      "message": "Report an issue."
+   },
+   "enable_trading_saved_seed_phrase": {
+      "message": "I have saved the seed phrase"
+   },
+   "enable_trading_seed_warning_intro": {
+      "message": "Please read carefully before continuing."
+   },
+   "enable_trading_seed_warning_item1": {
+      "message": "Never share your seed phrase. Anyone with it can access your assets."
+   },
+   "enable_trading_seed_warning_item2": {
+      "message": "Keep it safe and offline. Never save it in screenshots or cloud notes."
+   },
+   "enable_trading_seed_warning_item3": {
+      "message": "Frontrun cannot recover it. Your seed phrase is stored only on your device."
+   },
+   "enable_trading_seed_warning_title": {
+      "message": "Seed Phrase"
+   },
+   "enable_trading_skip": {
+      "message": "Skip"
+   },
+   "enable_trading_success_title": {
+      "message": "You are all set!"
+   },
+   "enable_trading_wallet_label_placeholder": {
+      "message": "eg. Main, Trading, Saving"
+   },
+   "enable_trading_wallets_ready": {
+      "message": "wallets"
+   },
+   "enable_trading_your_wallet": {
+      "message": "Your wallet"
+   },
+   "enable_turnkey_button": {
+      "message": "Continue with Google"
+   },
+   "enable_turnkey_description_1": {
+      "message": "Limit Orders run on a custodial wallet powered by Turnkey - the same infra used by Axiom."
+   },
+   "enable_turnkey_description_2": {
+      "message": "Your private key will be securely imported to Turnkey for signing."
+   },
+   "enable_turnkey_description_3": {
+      "message": "Frontrun never gets access to your private keys."
+   },
+   "enable_turnkey_read_more": {
+      "message": "Read more"
+   },
+   "enable_turnkey_title": {
+      "message": "Enable Turnkey for Limit Orders"
+   },
+   "enable_with_google": {
+      "message": "Continue with Google"
+   },
+   "ended_trial": {
+      "message": "3-day trial has ended, please obtain an invite code: "
+   },
+   "enter_a_group_name": {
+      "message": "Enter a group name"
+   },
+   "enter_a_name_for_easy_tracking": {
+      "message": "Enter a name for easy tracking"
+   },
+   "enter_a_new_group_name": {
+      "message": "Enter a new group name"
+   },
+   "enter_a_new_wallet_address": {
+      "message": "Enter a new wallet address"
+   },
+   "enter_alias_placeholder": {
+      "message": "Enter alias"
+   },
+   "enter_amount": {
+      "message": "Enter amount"
+   },
+   "enter_amounts_for_selected": {
+      "message": "Enter amounts for selected assets"
+   },
+   "enter_destination_address": {
+      "message": "Enter destination address"
+   },
+   "enter_invite_code": {
+      "message": "Enter invite code"
+   },
+   "enter_max_fee": {
+      "message": "Enter max fee"
+   },
+   "enter_max_fee_placeholder": {
+      "message": "Enter Max Fee"
+   },
+   "enter_percent_0_100": {
+      "message": "Enter % (0~100)"
+   },
+   "enter_private_key": {
+      "message": "Enter Private Key"
+   },
+   "enter_sol_amount": {
+      "message": "Enter SOL amount"
+   },
+   "enter_wallet_addresses_one_per_line": {
+      "message": "Enter wallet addresses, one per line."
+   },
+   "error": {
+      "message": "Error"
+   },
+   "error_group_delete": {
+      "message": "Failed to delete group"
+   },
+   "error_group_update": {
+      "message": "Failed to update group"
+   },
+   "error_importing_wallets": {
+      "message": "Error importing wallets. Please try again."
+   },
+   "error_wallets_remove": {
+      "message": "Failed to remove wallets"
+   },
+   "estimate_amount_on_hover": {
+      "message": "Estimate Amount on Hover"
+   },
+   "estimate_amount_on_hover_desc": {
+      "message": "Instant trade panel shows reflected amount on hover"
+   },
+   "executing_order": {
+      "message": "Executing Order"
+   },
+   "execution_settings": {
+      "message": "Execution Settings"
+   },
+   "execution_settings_updated_successfully": {
+      "message": "Execution Settings updated successfully"
+   },
+   "expand": {
+      "message": "Expand"
+   },
+   "explore_frontrun": {
+      "message": "Explore Frontrun"
+   },
+   "explore_labels_on_gmgn": {
+      "message": "Explore Labels on GMGN"
+   },
+   "explore_labels_on_x": {
+      "message": "Explore Labels on X"
+   },
+   "explore_universal_labels": {
+      "message": "Explore Universal Labels"
+   },
+   "export_private_key": {
+      "message": "Export Private Key"
+   },
+   "extension_settings": {
+      "message": "Settings"
+   },
+   "extensions": {
+      "message": "Extensions"
+   },
+   "fail": {
+      "message": "Fail"
+   },
+   "failed_to_add_to_wallets": {
+      "message": "Failed to add to wallets"
+   },
+   "failed_to_add_wallets_to_groups": {
+      "message": "Failed to add wallets to groups!"
+   },
+   "failed_to_cancel_limit_order": {
+      "message": "Failed to cancel limit order"
+   },
+   "failed_to_check_profile_limit": {
+      "message": "Failed to check profile limit. Please try again"
+   },
+   "failed_to_check_wallet_limit": {
+      "message": "Failed to check wallet limit. Please try again"
+   },
+   "failed_to_copy_address": {
+      "message": "Failed to copy address"
+   },
+   "failed_to_create_group": {
+      "message": "Failed to create group"
+   },
+   "failed_to_create_wallet": {
+      "message": "Failed to create wallet"
+   },
+   "failed_to_delete_group": {
+      "message": "Failed to delete group"
+   },
+   "failed_to_delete_label": {
+      "message": "Failed to delete label"
+   },
+   "failed_to_delete_sound": {
+      "message": "Failed to delete sound"
+   },
+   "failed_to_delete_wallet": {
+      "message": "Failed to delete wallet"
+   },
+   "failed_to_export_private_key": {
+      "message": "Failed to export private key"
+   },
+   "failed_to_fetch_addresses": {
+      "message": "Failed to fetch addresses"
+   },
+   "failed_to_fetch_imported_private_keys": {
+      "message": "Failed to fetch imported private keys"
+   },
+   "failed_to_fetch_portfolio_for_address": {
+      "message": "Failed to fetch portfolio for address"
+   },
+   "failed_to_get_mentions": {
+      "message": "Failed to get mentions"
+   },
+   "failed_to_get_token_info": {
+      "message": "Failed to get token info. Please try again."
+   },
+   "failed_to_import_labels": {
+      "message": "Failed to import labels"
+   },
+   "failed_to_import_labels_refresh": {
+      "message": "Failed to import labels, please refresh the page"
+   },
+   "failed_to_import_private_key": {
+      "message": "Failed to import private key"
+   },
+   "failed_to_initialize_limit_order": {
+      "message": "Failed to initialize limit order, please refresh the page and try again."
+   },
+   "failed_to_load_groups": {
+      "message": "Failed to load groups"
+   },
+   "failed_to_lock_wallet": {
+      "message": "Failed to lock wallet"
+   },
+   "failed_to_parse_wallet_data": {
+      "message": "Failed to parse wallet data"
+   },
+   "failed_to_play_sound": {
+      "message": "Failed to play sound"
+   },
+   "failed_to_read_file": {
+      "message": "Failed to read file. Please try again"
+   },
+   "failed_to_refresh_positions": {
+      "message": "Failed to refresh positions"
+   },
+   "failed_to_save_group": {
+      "message": "Failed to save group"
+   },
+   "failed_to_send": {
+      "message": "Failed to send"
+   },
+   "failed_to_update_label": {
+      "message": "Failed to update label"
+   },
+   "failed_to_verify_gif_url": {
+      "message": "Failed to fetch/verify the image from this URL. Please check the URL and try again"
+   },
+   "feature_temporarily_disabled": {
+      "message": "This feature is temporarily disabled and will be restored automatically."
+   },
+   "fee": {
+      "message": "Fee"
+   },
+   "fee_saved": {
+      "message": "Fee Saved"
+   },
+   "fee_saved_trading_panel": {
+      "message": "saved!"
+   },
+   "fee_saved_trading_panel_tooltip": {
+      "message": "You saved {amount} on fees"
+   },
+   "feedback": {
+      "message": "Feedback"
+   },
+   "feedback_description": {
+      "message": "Report bugs or request new features."
+   },
+   "fetch_ca_history_failed": {
+      "message": "Failed to fetch CA History. Please try again later."
+   },
+   "fetch_wallet_history_failed": {
+      "message": "Failed to fetch wallet history. Please try again later."
+   },
+   "file_too_large": {
+      "message": "File is too large. Please select an audio file smaller than 0.5MB"
+   },
+   "final_stretch": {
+      "message": "Final Stretch"
+   },
+   "follower": {
+      "message": "follower"
+   },
+   "followers": {
+      "message": "followers"
+   },
+   "for": {
+      "message": "for"
+   },
+   "format": {
+      "message": "Format"
+   },
+   "format_placeholder": {
+      "message": "Supports Axiom, GMGN, Raybot, BullX. "
+   },
+   "frequent_logout_help": {
+      "message": "Keep getting signed out? See how to fix it"
+   },
+   "from": {
+      "message": "From"
+   },
+   "frontrun": {
+      "message": "Frontrun"
+   },
+   "frontrun_never_gets_the_the_access_to_use_private_keys": {
+      "message": "Frontrun never has access to your private keys."
+   },
+   "general_settings": {
+      "message": "General"
+   },
+   "get_ca_history": {
+      "message": "Get CA History"
+   },
+   "gif_url": {
+      "message": "GIF URL"
+   },
+   "gif_url_saved": {
+      "message": "GIF URL saved successfully"
+   },
+   "gmgn_label_1": {
+      "message": "Find and hover over existing label to view groups and tags."
+   },
+   "gmgn_label_2": {
+      "message": "Create and customize labels for any wallet."
+   },
+   "gmgn_label_3": {
+      "message": "Easily auto-import your custom groups from GMGN to Frontrun for seamless cross-platform visibility."
+   },
+   "google": {
+      "message": "Google"
+   },
+   "group": {
+      "message": "Group"
+   },
+   "group_management": {
+      "message": "Group Management"
+   },
+   "group_name": {
+      "message": "Group Name"
+   },
+   "group_name_already_exists": {
+      "message": "Group name already exists"
+   },
+   "group_name_required": {
+      "message": "Group name is required"
+   },
+   "group_view": {
+      "message": "Group View"
+   },
+   "groups": {
+      "message": "Groups"
+   },
+   "have_already_made_profit": {
+      "message": "You cannot sell initial position because you have already made your initial investment."
+   },
+   "hidden": {
+      "message": "Hidden"
+   },
+   "hide_low": {
+      "message": "Hide low"
+   },
+   "high": {
+      "message": "High"
+   },
+   "high_profit": {
+      "message": "High Profit 7D"
+   },
+   "history": {
+      "message": "History"
+   },
+   "holder_history": {
+      "message": "Holder History"
+   },
+   "holders": {
+      "message": "Holders"
+   },
+   "holding": {
+      "message": "Holding"
+   },
+   "holding_value": {
+      "message": "Value"
+   },
+   "holdings": {
+      "message": "Holdings"
+   },
+   "icon_next_to_address_on": {
+      "message": "icon next to wallet's address on"
+   },
+   "if_you_have_any_issues_please_join": {
+      "message": "If you have any issues, please join our"
+   },
+   "import": {
+      "message": "Import"
+   },
+   "import_from_axiom": {
+      "message": "Import from Axiom"
+   },
+   "import_from_gmgn": {
+      "message": "Import from GMGN"
+   },
+   "import_from_photon": {
+      "message": "Import from Photon"
+   },
+   "import_from_solscan": {
+      "message": "Import from Solscan"
+   },
+   "import_in_progress": {
+      "message": "Start to import"
+   },
+   "import_labels": {
+      "message": "Import Labels"
+   },
+   "import_labels_from_terminals": {
+      "message": "Auto-sync your labels from terminals automatically (only you can see them, not shared with other users)"
+   },
+   "import_privacy_message": {
+      "message": "Your imported labels will always be private to you and won't be shared with other users."
+   },
+   "import_to_frontrun_tip": {
+      "message": "Import your labels into Frontrun for seamless viewing on Solscan, Axiom, GMGN, and more. Your labels stay private—never shared with anyone else."
+   },
+   "import_wallet": {
+      "message": "Import Wallet"
+   },
+   "importing": {
+      "message": "Importing..."
+   },
+   "importing_labels": {
+      "message": "Importing Labels"
+   },
+   "in_fees_using": {
+      "message": "in fees"
+   },
+   "inline_pnl": {
+      "message": "PnL Badges on Tweets"
+   },
+   "inline_pnl_info": {
+      "message": "Show profit/loss badges on posts with contract addresses"
+   },
+   "instant_trade": {
+      "message": "Instant Trade"
+   },
+   "insufficient_balance": {
+      "message": "Insufficient balance for this transaction."
+   },
+   "insufficient_liquidity": {
+      "message": "Insufficient liquidity in the pool."
+   },
+   "invalid_address": {
+      "message": "Invalid address"
+   },
+   "invalid_amount": {
+      "message": "Invalid amount"
+   },
+   "invalid_file_type": {
+      "message": "Invalid file type. Please select an audio file"
+   },
+   "invalid_url": {
+      "message": "Invalid URL format"
+   },
+   "invalid_wallet_address": {
+      "message": "Invalid wallet address"
+   },
+   "invalid_wallet_address_with_addr": {
+      "message": "Invalid wallet address: {address}"
+   },
+   "invalid_wallet_addresses": {
+      "message": "Invalid wallet addresses"
+   },
+   "jito_bundle": {
+      "message": "Jito Bundle"
+   },
+   "jito_bundle_details": {
+      "message": "Jito Bundle Details"
+   },
+   "join_telegram": {
+      "message": "Join Telegram"
+   },
+   "jupiter_earn": {
+      "message": "Jupiter Earn"
+   },
+   "jupiter_earn_description": {
+      "message": "Deposit your SOL and USDC into Jupiter Lend to earn yield."
+   },
+   "jupiter_earn_info_1": {
+      "message": "Deposits will be processed for all active wallets"
+   },
+   "jupiter_earn_info_2": {
+      "message": "Estimated Gas Fee $0.00063"
+   },
+   "jupiter_earn_info_3": {
+      "message": "You can withdraw anytime from Jupiter"
+   },
+   "jupiter_withdraw_description": {
+      "message": "Withdraw your SOL and USDC from Jupiter Lend back to your wallets."
+   },
+   "kol_data": {
+      "message": "KOL data"
+   },
+   "label_deleted_successfully": {
+      "message": "Label deleted successfully!"
+   },
+   "label_text_style": {
+      "message": "Label Text Style"
+   },
+   "label_tool": {
+      "message": "Edit Label Button"
+   },
+   "label_tool_description": {
+      "message": "Show a small pen next to addresses to add or edit labels inline"
+   },
+   "label_ui": {
+      "message": "Label Style"
+   },
+   "label_updated_successfully": {
+      "message": "Label updated successfully!"
+   },
+   "labels": {
+      "message": "Labels"
+   },
+   "language": {
+      "message": "Language"
+   },
+   "last_active": {
+      "message": "Last Active"
+   },
+   "launchpad_trade_failed": {
+      "message": "Launchpad trade failed. Please try again."
+   },
+   "lets_explore_labels_on_gmgn": {
+      "message": "Let's Explore Labels on GMGN"
+   },
+   "lets_explore_labels_on_x": {
+      "message": "Let's Explore Labels on X"
+   },
+   "light": {
+      "message": "Light"
+   },
+   "limit": {
+      "message": "Limit"
+   },
+   "limit_order_buy_active": {
+      "message": "The buy order for ${tokenSymbol} has been created and is active."
+   },
+   "limit_order_buy_canceled": {
+      "message": "The buy order for ${tokenSymbol} has been canceled."
+   },
+   "limit_order_buy_completed": {
+      "message": "The buy order for ${tokenSymbol} has been completed."
+   },
+   "limit_order_buy_expired": {
+      "message": "The buy order for ${tokenSymbol} has expired."
+   },
+   "limit_order_buy_failed": {
+      "message": "The buy order for ${tokenSymbol} has failed."
+   },
+   "limit_order_buy_triggered": {
+      "message": "The buy order for ${tokenSymbol} has been triggered."
+   },
+   "limit_order_canceled": {
+      "message": "Limit Order Canceled"
+   },
+   "limit_order_creation_failed": {
+      "message": "Limit order creation failed:"
+   },
+   "limit_order_notional_value_too_low": {
+      "message": "Limit order notional value must be at least 5 USD"
+   },
+   "limit_order_partial_result": {
+      "message": "{failed} transactions failed ({succeeded} succeeded)"
+   },
+   "limit_order_placed": {
+      "message": "Limit Order Placed"
+   },
+   "limit_order_sell_active": {
+      "message": "The sell order for ${tokenSymbol} has been created and is active."
+   },
+   "limit_order_sell_canceled": {
+      "message": "The sell order for ${tokenSymbol} has been canceled."
+   },
+   "limit_order_sell_completed": {
+      "message": "The sell order for ${tokenSymbol} has been completed."
+   },
+   "limit_order_sell_expired": {
+      "message": "The sell order for ${tokenSymbol} has expired."
+   },
+   "limit_order_sell_failed": {
+      "message": "The sell order for ${tokenSymbol} has failed."
+   },
+   "limit_order_sell_triggered": {
+      "message": "The sell order for ${tokenSymbol} has been triggered."
+   },
+   "limit_order_triggered_successfully": {
+      "message": "Limit Order Triggered"
+   },
+   "limit_orders": {
+      "message": "Limit Orders"
+   },
+   "link_failed_retry": {
+      "message": "Link failed. Please try again."
+   },
+   "link_to_google_account": {
+      "message": "Link to Google account"
+   },
+   "linked": {
+      "message": "Linked"
+   },
+   "loading": {
+      "message": "Loading..."
+   },
+   "loading_details": {
+      "message": "Loading details..."
+   },
+   "loading_positions": {
+      "message": "Loading positions..."
+   },
+   "lock_wallet": {
+      "message": "Lock Wallet"
+   },
+   "log_in_to_view_insights": {
+      "message": "Log in to view insights"
+   },
+   "login_method": {
+      "message": "Login method"
+   },
+   "logout": {
+      "message": "Log out"
+   },
+   "make_sure_the_destination_accepts_sol": {
+      "message": "Make sure the destination accepts SOL"
+   },
+   "manage": {
+      "message": "Manage"
+   },
+   "manage_portfolio": {
+      "message": "Manage Portfolio"
+   },
+   "market": {
+      "message": "Market"
+   },
+   "market_cap": {
+      "message": "Market Cap"
+   },
+   "market_trading": {
+      "message": "Market"
+   },
+   "max": {
+      "message": "MAX"
+   },
+   "max_custom_sounds_reached": {
+      "message": "Maximum custom sounds reached (max 5)"
+   },
+   "max_fee": {
+      "message": "Max Fee"
+   },
+   "max_file_size_2mb": {
+      "message": "Max file size: 2MB"
+   },
+   "medium": {
+      "message": "Med"
+   },
+   "mentioned": {
+      "message": "Mentioned"
+   },
+   "mentioned_wallets": {
+      "message": "Mentioned Wallets"
+   },
+   "mev": {
+      "message": "MEV"
+   },
+   "mev_mode": {
+      "message": "Mev Mode"
+   },
+   "migrated": {
+      "message": "Migrated"
+   },
+   "missing_label_for_address": {
+      "message": "Missing label for address: {address}"
+   },
+   "more": {
+      "message": "More"
+   },
+   "more_customizations": {
+      "message": "More customizations"
+   },
+   "more_fee_saved": {
+      "message": "more"
+   },
+   "multi_wallet_settings": {
+      "message": "Multi-Wallet Settings"
+   },
+   "name": {
+      "message": "Name"
+   },
+   "name_change": {
+      "message": "Name Change"
+   },
+   "need_a_code": {
+      "message": "Need a code?"
+   },
+   "need_help": {
+      "message": "Need help?"
+   },
+   "net_worth": {
+      "message": "Net Worth"
+   },
+   "network_fee": {
+      "message": "Network Fee"
+   },
+   "never_show_this_again": {
+      "message": "Never show this again."
+   },
+   "new_group": {
+      "message": "New Group"
+   },
+   "new_pairs": {
+      "message": "New Pairs"
+   },
+   "new_wallet": {
+      "message": "New Wallet"
+   },
+   "no_active_tweets_found": {
+      "message": "No active tweets with CAs found"
+   },
+   "no_active_wallets": {
+      "message": "No active wallets. Please activate at least one wallet."
+   },
+   "no_alt_wallets_found": {
+      "message": "No alt wallets found"
+   },
+   "no_associated_wallets_found": {
+      "message": "No associated wallets found"
+   },
+   "no_balance_to_deposit": {
+      "message": "No balance available to deposit"
+   },
+   "no_bio_changes": {
+      "message": "No bio changes"
+   },
+   "no_bundle_data_available": {
+      "message": "No Bundle Data Available"
+   },
+   "no_custom_labels_yet": {
+      "message": "You haven't assigned any custom labels yet."
+   },
+   "no_default_wallet_address": {
+      "message": "There is no default wallet address, please set default wallet first"
+   },
+   "no_deleted_tweets_found": {
+      "message": "No deleted tweets with CAs found"
+   },
+   "no_fee": {
+      "message": "0 fee"
+   },
+   "no_groups_found": {
+      "message": "No groups found"
+   },
+   "no_holdings": {
+      "message": "No Positions"
+   },
+   "no_limit": {
+      "message": "no limit"
+   },
+   "no_other_wallets": {
+      "message": "No other wallets"
+   },
+   "no_position_to_withdraw": {
+      "message": "No position to withdraw"
+   },
+   "no_positions_yet": {
+      "message": "No positions yet"
+   },
+   "no_results_found": {
+      "message": "No results found"
+   },
+   "no_token_found": {
+      "message": "No token found"
+   },
+   "no_username_changes": {
+      "message": "No username changes"
+   },
+   "no_valid_twitter_usernames_found": {
+      "message": "No valid Twitter usernames found"
+   },
+   "no_valid_wallet_addresses_found": {
+      "message": "No valid wallet addresses found"
+   },
+   "no_wallet_found_yet": {
+      "message": "No wallet found yet"
+   },
+   "no_wallet_mentions_found": {
+      "message": "No wallet mentions found in tweets"
+   },
+   "no_wallets_found": {
+      "message": "No wallets found"
+   },
+   "not_bundled": {
+      "message": "Not Bundled"
+   },
+   "not_speculation": {
+      "message": "not speculation."
+   },
+   "of": {
+      "message": "of"
+   },
+   "off": {
+      "message": "Off"
+   },
+   "on": {
+      "message": "ON"
+   },
+   "only_pnl_above_50k_is_displayed": {
+      "message": "Only PnL above $30k is displayed."
+   },
+   "only_send_sol_to_this_address": {
+      "message": "Only send SOL to this address."
+   },
+   "open_sidepanel_to_explore_frontrun": {
+      "message": "Open Frontrun"
+   },
+   "option_1": {
+      "message": "Option 1"
+   },
+   "option_2": {
+      "message": "Option 2"
+   },
+   "or": {
+      "message": "or"
+   },
+   "order_execution_failed": {
+      "message": "Order execution failed"
+   },
+   "order_summary": {
+      "message": "Order Summary"
+   },
+   "panel_background": {
+      "message": "Panel Background"
+   },
+   "partial_success": {
+      "message": "Partial success"
+   },
+   "password_dialog_action_create_wallet": {
+      "message": "Create wallet"
+   },
+   "password_dialog_action_forgot": {
+      "message": "Forgot password?"
+   },
+   "password_dialog_action_labels_only": {
+      "message": "Labels only"
+   },
+   "password_dialog_action_reset_wallet": {
+      "message": "Reset wallet"
+   },
+   "password_dialog_action_reset_wallets": {
+      "message": "Reset and clear wallet data"
+   },
+   "password_dialog_action_set_password": {
+      "message": "Continue"
+   },
+   "password_dialog_action_try_other": {
+      "message": "Try another password"
+   },
+   "password_dialog_action_unlock": {
+      "message": "Unlock"
+   },
+   "password_dialog_clipboard_unavailable": {
+      "message": "Clipboard access isn’t available."
+   },
+   "password_dialog_create_failed": {
+      "message": "Failed to create and store wallets."
+   },
+   "password_dialog_description_create": {
+      "message": "Create a password to securely unlock your wallet."
+   },
+   "password_dialog_description_unlock": {
+      "message": "Enter your wallet password to decrypt the local private keys."
+   },
+   "password_dialog_forgot_description": {
+      "message": "We can’t retrieve your password since it’s stored only on your device. You can try another password, or reset your wallet data to start fresh.Your Label data will remain saved."
+   },
+   "password_dialog_forgot_label_info": {
+      "message": "Your label data will remain available."
+   },
+   "password_dialog_forgot_title": {
+      "message": "Forgot your password?"
+   },
+   "password_dialog_handle_request_failed": {
+      "message": "Failed to open the password dialog"
+   },
+   "password_dialog_heading_create": {
+      "message": "Create wallet password"
+   },
+   "password_dialog_heading_unlock": {
+      "message": "Welcome back"
+   },
+   "password_dialog_hide_confirm_password": {
+      "message": "Hide confirm password"
+   },
+   "password_dialog_hide_password": {
+      "message": "Hide password"
+   },
+   "password_dialog_hint_storage": {
+      "message": "Store this password safely—we can’t recover it."
+   },
+   "password_dialog_hint_strength": {
+      "message": "Mix numbers, symbols, and letters to increase strength."
+   },
+   "password_dialog_label_create_password": {
+      "message": "Create password"
+   },
+   "password_dialog_label_unlock_password": {
+      "message": "Wallet password"
+   },
+   "password_dialog_password_min_length": {
+      "message": "Password must be at least {minLength} characters."
+   },
+   "password_dialog_password_required": {
+      "message": "Please enter a password."
+   },
+   "password_dialog_placeholder_create": {
+      "message": "Create a strong password"
+   },
+   "password_dialog_placeholder_unlock": {
+      "message": "Enter password to unlock"
+   },
+   "password_dialog_report_issue": {
+      "message": "Report an issue."
+   },
+   "password_dialog_reset_confirm_description_primary": {
+      "message": "Resetting will permanently remove all wallet data from this device and restore it to the default state."
+   },
+   "password_dialog_reset_confirm_description_secondary": {
+      "message": "Make sure you’ve backed up every wallet before continuing."
+   },
+   "password_dialog_reset_confirm_description_secondary_secondary": {
+      "message": "This action cannot be undone."
+   },
+   "password_dialog_reset_confirm_title": {
+      "message": "Reset wallets?"
+   },
+   "password_dialog_reset_description": {
+      "message": "We removed every encrypted wallet from this device. Re-import them with your seed phrase or private key, then set a new password."
+   },
+   "password_dialog_reset_failed": {
+      "message": "Failed to reset wallets"
+   },
+   "password_dialog_reset_heading": {
+      "message": "Wallet data cleared"
+   },
+   "password_dialog_seed_copied": {
+      "message": "Seed phrase copied"
+   },
+   "password_dialog_seed_copy_failed": {
+      "message": "Failed to copy seed phrase"
+   },
+   "password_dialog_seed_generate_failed": {
+      "message": "Failed to generate seed phrase"
+   },
+   "password_dialog_seed_heading": {
+      "message": "Secure Your Seed Phrase"
+   },
+   "password_dialog_seed_missing": {
+      "message": "Seed phrase is missing"
+   },
+   "password_dialog_seed_subheading": {
+      "message": "You’ll need this to restore your wallet."
+   },
+   "password_dialog_seed_warning_description": {
+      "message": "We’ll generate 12 words that unlock your wallet. Save them before continuing."
+   },
+   "password_dialog_seed_warning_title": {
+      "message": "Seed Phrase"
+   },
+   "password_dialog_session_expired": {
+      "message": "Your session expired. Please try again."
+   },
+   "password_dialog_show_confirm_password": {
+      "message": "Show confirm password"
+   },
+   "password_dialog_show_password": {
+      "message": "Show password"
+   },
+   "password_dialog_title_create": {
+      "message": "Set wallet password"
+   },
+   "password_dialog_title_unlock": {
+      "message": "Unlock wallet"
+   },
+   "password_dialog_trading_beta_message": {
+      "message": "Trading is in Beta. We're shipping fast to give you early access. Expect ongoing improvements."
+   },
+   "paste_the_wallet_address": {
+      "message": "Paste the wallet address"
+   },
+   "paste_your_exported_wallets_here": {
+      "message": "Paste your exported wallets/Twitter labels here..."
+   },
+   "pin": {
+      "message": "Pin"
+   },
+   "pin_extension_for_quick_access": {
+      "message": "Pin Extension for Quick Access"
+   },
+   "platform_integrations": {
+      "message": "Platform Integrations"
+   },
+   "platform_settings": {
+      "message": "Platform Controls"
+   },
+   "please_enter_a_label": {
+      "message": "Please enter a label"
+   },
+   "please_enter_a_primary_label": {
+      "message": "Please enter a primary label"
+   },
+   "please_enter_invite_code": {
+      "message": "Please enter an invite code"
+   },
+   "please_enter_the_amount": {
+      "message": "Please enter the amount"
+   },
+   "please_enter_the_destination_address": {
+      "message": "Please enter the destination address"
+   },
+   "please_enter_twitter_usernames": {
+      "message": "Please paste your exported Twitter usernames/notes first"
+   },
+   "please_enter_wallet_address": {
+      "message": "Please enter wallet address"
+   },
+   "please_enter_wallet_addresses": {
+      "message": "Please enter wallet addresses"
+   },
+   "please_select_an_asset": {
+      "message": "Please select an asset"
+   },
+   "please_select_at_least_one_asset": {
+      "message": "Please select at least one asset"
+   },
+   "please_select_at_least_one_group": {
+      "message": "Please select at least one group"
+   },
+   "please_select_at_least_one_wallet": {
+      "message": "Please select at least one wallet"
+   },
+   "pnl": {
+      "message": "Pnl"
+   },
+   "pnl_90d": {
+      "message": "PnL (90D)"
+   },
+   "pnl_over_50k": {
+      "message": "PnL over $30k"
+   },
+   "position": {
+      "message": "Position"
+   },
+   "position_pnl_percentage": {
+      "message": "Pnl"
+   },
+   "positions": {
+      "message": "Positions"
+   },
+   "powered_by": {
+      "message": "Powered by"
+   },
+   "preset": {
+      "message": "Preset"
+   },
+   "preview": {
+      "message": "Preview"
+   },
+   "preview_panel": {
+      "message": "Preview panel"
+   },
+   "price": {
+      "message": "Price"
+   },
+   "price_not_available": {
+      "message": "Price is not available. Please try again later."
+   },
+   "primary_domain": {
+      "message": "Primary Domain"
+   },
+   "primary_label": {
+      "message": "Primary Label"
+   },
+   "primary_label_is_required": {
+      "message": "Primary label is required"
+   },
+   "prioritize_frontrun": {
+      "message": "Prioritize Frontrun"
+   },
+   "prioritize_frontrun_tip": {
+      "message": "Optimize user experience when multiple extensions are displayed simultaneously"
+   },
+   "priority_fee": {
+      "message": "Priority Fee"
+   },
+   "priority_fee_auto_tooltip": {
+      "message": "Real-time priority fee from network (auto calculated)"
+   },
+   "priority_fee_cannot_be_negative": {
+      "message": "Priority fee cannot be negative"
+   },
+   "priority_fee_must_be_a_number": {
+      "message": "Priority fee must be a number"
+   },
+   "priority_fee_warning_exceeds_0_2": {
+      "message": "Warning: Priority fee exceeds 0.2 SOL"
+   },
+   "private_key_imported_successfully": {
+      "message": "Private key imported successfully"
+   },
+   "processing": {
+      "message": "Processing..."
+   },
+   "processing_deposits": {
+      "message": "Processing deposits..."
+   },
+   "processing_withdrawals": {
+      "message": "Processing withdrawals..."
+   },
+   "profile": {
+      "message": "Profile"
+   },
+   "profile_change": {
+      "message": "Bio Change"
+   },
+   "profile_data": {
+      "message": "Profile Data"
+   },
+   "profile_history": {
+      "message": "Profile History"
+   },
+   "profile_label_1": {
+      "message": "Hover over View Summary to see more details about the account."
+   },
+   "profile_label_2": {
+      "message": "Create and customize labels for any X user."
+   },
+   "profile_label_3": {
+      "message": "View smart followers on each profile page."
+   },
+   "profiles": {
+      "message": "Profiles"
+   },
+   "program_derived_address": {
+      "message": "Program Derived Address"
+   },
+   "quick_buy": {
+      "message": "Buy"
+   },
+   "quick_buy_amount": {
+      "message": "Quick Buy Amount"
+   },
+   "quick_buy_label": {
+      "message": "Quick Buy"
+   },
+   "quick_buy_settings": {
+      "message": "Quick Buy Settings"
+   },
+   "quick_sell": {
+      "message": "Sell"
+   },
+   "ranking": {
+      "message": "Ranking"
+   },
+   "read_more": {
+      "message": "[Read more]"
+   },
+   "read_more_in_alert": {
+      "message": "Read more"
+   },
+   "ready_to_frontrun": {
+      "message": "Ready to Frontrun"
+   },
+   "real_time_tracking": {
+      "message": "Real-time tracking"
+   },
+   "receive": {
+      "message": "Receive"
+   },
+   "receive_address": {
+      "message": "Receive Address"
+   },
+   "receive_sol": {
+      "message": "Receive SOL"
+   },
+   "recent_labels": {
+      "message": "Recent Labels"
+   },
+   "recent_searches": {
+      "message": "Recent Searches"
+   },
+   "recently_logged_in_as": {
+      "message": "Recently logged in as"
+   },
+   "recipients": {
+      "message": "Recipients"
+   },
+   "recommended_bribe_fee_tooltip": {
+      "message": "Recommended Bribe Fee is {fee} SOL"
+   },
+   "recommended_priority_fee_tooltip": {
+      "message": "Recommended Priority Fee is {fee} SOL"
+   },
+   "refresh": {
+      "message": "Refresh"
+   },
+   "refresh_all_positions": {
+      "message": "Refresh all positions"
+   },
+   "remaining": {
+      "message": "Remaining"
+   },
+   "remaining_balance": {
+      "message": "Remaining balance"
+   },
+   "remaining_qty": {
+      "message": "Holding"
+   },
+   "remind_later": {
+      "message": "Remind later"
+   },
+   "remove_from_selection": {
+      "message": "Remove from selection"
+   },
+   "report_bug": {
+      "message": "Report Bug"
+   },
+   "report_bug_title": {
+      "message": "Found a bug? Tell us, we'll fix it fast."
+   },
+   "request_feature": {
+      "message": "Request Feature"
+   },
+   "request_feature_title": {
+      "message": "Have an idea to improve Frontrun?"
+   },
+   "reset_to_default": {
+      "message": "Reset to Default"
+   },
+   "retry_failed": {
+      "message": "Retry failed"
+   },
+   "reveal_private_key": {
+      "message": "Reveal Private Key"
+   },
+   "save": {
+      "message": "Save"
+   },
+   "save_changes": {
+      "message": "Save Changes"
+   },
+   "save_fees": {
+      "message": "Save {fee} in fees!"
+   },
+   "save_fees_percent": {
+      "message": "Save {x}% fees"
+   },
+   "save_percentage": {
+      "message": "Save {percentage}%"
+   },
+   "save_with_frontrun": {
+      "message": "Save {savings}% with"
+   },
+   "saved": {
+      "message": "Saved"
+   },
+   "saving": {
+      "message": "Saving..."
+   },
+   "seamless_experience": {
+      "message": "For seamless experience, import your labels to Frontrun."
+   },
+   "search_assets": {
+      "message": "Search assets"
+   },
+   "search_for_alt_wallets": {
+      "message": "Search Alt wallets "
+   },
+   "search_placeholder": {
+      "message": "Search by label, address, keyword, or name"
+   },
+   "search_wallets": {
+      "message": "Search wallets"
+   },
+   "secure": {
+      "message": "SECURE"
+   },
+   "secure_signing": {
+      "message": "secure signing"
+   },
+   "select_all": {
+      "message": "Select All"
+   },
+   "select_all_with_balance": {
+      "message": "Select All with Balance"
+   },
+   "select_asset": {
+      "message": "Select Asset"
+   },
+   "select_assets": {
+      "message": "Select Assets"
+   },
+   "select_from_wallets": {
+      "message": "Select from wallets"
+   },
+   "select_group": {
+      "message": "Select Group"
+   },
+   "select_multiple": {
+      "message": "Select Multiple"
+   },
+   "select_wallet": {
+      "message": "Select Wallet"
+   },
+   "select_wallets": {
+      "message": "Select Wallets"
+   },
+   "select_your_active_wallet": {
+      "message": "Select your active wallet."
+   },
+   "selected": {
+      "message": "selected"
+   },
+   "sell": {
+      "message": "Sell"
+   },
+   "sell_amt": {
+      "message": "Sell amt"
+   },
+   "sell_init": {
+      "message": "Initials"
+   },
+   "sell_init_small": {
+      "message": "Init."
+   },
+   "sell_initial_failed": {
+      "message": "Initial sell failed"
+   },
+   "sell_initial_insufficient_tokens": {
+      "message": "You do not have enough tokens to cover your initial position"
+   },
+   "sell_order": {
+      "message": "Sell Order"
+   },
+   "sell_settings": {
+      "message": "Sell Settings"
+   },
+   "sell_sound_effect": {
+      "message": "Sell Sound Effect"
+   },
+   "selling": {
+      "message": "Selling"
+   },
+   "send": {
+      "message": "Send"
+   },
+   "send_all": {
+      "message": "Send All"
+   },
+   "send_all_assets": {
+      "message": "Send All Assets"
+   },
+   "send_failed": {
+      "message": "Send failed"
+   },
+   "send_sol": {
+      "message": "Send SOL"
+   },
+   "sending": {
+      "message": "Sending..."
+   },
+   "set_as_default_wallet": {
+      "message": "Set as active wallet"
+   },
+   "setting": {
+      "message": "Settings"
+   },
+   "settings": {
+      "message": "Settings"
+   },
+   "share": {
+      "message": "Share"
+   },
+   "show_all": {
+      "message": "Show All"
+   },
+   "show_full_list": {
+      "message": "Show Full List"
+   },
+   "show_positions": {
+      "message": "Show Positions"
+   },
+   "show_token": {
+      "message": "Show token"
+   },
+   "show_translate": {
+      "message": "Enable Translation"
+   },
+   "show_translate_tip": {
+      "message": "Enable translation for name and symbol in GMGN"
+   },
+   "show_wallets": {
+      "message": "Show Wallets"
+   },
+   "signature": {
+      "message": "Signature"
+   },
+   "signer": {
+      "message": "Signer"
+   },
+   "single": {
+      "message": "Single"
+   },
+   "skip": {
+      "message": "Skip"
+   },
+   "skip_intro": {
+      "message": "Skip Intro >"
+   },
+   "slippage": {
+      "message": "Slippage"
+   },
+   "slippage_cannot_be_greater_than_100": {
+      "message": "Slippage cannot be greater than 100%"
+   },
+   "slippage_cannot_be_negative": {
+      "message": "Slippage cannot be negative"
+   },
+   "slippage_exceeded": {
+      "message": "Slippage tolerance exceeded. Try increasing your slippage tolerance"
+   },
+   "slippage_must_be_a_number": {
+      "message": "Slippage must be a number"
+   },
+   "smart_followers": {
+      "message": "Smart Followers"
+   },
+   "smart_wallet_insights": {
+      "message": "Smart wallet insights"
+   },
+   "sol": {
+      "message": "SOL"
+   },
+   "sol_balance_not_enough": {
+      "message": "SOL balance is not enough"
+   },
+   "sol_was_successfully_sent_to": {
+      "message": "SOL was successfully sent to"
+   },
+   "sold": {
+      "message": "Sold"
+   },
+   "something_went_wrong": {
+      "message": "Something went wrong, please try again later"
+   },
+   "sound_volume": {
+      "message": "Sound Volume"
+   },
+   "start_fresh_with_a_brand_new_key_pair_generated_right_in_your_browser": {
+      "message": "Use your Google account to securely access your trading wallet. A new wallet will be created on first use, or sign in to access your existing wallet."
+   },
+   "start_trading": {
+      "message": "Start Trading"
+   },
+   "stop_loss": {
+      "message": "Stop Loss"
+   },
+   "succeeded": {
+      "message": "succeeded"
+   },
+   "success": {
+      "message": "Success"
+   },
+   "success_group_deleted": {
+      "message": "Successfully deleted group"
+   },
+   "success_group_updated": {
+      "message": "Successfully updated group"
+   },
+   "success_imported_labels": {
+      "message": "Successfully imported labels!"
+   },
+   "success_wallets_removed": {
+      "message": "Successfully removed wallets"
+   },
+   "successfully_added_to_wallets": {
+      "message": "Successfully added to wallets"
+   },
+   "successfully_added_wallet_to_group": {
+      "message": "Successfully added wallet to group!"
+   },
+   "successfully_added_wallets_to_group": {
+      "message": "Successfully added wallets to group!"
+   },
+   "successfully_created_group": {
+      "message": "Successfully created group"
+   },
+   "successfully_deleted_group": {
+      "message": "Successfully deleted group"
+   },
+   "successfully_deleted_wallets": {
+      "message": "Successfully deleted wallets"
+   },
+   "successfully_imported_labels": {
+      "message": "Successfully imported labels!"
+   },
+   "successfully_imported_twitter_labels_title": {
+      "message": "Successfully Imported"
+   },
+   "successfully_imported_wallet_labels_title": {
+      "message": "Successfully Imported"
+   },
+   "successfully_updated_group": {
+      "message": "Successfully updated group"
+   },
+   "successfully_updated_label": {
+      "message": "Label updated successfully!"
+   },
+   "support": {
+      "message": "Support"
+   },
+   "support_and_feedback": {
+      "message": "Support & Feedback"
+   },
+   "support_telegram_description": {
+      "message": "Get help fast. Contact Support on Telegram"
+   },
+   "supported_formats": {
+      "message": "Supported Formats"
+   },
+   "supported_wallets": {
+      "message": "Supported Wallets"
+   },
+   "swapped": {
+      "message": "Swapped"
+   },
+   "switch_account": {
+      "message": "Switch Account"
+   },
+   "switch_to_popup": {
+      "message": "Switch to Popup"
+   },
+   "switch_to_sidepanel": {
+      "message": "Switch to Sidepanel"
+   },
+   "tags": {
+      "message": "Tags"
+   },
+   "tags_from": {
+      "message": "Tags from"
+   },
+   "take_profit": {
+      "message": "Take Profit"
+   },
+   "tampermonkey_twitter_labels": {
+      "message": "TamperMonkey Twitter Labels"
+   },
+   "target_mc": {
+      "message": "Target MC"
+   },
+   "telegram_community": {
+      "message": "Telegram community"
+   },
+   "this_wallet_is_already_labeled_keep_the_current_label_or_update_it": {
+      "message": "This wallet is already labeled. Keep the current label or update it."
+   },
+   "this_will_permanently_remove_this_wallet_from_your_list": {
+      "message": "This will permanently remove this wallet from your list. You will only be able to re-import it using its private key."
+   },
+   "time": {
+      "message": "Time"
+   },
+   "tip": {
+      "message": "Tip"
+   },
+   "tip_cannot_be_negative": {
+      "message": "Tip cannot be negative"
+   },
+   "tip_must_be_a_number": {
+      "message": "Tip must be a number"
+   },
+   "tip_warning_exceeds_0_2": {
+      "message": "Warning: Tip exceeds 0.2 SOL"
+   },
+   "to": {
+      "message": "To"
+   },
+   "token": {
+      "message": "Token"
+   },
+   "token_balance_less_than_amount": {
+      "message": "Balance is {tokenBalance}, less than {amount}"
+   },
+   "token_balance_not_enough": {
+      "message": "Balance is not enough"
+   },
+   "token_creator_label_axiom": {
+      "message": "DA Label"
+   },
+   "token_creator_label_gmgn": {
+      "message": "Token Creator Label"
+   },
+   "token_verification_failed": {
+      "message": "Token verification failed. Please refresh the page and try again."
+   },
+   "tokens": {
+      "message": "Tokens"
+   },
+   "top_holder": {
+      "message": "Top Holder"
+   },
+   "top_holder_setting": {
+      "message": "Top Holder"
+   },
+   "top_mentions": {
+      "message": "Top Mentions"
+   },
+   "top_moves": {
+      "message": "Top Moves"
+   },
+   "top_moves_info": {
+      "message": "Top Moves surfaces this profile's notable recent trades on major tokens: trades with $30k+ PnL or positions that are within top 100 holders. PnL appears in green; holder rank in yellow."
+   },
+   "top_moves_setting_info": {
+      "message": "Top Moves shows this profile's notable recent trades on major tokens: trades with $30k+ PnL or positions that are within top 100 holders"
+   },
+   "top_positions": {
+      "message": "Top Positions"
+   },
+   "top_trader": {
+      "message": "Top Trader"
+   },
+   "total": {
+      "message": "Total"
+   },
+   "total_assets": {
+      "message": "Total Assets"
+   },
+   "total_cost": {
+      "message": "Total Cost"
+   },
+   "total_earnings": {
+      "message": "Total Earnings"
+   },
+   "total_fees": {
+      "message": "Total Fees"
+   },
+   "total_sending": {
+      "message": "Total sending"
+   },
+   "total_size": {
+      "message": "Total Size"
+   },
+   "total_transactions": {
+      "message": "Total Transactions"
+   },
+   "tp": {
+      "message": "TP"
+   },
+   "trade": {
+      "message": "Trade"
+   },
+   "trade_failed": {
+      "message": "Trade Failed"
+   },
+   "trade_on_signals": {
+      "message": "Trade on signals,"
+   },
+   "trade_summary": {
+      "message": "Trade Summary"
+   },
+   "trades": {
+      "message": "Trades"
+   },
+   "trading": {
+      "message": "Trading"
+   },
+   "trading_feature_coming_soon": {
+      "message": "This feature is coming soon. Reach out to us if you're interested in early access."
+   },
+   "trading_panel_add_funds_description": {
+      "message": "Deposit SOL to start trading and save up to 90% in fees."
+   },
+   "trading_panel_locked_description": {
+      "message": "Log in through the pop-up to unlock your wallets."
+   },
+   "trading_panel_locked_title": {
+      "message": "Trading Locked"
+   },
+   "trading_panel_receive_funds": {
+      "message": "Receive Funds"
+   },
+   "trading_panel_tap_up_wallet": {
+      "message": "Top Up Your Wallet"
+   },
+   "trading_panel_transparency": {
+      "message": "Trading Panel Transparency"
+   },
+   "trading_panel_transparency_description": {
+      "message": "Adjust how visible the trading panel appears on the page"
+   },
+   "trading_panel_unlock_button": {
+      "message": "Unlock in Pop-up"
+   },
+   "trading_panel_unlock_failed": {
+      "message": "Unable to unlock password"
+   },
+   "trading_settings": {
+      "message": "Trading Settings"
+   },
+   "trading_sound_settings": {
+      "message": "Trading Sound Settings"
+   },
+   "transaction_confirmed": {
+      "message": "Order confirmed"
+   },
+   "transaction_confirmed_sidepanel": {
+      "message": "Transaction Confirmed"
+   },
+   "transaction_delay": {
+      "message": "Transaction Delay"
+   },
+   "transaction_failed_due_to_low_liquidity": {
+      "message": "Transaction failed due to low liquidity in the pool"
+   },
+   "transaction_failed_due_to_no_quotes": {
+      "message": "Failed to get quote"
+   },
+   "transaction_overpaid": {
+      "message": "This transaction overpaid {fee} in fees"
+   },
+   "transaction_overpaid_prefix": {
+      "message": "This transaction overpaid"
+   },
+   "transaction_overpaid_suffix": {
+      "message": "in fees"
+   },
+   "transaction_signatures": {
+      "message": "Transaction Signatures"
+   },
+   "transactions": {
+      "message": "Transactions"
+   },
+   "transactions_failed": {
+      "message": "transactions failed"
+   },
+   "transactions_required": {
+      "message": "transactions required"
+   },
+   "translate_size": {
+      "message": "Translated Text Style"
+   },
+   "trial": {
+      "message": "Start 3-day trial"
+   },
+   "try_again": {
+      "message": "Try Again"
+   },
+   "turnkey_enable_failed": {
+      "message": "Failed to enable Turnkey"
+   },
+   "turnkey_enabling": {
+      "message": "Enabling Turnkey..."
+   },
+   "turnkey_google_auth_failed": {
+      "message": "Google authentication failed"
+   },
+   "turnkey_import_failed": {
+      "message": "Failed to import to Turnkey"
+   },
+   "turnkey_imported_successfully": {
+      "message": "Imported to Turnkey successfully"
+   },
+   "turnkey_importing_keys": {
+      "message": "Importing private keys to Turnkey..."
+   },
+   "turnkey_initializing": {
+      "message": "Initializing Turnkey..."
+   },
+   "turnkey_refresh_and_retry": {
+      "message": ", please refresh the page and try again"
+   },
+   "turnkey_syncing_account": {
+      "message": "Syncing to your account..."
+   },
+   "tutorial": {
+      "message": "Tutorial ↗"
+   },
+   "tweet": {
+      "message": "tweet"
+   },
+   "tweets": {
+      "message": "tweets"
+   },
+   "twitter": {
+      "message": "Twitter"
+   },
+   "twitter_import_failed": {
+      "message": "Failed to import Twitter labels. Please try again"
+   },
+   "twitter_import_started": {
+      "message": "Importing {count} Twitter labels. It could take up to 30 minutes."
+   },
+   "twitter_label": {
+      "message": "Twitter Label"
+   },
+   "twitter_label_limit_reached": {
+      "message": "You have reached the maximum label amount for Twitter ({max})"
+   },
+   "twitter_settings": {
+      "message": "X Settings"
+   },
+   "unable_to_load_bundle_info": {
+      "message": "Unable to load bundle information at this time."
+   },
+   "unarchive": {
+      "message": "unarchive"
+   },
+   "undeleted_tweets": {
+      "message": "{undeletedTweetCount} active tweets"
+   },
+   "unknown": {
+      "message": "Unknown"
+   },
+   "upgrade_to_passwordless": {
+      "message": "Upgrade to Passwordless"
+   },
+   "upload": {
+      "message": "Upload"
+   },
+   "upload_custom": {
+      "message": "Upload Custom"
+   },
+   "uploading": {
+      "message": "Uploading..."
+   },
+   "url_must_be_gif": {
+      "message": "URL must be a valid GIF or WebP image (must be fetchable)"
+   },
+   "use_autotrade": {
+      "message": "Use Autotrade"
+   },
+   "use_colon_for_custom_labels": {
+      "message": "Use colon for custom labels."
+   },
+   "use_sidebar_for_wallets": {
+      "message": "Use Sidebar for Wallets"
+   },
+   "use_sidebar_for_wallets_description": {
+      "message": "Show wallet selection in a sidebar."
+   },
+   "user_id": {
+      "message": "User ID"
+   },
+   "username": {
+      "message": "Name"
+   },
+   "username_history": {
+      "message": "Username History"
+   },
+   "validator_tip": {
+      "message": "Jito Tip"
+   },
+   "value": {
+      "message": "Value"
+   },
+   "variance": {
+      "message": "Variance"
+   },
+   "variance_description": {
+      "message": "The variance of the buy amount across the selected wallets. 0% to 100% randomly."
+   },
+   "verify_with_google": {
+      "message": "Verify with Google"
+   },
+   "view": {
+      "message": "View"
+   },
+   "view_all": {
+      "message": "View All"
+   },
+   "view_all_positions": {
+      "message": "View All Positions"
+   },
+   "view_docs": {
+      "message": "View Docs"
+   },
+   "view_frontrun_insights_line": {
+      "message": "You can now view the Frontrun insights on X and other platforms."
+   },
+   "view_on_bscscan": {
+      "message": "View on BscScan"
+   },
+   "view_on_jito_explorer": {
+      "message": "View on Jito Explorer"
+   },
+   "view_on_solscan": {
+      "message": "View on Solscan"
+   },
+   "view_on_twitter": {
+      "message": "View on Twitter"
+   },
+   "view_private_key": {
+      "message": "View Private Key"
+   },
+   "view_summary": {
+      "message": "View Summary"
+   },
+   "view_transaction": {
+      "message": "View transaction"
+   },
+   "wallet": {
+      "message": "Wallet"
+   },
+   "wallet_address": {
+      "message": "Wallet Address"
+   },
+   "wallet_address_is_required": {
+      "message": "Wallet address is required"
+   },
+   "wallet_address_placeholder": {
+      "message": "wallet address"
+   },
+   "wallet_common_action_import_seed_phrase": {
+      "message": "Import Seed Phrase"
+   },
+   "wallet_common_assign_to_group_label": {
+      "message": "Assign to Group"
+   },
+   "wallet_common_back": {
+      "message": "Back"
+   },
+   "wallet_common_confirm_password_placeholder": {
+      "message": "Confirm password"
+   },
+   "wallet_common_continue": {
+      "message": "Continue"
+   },
+   "wallet_common_copy_seed_phrase": {
+      "message": "Copy Seed Phrase"
+   },
+   "wallet_common_enter_private_key": {
+      "message": "Enter Private Key"
+   },
+   "wallet_common_enter_seed_phrase": {
+      "message": "Enter Your Seed Phrase"
+   },
+   "wallet_common_error_private_key_required": {
+      "message": "Please enter a private key"
+   },
+   "wallet_common_error_seed_phrase_incomplete": {
+      "message": "Please fill in all seed phrase words"
+   },
+   "wallet_common_import_private_key_description": {
+      "message": "Paste a compatible private key to bring an existing wallet online."
+   },
+   "wallet_common_import_private_key_title": {
+      "message": "Import from private key"
+   },
+   "wallet_common_importing_wallets_description": {
+      "message": "Please keep this window open while we finish importing your wallets."
+   },
+   "wallet_common_importing_wallets_progress": {
+      "message": "Syncing Turnkey wallets to your vault..."
+   },
+   "wallet_common_importing_wallets_title": {
+      "message": "Importing wallets"
+   },
+   "wallet_common_option_generate_wallet": {
+      "message": "Generate new wallet"
+   },
+   "wallet_common_option_import_private_key": {
+      "message": "Import from Private Key"
+   },
+   "wallet_common_option_import_seed_phrase": {
+      "message": "Import from seed phrase"
+   },
+   "wallet_common_password_create_title": {
+      "message": "Create a Password"
+   },
+   "wallet_common_password_incorrect": {
+      "message": "Incorrect password"
+   },
+   "wallet_common_password_mismatch": {
+      "message": "Passwords do not match"
+   },
+   "wallet_common_password_placeholder": {
+      "message": "Enter password"
+   },
+   "wallet_common_password_session_expired": {
+      "message": "Your password session expired. Please try again."
+   },
+   "wallet_common_password_set_failed": {
+      "message": "Failed to set password"
+   },
+   "wallet_common_password_strength_medium": {
+      "message": "Medium"
+   },
+   "wallet_common_password_strength_strong": {
+      "message": "Strong"
+   },
+   "wallet_common_password_strength_weak": {
+      "message": "Weak"
+   },
+   "wallet_common_private_key_placeholder": {
+      "message": "Paste your private key here"
+   },
+   "wallet_common_private_key_tab": {
+      "message": "Private Key"
+   },
+   "wallet_common_private_key_warning": {
+      "message": "Do not share your Private Key with anyone. Frontrun never sees or stores your key."
+   },
+   "wallet_common_secure_wallets_description": {
+      "message": "Choose how you want to bring wallets into your vault."
+   },
+   "wallet_common_secure_wallets_title": {
+      "message": "Secure your wallets"
+   },
+   "wallet_common_seed_phrase_button": {
+      "message": "Reveal Seed Phrase"
+   },
+   "wallet_common_seed_phrase_description": {
+      "message": "Paste a 12-word seed phrase to restore an existing wallet."
+   },
+   "wallet_common_seed_phrase_hide": {
+      "message": "Hide"
+   },
+   "wallet_common_seed_phrase_label": {
+      "message": "Seed phrase"
+   },
+   "wallet_common_seed_phrase_missing": {
+      "message": "Please enter every word in the seed phrase"
+   },
+   "wallet_common_seed_phrase_show": {
+      "message": "Show"
+   },
+   "wallet_common_seed_phrase_tab": {
+      "message": "Seed Phrase"
+   },
+   "wallet_common_seed_phrase_title": {
+      "message": "Your Seed Phrase"
+   },
+   "wallet_common_seed_phrase_warning": {
+      "message": "Do not share your Seed Phrase with anyone. Frontrun never sees or stores it."
+   },
+   "wallet_common_seed_phrase_word_placeholder": {
+      "message": "word"
+   },
+   "wallet_common_select_group_placeholder": {
+      "message": "Select a group"
+   },
+   "wallet_common_title_create_wallets": {
+      "message": "Create Wallets"
+   },
+   "wallet_common_title_import_wallet": {
+      "message": "Import Wallet"
+   },
+   "wallet_common_title_set_password": {
+      "message": "Set Wallet Password"
+   },
+   "wallet_common_title_verify_password": {
+      "message": "Verify Password"
+   },
+   "wallet_common_toast_copied": {
+      "message": "{label} copied to clipboard"
+   },
+   "wallet_common_toast_copy_failed": {
+      "message": "Failed to copy"
+   },
+   "wallet_common_toast_import_failed": {
+      "message": "Failed to import wallet"
+   },
+   "wallet_common_toast_import_success": {
+      "message": "Wallet imported successfully"
+   },
+   "wallet_common_verifying": {
+      "message": "Verifying..."
+   },
+   "wallet_create_chain_label": {
+      "message": "Chain"
+   },
+   "wallet_create_creating_state": {
+      "message": "Creating..."
+   },
+   "wallet_create_password_description": {
+      "message": "Create a password to securely unlock your wallet."
+   },
+   "wallet_create_primary_cta": {
+      "message": "Create Wallets"
+   },
+   "wallet_create_quantity_cap": {
+      "message": "Max 50"
+   },
+   "wallet_create_quantity_label": {
+      "message": "Quantity"
+   },
+   "wallet_create_seed_warning_intro": {
+      "message": "Please read carefully before continuing."
+   },
+   "wallet_create_seed_warning_item1_body": {
+      "message": "Anyone with it can access your assets."
+   },
+   "wallet_create_seed_warning_item1_title": {
+      "message": "Never share your seed phrase."
+   },
+   "wallet_create_seed_warning_item2_body": {
+      "message": "Avoid saving it in screenshots or cloud notes."
+   },
+   "wallet_create_seed_warning_item2_title": {
+      "message": "Keep it safe and offline."
+   },
+   "wallet_create_seed_warning_item3_body": {
+      "message": "Your seed phrase is stored only on your device."
+   },
+   "wallet_create_seed_warning_item3_title": {
+      "message": "Frontrun cannot recover it."
+   },
+   "wallet_create_seed_warning_item4_body": {
+      "message": "Make sure no one can see your screen."
+   },
+   "wallet_create_seed_warning_item4_title": {
+      "message": "View your seed phrase in private."
+   },
+   "wallet_create_seed_warning_title": {
+      "message": "Secure Your Seed Phrase"
+   },
+   "wallet_create_toast_created": {
+      "message": "Successfully created {count} wallet(s)"
+   },
+   "wallet_create_toast_failed": {
+      "message": "Failed to create wallet"
+   },
+   "wallet_create_verify_description": {
+      "message": "Enter your existing password to unlock your wallet."
+   },
+   "wallet_created_successfully": {
+      "message": "Successfully created wallet!"
+   },
+   "wallet_creation_failed": {
+      "message": "Failed to create wallet!"
+   },
+   "wallet_dashboard": {
+      "message": "Wallet Dashboard"
+   },
+   "wallet_dashboard_disabled": {
+      "message": "Wallet Dashboard is not enabled"
+   },
+   "wallet_data": {
+      "message": "Wallet Data"
+   },
+   "wallet_deleted_failed": {
+      "message": "Wallet deleted failed"
+   },
+   "wallet_deleted_successfully": {
+      "message": "Wallet deleted successfully"
+   },
+   "wallet_history": {
+      "message": "Wallet History"
+   },
+   "wallet_history_for": {
+      "message": "Wallet History for @{twitterUsername}"
+   },
+   "wallet_import_error_connection": {
+      "message": "Unable to establish Solana connection"
+   },
+   "wallet_import_error_no_valid_wallets": {
+      "message": "No valid wallets derived from the provided seed phrase"
+   },
+   "wallet_import_error_prepare_failed": {
+      "message": "Unable to prepare wallet import"
+   },
+   "wallet_import_importing_state": {
+      "message": "Importing..."
+   },
+   "wallet_import_partial_due_to_batch_text": {
+      "message": "{imported} of {total} wallets imported. Batch limit is {batchLimit} wallets"
+   },
+   "wallet_import_partial_due_to_batch_title": {
+      "message": "Import completed"
+   },
+   "wallet_import_partial_due_to_limit_text": {
+      "message": "{imported} of {total} wallets imported. You've reached the maximum label amount ({max})."
+   },
+   "wallet_import_partial_due_to_limit_title": {
+      "message": "Import completed"
+   },
+   "wallet_import_password_description": {
+      "message": "Set a password to encrypt newly imported wallets on this device."
+   },
+   "wallet_import_primary_cta": {
+      "message": "Import Wallet"
+   },
+   "wallet_import_saving_state": {
+      "message": "Saving..."
+   },
+   "wallet_import_seed_created_toast": {
+      "message": "New wallet created from seed phrase"
+   },
+   "wallet_import_seed_imported_toast": {
+      "message": "Imported {count} wallet(s) from seed phrase"
+   },
+   "wallet_import_verify_description": {
+      "message": "Enter your existing password to encrypt new wallets securely."
+   },
+   "wallet_label": {
+      "message": "Wallet Label"
+   },
+   "wallet_label_limit_reached": {
+      "message": "You have reached the maximum label amount for wallets ({max})"
+   },
+   "wallet_label_placeholder": {
+      "message": "Wallet address: Label"
+   },
+   "wallet_locked": {
+      "message": "Wallet locked"
+   },
+   "wallet_management": {
+      "message": "Wallet Management"
+   },
+   "wallet_name_cannot_be_empty": {
+      "message": "Wallet name cannot be empty"
+   },
+   "wallet_name_cannot_exceed_max_length": {
+      "message": "Wallet name cannot exceed {maxLength} characters"
+   },
+   "wallet_not_verified": {
+      "message": "This wallet has not been verified."
+   },
+   "wallet_position_not_found": {
+      "message": "Wallet position not found for {address}"
+   },
+   "wallets": {
+      "message": "Wallets"
+   },
+   "wallets_available": {
+      "message": "wallets available"
+   },
+   "wallets_failed_to_activate_retry": {
+      "message": "Some wallets failed to activate. Please retry."
+   },
+   "wallets_failed_to_clear_retry": {
+      "message": "Some wallets failed to clear. Please retry."
+   },
+   "we_are_confident_pocket_wallet": {
+      "message": "We're {confidence} confident this wallet serves as a Pocket Wallet for the selected address."
+   },
+   "welcome_to_frontrun": {
+      "message": "Welcome to Frontrun"
+   },
+   "win_rate": {
+      "message": "Win Rate"
+   },
+   "with_frontrun": {
+      "message": "via Frontrun"
+   },
+   "withdraw": {
+      "message": "Withdraw"
+   },
+   "withdraw_all": {
+      "message": "Withdraw All"
+   },
+   "withdraw_failed": {
+      "message": "Withdraw failed"
+   },
+   "withdrawals_completed": {
+      "message": "withdrawals completed successfully"
+   },
+   "withdrawing": {
+      "message": "Withdrawing"
+   },
+   "x_integration": {
+      "message": "X integration"
+   },
+   "x_profile": {
+      "message": "X Profile"
+   },
+   "you_have_reached_the_maximum_number_of_wallets": {
+      "message": "You have reached the maximum number of wallets"
+   },
+   "you_saved": {
+      "message": "You saved"
+   },
+   "your_account_is_activated": {
+      "message": "Your account is activated!"
+   },
+   "your_private_key_will_provide_all_access_to_this_account_do_not_share_your_private_key_with_anyone_frontrun_never_sees_or_stores_your_key": {
+      "message": "Your Private Key will provide all access to this account. Do not share your Private Key with anyone. Frontrun never has access to your private keys."
+   },
+   "your_wallets": {
+      "message": "Your Wallets"
+   }
+}

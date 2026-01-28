@@ -1,0 +1,3023 @@
+{
+   "CA_mentioned_by": {
+      "message": "CA 被 @{twitterUsername} 提及"
+   },
+   "account": {
+      "message": "账户"
+   },
+   "account_linked_successfully": {
+      "message": "账号绑定成功"
+   },
+   "account_migration": {
+      "message": "账号迁移"
+   },
+   "action": {
+      "message": "操作"
+   },
+   "activate": {
+      "message": "激活"
+   },
+   "activate_account": {
+      "message": "有邀请码吗？"
+   },
+   "active": {
+      "message": "活跃"
+   },
+   "active_CA_count": {
+      "message": "{activeCACount} 个未删除CA"
+   },
+   "active_mentions": {
+      "message": "活跃提及"
+   },
+   "active_only": {
+      "message": "仅活跃"
+   },
+   "active_wallet_empty_top_up": {
+      "message": "活跃钱包为空。请充值。"
+   },
+   "active_wallets": {
+      "message": "活跃钱包"
+   },
+   "add": {
+      "message": "添加"
+   },
+   "add_alt_wallets_to_group": {
+      "message": "将备用钱包添加到分组"
+   },
+   "add_custom_labels_by_clicking": {
+      "message": "通过点击"
+   },
+   "add_label": {
+      "message": "添加标签"
+   },
+   "add_multi_wallet": {
+      "message": "添加多钱包"
+   },
+   "add_order": {
+      "message": "添加订单"
+   },
+   "add_recipient": {
+      "message": "添加收款人"
+   },
+   "add_single_wallet": {
+      "message": "添加单钱包"
+   },
+   "add_to_group": {
+      "message": "添加到分组"
+   },
+   "add_to_selection": {
+      "message": "添加到选择"
+   },
+   "add_to_wallets": {
+      "message": "添加到钱包"
+   },
+   "add_wallet": {
+      "message": "添加钱包"
+   },
+   "add_wallets": {
+      "message": "添加钱包"
+   },
+   "adding": {
+      "message": "添加中..."
+   },
+   "address": {
+      "message": "地址"
+   },
+   "addresses": {
+      "message": "地址"
+   },
+   "alias": {
+      "message": "别名"
+   },
+   "alias_updated_failed": {
+      "message": "别名更新失败"
+   },
+   "alias_updated_successfully": {
+      "message": "别名更新成功"
+   },
+   "all": {
+      "message": "全部"
+   },
+   "all_custom_sounds_cleared": {
+      "message": "已清除所有自定义音效"
+   },
+   "all_deposits_failed": {
+      "message": "所有存款失败"
+   },
+   "all_mentions_for": {
+      "message": "所有提及"
+   },
+   "all_positions": {
+      "message": "所有持仓"
+   },
+   "all_transactions_failed": {
+      "message": "所有交易失败"
+   },
+   "all_wallets": {
+      "message": "所有钱包"
+   },
+   "all_withdrawals_failed": {
+      "message": "所有提款失败"
+   },
+   "almost_bonded": {
+      "message": "即将打满"
+   },
+   "alpha_discovery": {
+      "message": "Alpha 发现"
+   },
+   "already_signed_up_with_twitter": {
+      "message": "已使用 Twitter 注册？"
+   },
+   "alt_wallet": {
+      "message": "关联钱包"
+   },
+   "alt_wallets_saved_successfully": {
+      "message": "成功保存关联钱包！"
+   },
+   "always_verify": {
+      "message": "把域名当作线索，而不是身份的证明。"
+   },
+   "amount": {
+      "message": "金额"
+   },
+   "amount_exceeds_balance": {
+      "message": "金额超过可用余额"
+   },
+   "amount_less_than_zero": {
+      "message": "金额小于0"
+   },
+   "amount_required": {
+      "message": "金额为必填项"
+   },
+   "amt": {
+      "message": "数量"
+   },
+   "anyone_can_own_a_name": {
+      "message": "任何人都可以注册任意域名（如 name.sns）。"
+   },
+   "appearance": {
+      "message": "主题"
+   },
+   "archive": {
+      "message": "归档"
+   },
+   "archive_wallet": {
+      "message": "归档钱包"
+   },
+   "archive_wallet_disabled": {
+      "message": "活跃钱包不能归档"
+   },
+   "archived": {
+      "message": "已归档"
+   },
+   "are_you_sure_you_want_to_delete_these_groups": {
+      "message": "确定要删除这些分组吗？钱包将被移除所有关联的自定义分组。"
+   },
+   "are_you_sure_you_want_to_delete_this_group": {
+      "message": "确定要删除此分组吗？"
+   },
+   "are_you_sure_you_want_to_delete_this_label": {
+      "message": "确定要删除此标签吗？钱包将被移除"
+   },
+   "are_you_sure_you_want_to_delete_this_profile": {
+      "message": "确定要删除此账户吗？"
+   },
+   "are_you_sure_you_want_to_remove_this_wallet_from_group": {
+      "message": "确定要从分组中移除此钱包吗？"
+   },
+   "asset": {
+      "message": "资产"
+   },
+   "assets": {
+      "message": "资产"
+   },
+   "assets_to_send": {
+      "message": "发送资产"
+   },
+   "associated_wallets": {
+      "message": "关联钱包"
+   },
+   "audio_too_long": {
+      "message": "音频时长过长，请选择不超过{max}秒的音频文件"
+   },
+   "auto_derived_labels": {
+      "message": "自动生成标签"
+   },
+   "auto_derived_labels_tip": {
+      "message": "显示基于钱包持仓和盈利的自动生成标签，类似："
+   },
+   "auto_fee": {
+      "message": "自动费用"
+   },
+   "auto_generate_labels_from_group_name": {
+      "message": "从分组名称自动生成标签。"
+   },
+   "auto_import_labels": {
+      "message": "自动同步标签"
+   },
+   "autotrade_limit_orders_created": {
+      "message": "TP/SL 订单已创建"
+   },
+   "autotrade_settings_hint": {
+      "message": "自动交易策略需要在交易面板中配置"
+   },
+   "autotrade_strategy": {
+      "message": "自动交易策略"
+   },
+   "available": {
+      "message": "可用"
+   },
+   "back": {
+      "message": "返回"
+   },
+   "background_file_too_large": {
+      "message": "文件过大。请选择小于 2MB 的图片文件"
+   },
+   "background_image_uploaded": {
+      "message": "背景图片上传成功"
+   },
+   "background_invalid_file_type": {
+      "message": "无效的文件类型。请选择图片文件（JPEG、PNG、GIF 或 WebP）"
+   },
+   "background_reset": {
+      "message": "背景已恢复默认"
+   },
+   "balance": {
+      "message": "余额"
+   },
+   "batch": {
+      "message": "批次"
+   },
+   "bind_now": {
+      "message": "立即绑定"
+   },
+   "binding": {
+      "message": "绑定中..."
+   },
+   "bonding_curve_completed": {
+      "message": "绑定曲线已完成。请刷新页面"
+   },
+   "bought": {
+      "message": "买入"
+   },
+   "bribe_fee_auto_tooltip": {
+      "message": "来自网络的实时小费（自动计算）"
+   },
+   "bulk_import": {
+      "message": "批量导入"
+   },
+   "bulk_import_placeholder": {
+      "message": "钱包地址: 标签\n钱包地址: 标签\n\n或粘贴油猴脚本推特标签JSON，格式以 {\"$myTwitterNoteItems\":... 开头"
+   },
+   "bundle_check_failed": {
+      "message": "Bundle 检查失败"
+   },
+   "bundle_id": {
+      "message": "Bundle ID"
+   },
+   "bundled_with": {
+      "message": "bundle包含"
+   },
+   "buy": {
+      "message": "买入"
+   },
+   "buy_order": {
+      "message": "买入订单"
+   },
+   "buy_settings": {
+      "message": "买入设置"
+   },
+   "buy_sound_effect": {
+      "message": "购买音效"
+   },
+   "buy_variance": {
+      "message": "购买变化幅度"
+   },
+   "cache": {
+      "message": "缓存"
+   },
+   "cancel": {
+      "message": "取消"
+   },
+   "cancel_all": {
+      "message": "取消全部"
+   },
+   "cancel_order": {
+      "message": "取消订单"
+   },
+   "cancelling_limit_order": {
+      "message": "正在取消限价单"
+   },
+   "cannot_add_recipients_with_multiple_assets": {
+      "message": "选择多个资产时无法添加收款人"
+   },
+   "cannot_deactivate_last_active_wallet": {
+      "message": "至少需要保持一个钱包为激活状态"
+   },
+   "cannot_send_sol_to_the_same_address": {
+      "message": "不能发送 SOL 到相同地址"
+   },
+   "change_custom": {
+      "message": "更改自定义"
+   },
+   "changes_saved": {
+      "message": "更改已保存！"
+   },
+   "characters": {
+      "message": "个字符"
+   },
+   "chat_on_telegram": {
+      "message": "在 Telegram 上聊天"
+   },
+   "checking": {
+      "message": "正在检查..."
+   },
+   "choose_wallet": {
+      "message": "选择钱包"
+   },
+   "clear": {
+      "message": "清除"
+   },
+   "clear_all": {
+      "message": "清除全部"
+   },
+   "clear_cache": {
+      "message": "清除"
+   },
+   "click_to_view_all_mentions": {
+      "message": "点击查看所有提及"
+   },
+   "close": {
+      "message": "关闭"
+   },
+   "collapse": {
+      "message": "收起"
+   },
+   "collapse_side_panel": {
+      "message": "收起"
+   },
+   "community": {
+      "message": "社区"
+   },
+   "compact": {
+      "message": "紧凑"
+   },
+   "confirm": {
+      "message": "确定"
+   },
+   "confirm_send": {
+      "message": "确认发送"
+   },
+   "confirmed_buy": {
+      "message": "确认购买"
+   },
+   "confirmed_sell": {
+      "message": "确认卖出"
+   },
+   "continue": {
+      "message": "继续"
+   },
+   "continue_with_google": {
+      "message": "使用 Google 登录"
+   },
+   "copied": {
+      "message": "已复制"
+   },
+   "copied_to_clipboard": {
+      "message": "已复制到剪贴板"
+   },
+   "copy": {
+      "message": "复制"
+   },
+   "copy_address": {
+      "message": "复制地址"
+   },
+   "create": {
+      "message": "创建"
+   },
+   "create_limit_order_failed": {
+      "message": "创建限价单失败"
+   },
+   "create_new_wallet": {
+      "message": "启用交易钱包"
+   },
+   "creating": {
+      "message": "创建中..."
+   },
+   "creating_limit_order": {
+      "message": "正在创建限价单"
+   },
+   "cross_platform_labels": {
+      "message": "跨平台标签共享"
+   },
+   "current_mc": {
+      "message": "当前市值"
+   },
+   "current_position": {
+      "message": "当前持仓"
+   },
+   "custom": {
+      "message": "自定义"
+   },
+   "custom_image": {
+      "message": "自定义图片"
+   },
+   "custom_labels": {
+      "message": "自定义标签"
+   },
+   "custom_labels_detected": {
+      "message": "检测到自定义标签"
+   },
+   "custom_sound_deleted": {
+      "message": "自定义音效删除成功"
+   },
+   "custom_sound_uploaded": {
+      "message": "自定义音效上传成功"
+   },
+   "custom_sounds": {
+      "message": "自定义音效"
+   },
+   "custom_sounds_count": {
+      "message": "已使用 {count}/{max} 个自定义音效"
+   },
+   "dark": {
+      "message": "深色"
+   },
+   "default": {
+      "message": "默认"
+   },
+   "default_wallet": {
+      "message": "活跃钱包"
+   },
+   "delay": {
+      "message": "延迟"
+   },
+   "delay_description": {
+      "message": "每笔交易之间的延迟时间（毫秒）。0ms 表示无延迟。"
+   },
+   "delete": {
+      "message": "删除"
+   },
+   "delete_group": {
+      "message": "删除分组"
+   },
+   "delete_label": {
+      "message": "删除标签"
+   },
+   "delete_profile": {
+      "message": "删除账户"
+   },
+   "delete_wallet": {
+      "message": "删除钱包"
+   },
+   "deleted": {
+      "message": "已删除"
+   },
+   "deleted_CA_count": {
+      "message": "{deletedCACount} 个已删除CA"
+   },
+   "deleted_mentions": {
+      "message": "已删除提及"
+   },
+   "deleted_tweets": {
+      "message": "{deletedTweetsCount} 个已删除推文"
+   },
+   "deleted_tweets_found": {
+      "message": "已找到 {deletedTweetsCount} 个已删除推文"
+   },
+   "deleted_tweets_title": {
+      "message": "已删除推文"
+   },
+   "deleted_wallet_mentions": {
+      "message": "已删除钱包提及"
+   },
+   "deleting": {
+      "message": "删除中..."
+   },
+   "deposit": {
+      "message": "存款"
+   },
+   "deposit_all": {
+      "message": "全部存入"
+   },
+   "deposit_failed": {
+      "message": "存款失败"
+   },
+   "depositing": {
+      "message": "存入中..."
+   },
+   "deposits_completed": {
+      "message": "笔存款已成功完成"
+   },
+   "deselect_all": {
+      "message": "取消全选"
+   },
+   "destination_address": {
+      "message": "目标地址"
+   },
+   "destination_address_is_not_valid": {
+      "message": "目标地址无效"
+   },
+   "details": {
+      "message": "详情"
+   },
+   "details_not_available": {
+      "message": "暂无详情"
+   },
+   "dev_sell": {
+      "message": "Dev Sell"
+   },
+   "disable_keyboard_shortcuts": {
+      "message": "按住空格键使用快捷键"
+   },
+   "disable_on_platform": {
+      "message": "在 {platform} 上禁用"
+   },
+   "display_settings": {
+      "message": "显示设置"
+   },
+   "do_not_share_your_private_key_with_anyone_frontrun_never_sees_or_stores_your_key": {
+      "message": "不要与任何人分享您的私钥。Frontrun 永远不会看到或存储您的私钥。"
+   },
+   "docs": {
+      "message": "文档"
+   },
+   "done": {
+      "message": "完成"
+   },
+   "duplicate_wallet_addresses_found": {
+      "message": "重复的钱包地址"
+   },
+   "duplicated_group_name": {
+      "message": "分组名称已存在"
+   },
+   "earn": {
+      "message": "赚取"
+   },
+   "earned": {
+      "message": "已赚取"
+   },
+   "edit": {
+      "message": "编辑"
+   },
+   "edit_alias": {
+      "message": "编辑别名"
+   },
+   "edit_preset_value_tooltip": {
+      "message": "编辑预设值"
+   },
+   "empty_wallets_in_use_top_up": {
+      "message": "正在使用的钱包为空。请充值。"
+   },
+   "enable_keyboard_shortcuts": {
+      "message": "启用键盘快捷键"
+   },
+   "enable_sound": {
+      "message": "启用声音"
+   },
+   "enable_trading": {
+      "message": "启用交易 (Beta)"
+   },
+   "enable_trading_are_ready_to_use": {
+      "message": "已准备就绪。"
+   },
+   "enable_trading_beta_notice": {
+      "message": "交易功能处于 Beta 阶段。我们正在快速迭代以提供早期访问。请期待持续改进。"
+   },
+   "enable_trading_confirm_password_placeholder": {
+      "message": "确认密码"
+   },
+   "enable_trading_create_password_description": {
+      "message": "创建密码以安全解锁您的钱包。"
+   },
+   "enable_trading_create_password_title": {
+      "message": "创建密码"
+   },
+   "enable_trading_enter_password_placeholder": {
+      "message": "输入密码"
+   },
+   "enable_trading_enter_private_key_below": {
+      "message": "请在下方输入您的私钥。"
+   },
+   "enable_trading_import_existing_wallet": {
+      "message": "导入现有钱包"
+   },
+   "enable_trading_intro_custodial_title": {
+      "message": "与 Axiom Padre Moonshot 使用相同基础设施"
+   },
+   "enable_trading_intro_fast_title": {
+      "message": "在任何平台上都能即时完成交易"
+   },
+   "enable_trading_intro_fee_title": {
+      "message": "最透明、最公平的费用结构"
+   },
+   "enable_trading_is_ready_to_use": {
+      "message": "已准备就绪。"
+   },
+   "enable_trading_label_wallet_description": {
+      "message": "为您的默认钱包添加一个简短标签。"
+   },
+   "enable_trading_label_wallet_title": {
+      "message": "为钱包添加标签"
+   },
+   "enable_trading_password_min_length_fallback": {
+      "message": "密码长度至少为 6 个字符"
+   },
+   "enable_trading_password_warning": {
+      "message": "只有您可以访问或恢复此密码。如果丢失，Frontrun 无法恢复您的密码。"
+   },
+   "enable_trading_report_issue": {
+      "message": "报告问题。"
+   },
+   "enable_trading_saved_seed_phrase": {
+      "message": "我已保存助记词"
+   },
+   "enable_trading_seed_warning_intro": {
+      "message": "继续之前请仔细阅读。"
+   },
+   "enable_trading_seed_warning_item1": {
+      "message": "永远不要分享您的助记词。任何人拥有它都可以访问您的资产。"
+   },
+   "enable_trading_seed_warning_item2": {
+      "message": "请安全保管并离线保存。不要将其保存在截图或云笔记中。"
+   },
+   "enable_trading_seed_warning_item3": {
+      "message": "Frontrun 无法恢复它。您的助记词仅存储在您的设备上。"
+   },
+   "enable_trading_seed_warning_title": {
+      "message": "助记词"
+   },
+   "enable_trading_skip": {
+      "message": "跳过"
+   },
+   "enable_trading_success_title": {
+      "message": "一切就绪！"
+   },
+   "enable_trading_wallet_label_placeholder": {
+      "message": "例如：主钱包、交易、储蓄"
+   },
+   "enable_trading_wallets_ready": {
+      "message": "个钱包"
+   },
+   "enable_trading_your_wallet": {
+      "message": "您的钱包"
+   },
+   "enable_turnkey_button": {
+      "message": "使用 Google 继续"
+   },
+   "enable_turnkey_description_1": {
+      "message": "限价单运行在由 Turnkey 提供支持的托管钱包上 - 这是 Axiom 使用的相同基础设施。"
+   },
+   "enable_turnkey_description_2": {
+      "message": "您的私钥将被安全导入到 Turnkey 进行签名。"
+   },
+   "enable_turnkey_description_3": {
+      "message": "Frontrun 永远不会访问您的私钥。"
+   },
+   "enable_turnkey_read_more": {
+      "message": "了解更多"
+   },
+   "enable_turnkey_title": {
+      "message": "启用 Turnkey 以使用限价单"
+   },
+   "enable_with_google": {
+      "message": "使用 Google 继续"
+   },
+   "ended_trial": {
+      "message": "3 天试用已结束，请获取邀请码："
+   },
+   "enter_a_group_name": {
+      "message": "输入分组名称"
+   },
+   "enter_a_name_for_easy_tracking": {
+      "message": "输入名称以便跟踪"
+   },
+   "enter_a_new_group_name": {
+      "message": "输入新的分组名称"
+   },
+   "enter_a_new_wallet_address": {
+      "message": "输入新的钱包地址"
+   },
+   "enter_alias_placeholder": {
+      "message": "输入别名"
+   },
+   "enter_amount": {
+      "message": "输入金额"
+   },
+   "enter_amounts_for_selected": {
+      "message": "请输入所选资产的金额"
+   },
+   "enter_destination_address": {
+      "message": "输入目标地址"
+   },
+   "enter_invite_code": {
+      "message": "输入邀请码"
+   },
+   "enter_max_fee": {
+      "message": "输入最大费用"
+   },
+   "enter_max_fee_placeholder": {
+      "message": "输入最大费用"
+   },
+   "enter_percent_0_100": {
+      "message": "输入百分比 (0~100)"
+   },
+   "enter_private_key": {
+      "message": "输入私钥"
+   },
+   "enter_sol_amount": {
+      "message": "输入 SOL 数量"
+   },
+   "enter_wallet_addresses_one_per_line": {
+      "message": "请输入钱包地址，每行一个。"
+   },
+   "error": {
+      "message": "错误"
+   },
+   "error_group_delete": {
+      "message": "分组删除失败"
+   },
+   "error_group_update": {
+      "message": "分组更新失败"
+   },
+   "error_importing_wallets": {
+      "message": "钱包导入失败，请稍后再试。"
+   },
+   "error_wallets_remove": {
+      "message": "钱包移除失败"
+   },
+   "estimate_amount_on_hover": {
+      "message": "悬停显示预估数量"
+   },
+   "estimate_amount_on_hover_desc": {
+      "message": "悬停时在交易面板上显示预估交易数量"
+   },
+   "executing_order": {
+      "message": "正在执行订单"
+   },
+   "execution_settings": {
+      "message": "执行设置"
+   },
+   "execution_settings_updated_successfully": {
+      "message": "执行设置更新成功"
+   },
+   "expand": {
+      "message": "展开"
+   },
+   "explore_frontrun": {
+      "message": "探索 Frontrun"
+   },
+   "explore_labels_on_gmgn": {
+      "message": "在 GMGN 上探索标签"
+   },
+   "explore_labels_on_x": {
+      "message": "在 X 上探索标签"
+   },
+   "explore_universal_labels": {
+      "message": "逛逛跨平台标签"
+   },
+   "export_private_key": {
+      "message": "导出私钥"
+   },
+   "extension_settings": {
+      "message": "扩展设置"
+   },
+   "extensions": {
+      "message": "扩展程序"
+   },
+   "fail": {
+      "message": "失败"
+   },
+   "failed_to_add_to_wallets": {
+      "message": "添加到钱包失败"
+   },
+   "failed_to_add_wallets_to_groups": {
+      "message": "添加钱包到分组失败！"
+   },
+   "failed_to_cancel_limit_order": {
+      "message": "取消限价单失败"
+   },
+   "failed_to_check_profile_limit": {
+      "message": "检查个人资料限制失败，请重试。"
+   },
+   "failed_to_check_wallet_limit": {
+      "message": "检查钱包限制失败，请重试。"
+   },
+   "failed_to_copy_address": {
+      "message": "复制地址失败"
+   },
+   "failed_to_create_group": {
+      "message": "创建分组失败"
+   },
+   "failed_to_create_wallet": {
+      "message": "创建钱包失败"
+   },
+   "failed_to_delete_group": {
+      "message": "分组删除失败"
+   },
+   "failed_to_delete_label": {
+      "message": "标签删除失败"
+   },
+   "failed_to_delete_sound": {
+      "message": "删除音效失败"
+   },
+   "failed_to_delete_wallet": {
+      "message": "钱包删除失败"
+   },
+   "failed_to_export_private_key": {
+      "message": "导出私钥失败"
+   },
+   "failed_to_fetch_addresses": {
+      "message": "获取钱包地址失败"
+   },
+   "failed_to_fetch_imported_private_keys": {
+      "message": "获取导入的私钥失败"
+   },
+   "failed_to_fetch_portfolio_for_address": {
+      "message": "获取钱包资产失败"
+   },
+   "failed_to_get_mentions": {
+      "message": "获取提及失败"
+   },
+   "failed_to_get_token_info": {
+      "message": "获取代币信息失败，请重试。"
+   },
+   "failed_to_import_labels": {
+      "message": "标签导入失败"
+   },
+   "failed_to_import_labels_refresh": {
+      "message": "导入标签失败，请刷新页面重试"
+   },
+   "failed_to_import_private_key": {
+      "message": "私钥导入失败"
+   },
+   "failed_to_initialize_limit_order": {
+      "message": "初始化限价单失败，请刷新页面后重试。"
+   },
+   "failed_to_load_groups": {
+      "message": "加载分组失败"
+   },
+   "failed_to_lock_wallet": {
+      "message": "锁定钱包失败"
+   },
+   "failed_to_parse_wallet_data": {
+      "message": "解析钱包数据失败"
+   },
+   "failed_to_play_sound": {
+      "message": "播放音效失败"
+   },
+   "failed_to_read_file": {
+      "message": "读取文件失败，请重试"
+   },
+   "failed_to_refresh_positions": {
+      "message": "刷新持仓失败"
+   },
+   "failed_to_save_group": {
+      "message": "保存分组失败"
+   },
+   "failed_to_send": {
+      "message": "发送失败"
+   },
+   "failed_to_update_label": {
+      "message": "标签更新失败"
+   },
+   "failed_to_verify_gif_url": {
+      "message": "无法从该 URL 获取/验证图片，请检查 URL 后重试"
+   },
+   "feature_temporarily_disabled": {
+      "message": "该功能暂时停用，将在恢复后自动开启。"
+   },
+   "fee": {
+      "message": "手续费"
+   },
+   "fee_saved": {
+      "message": "已节省！"
+   },
+   "fee_saved_trading_panel": {
+      "message": "已节省"
+   },
+   "fee_saved_trading_panel_tooltip": {
+      "message": "您节省了{amount}手续费"
+   },
+   "feedback": {
+      "message": "反馈"
+   },
+   "feedback_description": {
+      "message": "报告错误或请求新功能。"
+   },
+   "fetch_ca_history_failed": {
+      "message": "获取发盘历史失败，请稍后再试。"
+   },
+   "fetch_wallet_history_failed": {
+      "message": "获取钱包历史失败，请稍后再试。"
+   },
+   "file_too_large": {
+      "message": "文件太大，请选择小于0.5MB的音频文件"
+   },
+   "final_stretch": {
+      "message": "最后冲刺"
+   },
+   "follower": {
+      "message": "关注者"
+   },
+   "followers": {
+      "message": "关注者"
+   },
+   "for": {
+      "message": "换取"
+   },
+   "format": {
+      "message": "格式"
+   },
+   "format_placeholder": {
+      "message": "支持Axiom, GMGN, Raybot, BullX的导出格式。"
+   },
+   "frequent_logout_help": {
+      "message": "经常被登出？查看解决方法"
+   },
+   "from": {
+      "message": "从"
+   },
+   "frontrun": {
+      "message": "Frontrun"
+   },
+   "frontrun_never_gets_the_the_access_to_use_private_keys": {
+      "message": "Frontrun 永远不会获取私钥的访问权限。"
+   },
+   "general_settings": {
+      "message": "通用"
+   },
+   "get_ca_history": {
+      "message": "获取发盘历史"
+   },
+   "gif_url": {
+      "message": "GIF 链接"
+   },
+   "gif_url_saved": {
+      "message": "GIF 链接保存成功"
+   },
+   "gmgn_label_1": {
+      "message": "查找并悬停现有标签以查看分组和标签。"
+   },
+   "gmgn_label_2": {
+      "message": "为任何钱包创建并自定义标签。"
+   },
+   "gmgn_label_3": {
+      "message": "轻松自动导入您在 GMGN 上的自定义分组到 Frontrun，实现跨平台无缝可见。"
+   },
+   "google": {
+      "message": "Google"
+   },
+   "group": {
+      "message": "分组"
+   },
+   "group_management": {
+      "message": "分组管理"
+   },
+   "group_name": {
+      "message": "分组名称"
+   },
+   "group_name_already_exists": {
+      "message": "分组名称已存在"
+   },
+   "group_name_required": {
+      "message": "分组名称为必填项"
+   },
+   "group_view": {
+      "message": "分组视图"
+   },
+   "groups": {
+      "message": "分组"
+   },
+   "have_already_made_profit": {
+      "message": "不能再出售初始持仓，因为您已经回本。"
+   },
+   "hidden": {
+      "message": "隐藏"
+   },
+   "hide_low": {
+      "message": "隐藏低余额"
+   },
+   "high": {
+      "message": "高"
+   },
+   "high_profit": {
+      "message": "7天高收益"
+   },
+   "history": {
+      "message": "历史"
+   },
+   "holder_history": {
+      "message": "持有者历史"
+   },
+   "holders": {
+      "message": "持有者"
+   },
+   "holding": {
+      "message": "余额"
+   },
+   "holding_value": {
+      "message": "余额"
+   },
+   "holdings": {
+      "message": "持仓"
+   },
+   "hotkey_modifier": {
+      "message": "快捷键修饰键"
+   },
+   "hotkey_modifier_desc": {
+      "message": "使用 Q/W/E/R（买入）和 A/S/D/F（卖出）快捷键时需要按住的键"
+   },
+   "hover_button_visibility": {
+      "message": "悬浮按钮显示"
+   },
+   "hover_button_visibility_desc": {
+      "message": "控制各平台悬浮交易按钮的显示"
+   },
+   "icon_next_to_address_on": {
+      "message": "图标在以下平台的钱包地址旁"
+   },
+   "if_you_have_any_issues_please_join": {
+      "message": "如果您遇到问题，请加入我们的"
+   },
+   "import": {
+      "message": "导入"
+   },
+   "import_from_axiom": {
+      "message": "从 Axiom 导入"
+   },
+   "import_from_gmgn": {
+      "message": "从 GMGN 导入"
+   },
+   "import_from_photon": {
+      "message": "从 Photon 导入"
+   },
+   "import_from_solscan": {
+      "message": "从 Solscan 导入"
+   },
+   "import_in_progress": {
+      "message": "开始导入"
+   },
+   "import_labels": {
+      "message": "导入标签"
+   },
+   "import_labels_from_terminals": {
+      "message": "自动同步您在其他平台添加的标签（只有您可见，不会分享给其他用户）。"
+   },
+   "import_privacy_message": {
+      "message": "您导入的标签始终对您保持私密，不会与其他用户共享。"
+   },
+   "import_to_frontrun_tip": {
+      "message": "将标签导入 Frontrun，便可在 Solscan、Axiom、GMGN 等平台无缝显示。所有标签仅您可见，绝不会与其他用户共享。"
+   },
+   "import_wallet": {
+      "message": "导入钱包"
+   },
+   "importing": {
+      "message": "导入中..."
+   },
+   "importing_labels": {
+      "message": "正在导入标签"
+   },
+   "in_fees_using": {
+      "message": "手续费"
+   },
+   "inline_pnl": {
+      "message": "推文 PnL 标记"
+   },
+   "inline_pnl_info": {
+      "message": "在包含合约地址的帖子中显示盈亏标记"
+   },
+   "instant_trade": {
+      "message": "闪电交易"
+   },
+   "insufficient_balance": {
+      "message": "余额不足，无法完成此交易。"
+   },
+   "insufficient_liquidity": {
+      "message": "池中流动性不足。请尝试减少交易金额。"
+   },
+   "invalid_address": {
+      "message": "无效地址"
+   },
+   "invalid_amount": {
+      "message": "无效金额"
+   },
+   "invalid_file_type": {
+      "message": "无效的文件类型，请选择音频文件"
+   },
+   "invalid_url": {
+      "message": "无效的 URL 格式"
+   },
+   "invalid_wallet_address": {
+      "message": "无效的钱包地址"
+   },
+   "invalid_wallet_address_with_addr": {
+      "message": "无效的钱包地址：{address}"
+   },
+   "invalid_wallet_addresses": {
+      "message": "无效的钱包地址"
+   },
+   "jito_bundle": {
+      "message": "Jito Bundle"
+   },
+   "jito_bundle_details": {
+      "message": "Jito Bundle 详情"
+   },
+   "join_telegram": {
+      "message": "加入 Telegram"
+   },
+   "jupiter_earn": {
+      "message": "Jupiter 赚取"
+   },
+   "jupiter_earn_description": {
+      "message": "将您的 SOL 和 USDC 存入 Jupiter Lend 以赚取收益。"
+   },
+   "jupiter_earn_info_1": {
+      "message": "将为所有活跃钱包处理存款"
+   },
+   "jupiter_earn_info_2": {
+      "message": "预计 Gas 费用 $0.00063"
+   },
+   "jupiter_earn_info_3": {
+      "message": "您可以随时从 Jupiter 提取"
+   },
+   "jupiter_withdraw_description": {
+      "message": "将您的 SOL 和 USDC 从 Jupiter Lend 提取回您的钱包。"
+   },
+   "kol_data": {
+      "message": "KOL 数据"
+   },
+   "label_deleted_successfully": {
+      "message": "标签删除成功！"
+   },
+   "label_text_style": {
+      "message": "标签文本样式"
+   },
+   "label_tool": {
+      "message": "编辑标签按钮"
+   },
+   "label_tool_description": {
+      "message": "在地址旁显示一个小笔图标，直接新增或编辑标签"
+   },
+   "label_ui": {
+      "message": "标签样式"
+   },
+   "label_updated_successfully": {
+      "message": "标签更新成功！"
+   },
+   "labels": {
+      "message": "标签"
+   },
+   "language": {
+      "message": "语言"
+   },
+   "last_active": {
+      "message": "最后活跃"
+   },
+   "launchpad_trade_failed": {
+      "message": "Launchpad 交易失败。请重试。"
+   },
+   "lets_explore_labels_on_gmgn": {
+      "message": "在 GMGN 上探索标签"
+   },
+   "lets_explore_labels_on_x": {
+      "message": "在 X 上探索标签"
+   },
+   "light": {
+      "message": "浅色"
+   },
+   "limit": {
+      "message": "限价"
+   },
+   "limit_order_buy_active": {
+      "message": "${tokenSymbol} 的买入订单已创建并激活。"
+   },
+   "limit_order_buy_canceled": {
+      "message": "${tokenSymbol} 的买入订单已取消。"
+   },
+   "limit_order_buy_completed": {
+      "message": "${tokenSymbol} 的买入订单已完成。"
+   },
+   "limit_order_buy_expired": {
+      "message": "${tokenSymbol} 的买入订单已过期。"
+   },
+   "limit_order_buy_failed": {
+      "message": "${tokenSymbol} 的买入订单已失败。"
+   },
+   "limit_order_buy_triggered": {
+      "message": "${tokenSymbol} 的买入订单已触发。"
+   },
+   "limit_order_canceled": {
+      "message": "限价单已取消"
+   },
+   "limit_order_creation_failed": {
+      "message": "限价单创建失败："
+   },
+   "limit_order_notional_value_too_low": {
+      "message": "限价单名义价值至少为 5 美元"
+   },
+   "limit_order_partial_result": {
+      "message": "{failed} 笔交易失败（{succeeded} 笔成功）"
+   },
+   "limit_order_placed": {
+      "message": "限价单已下单"
+   },
+   "limit_order_sell_active": {
+      "message": "${tokenSymbol} 的卖出订单已创建并激活。"
+   },
+   "limit_order_sell_canceled": {
+      "message": "${tokenSymbol} 的卖出订单已取消。"
+   },
+   "limit_order_sell_completed": {
+      "message": "${tokenSymbol} 的卖出订单已完成。"
+   },
+   "limit_order_sell_expired": {
+      "message": "${tokenSymbol} 的卖出订单已过期。"
+   },
+   "limit_order_sell_failed": {
+      "message": "${tokenSymbol} 的卖出订单已失败。"
+   },
+   "limit_order_sell_triggered": {
+      "message": "${tokenSymbol} 的卖出订单已触发。"
+   },
+   "limit_order_triggered_successfully": {
+      "message": "限价单触发成功"
+   },
+   "limit_orders": {
+      "message": "限价单"
+   },
+   "link_failed_retry": {
+      "message": "绑定失败。请重试。"
+   },
+   "link_to_google_account": {
+      "message": "绑定 Google 账号"
+   },
+   "linked": {
+      "message": "关联"
+   },
+   "loading": {
+      "message": "加载中..."
+   },
+   "loading_details": {
+      "message": "加载详情..."
+   },
+   "loading_positions": {
+      "message": "加载仓位中..."
+   },
+   "lock_wallet": {
+      "message": "锁定钱包"
+   },
+   "log_in_to_view_insights": {
+      "message": "登录查看洞察"
+   },
+   "login_method": {
+      "message": "登录方式"
+   },
+   "logout": {
+      "message": "退出登录"
+   },
+   "make_sure_the_destination_accepts_sol": {
+      "message": "确保目标地址接受 SOL"
+   },
+   "manage": {
+      "message": "管理"
+   },
+   "manage_portfolio": {
+      "message": "管理投资组合"
+   },
+   "manage_visibility": {
+      "message": "管理可见性"
+   },
+   "market": {
+      "message": "市价"
+   },
+   "market_cap": {
+      "message": "市值"
+   },
+   "market_trading": {
+      "message": "市价"
+   },
+   "max": {
+      "message": "最大"
+   },
+   "max_custom_sounds_reached": {
+      "message": "已达到自定义音效上限（最多5个）"
+   },
+   "max_fee": {
+      "message": "最大费用"
+   },
+   "max_file_size_2mb": {
+      "message": "最大文件大小：2MB"
+   },
+   "medium": {
+      "message": "中"
+   },
+   "mentioned": {
+      "message": "提及"
+   },
+   "mentioned_wallets": {
+      "message": "提及钱包"
+   },
+   "mev": {
+      "message": "MEV"
+   },
+   "mev_mode": {
+      "message": "MEV 模式"
+   },
+   "migrated": {
+      "message": "已迁移"
+   },
+   "missing_label_for_address": {
+      "message": "地址缺少标签：{address}"
+   },
+   "modifier_none": {
+      "message": "无（直接触发）"
+   },
+   "modifier_option": {
+      "message": "Option"
+   },
+   "modifier_shift": {
+      "message": "Shift"
+   },
+   "modifier_space": {
+      "message": "空格"
+   },
+   "more": {
+      "message": "更多"
+   },
+   "more_customizations": {
+      "message": "更多自定义设置"
+   },
+   "more_fee_saved": {
+      "message": "更多"
+   },
+   "multi_wallet_settings": {
+      "message": "多钱包设置"
+   },
+   "name": {
+      "message": "名称"
+   },
+   "name_change": {
+      "message": "改名"
+   },
+   "need_a_code": {
+      "message": "需要邀请码？"
+   },
+   "need_help": {
+      "message": "需要帮助？"
+   },
+   "net_worth": {
+      "message": "净资产"
+   },
+   "network_fee": {
+      "message": "网络费用"
+   },
+   "never_show_this_again": {
+      "message": "不再显示此提示。"
+   },
+   "new_group": {
+      "message": "新分组"
+   },
+   "new_pairs": {
+      "message": "新交易对"
+   },
+   "new_wallet": {
+      "message": "新钱包"
+   },
+   "no_active_tweets_found": {
+      "message": "未找到未删除包含CA的推文"
+   },
+   "no_active_wallets": {
+      "message": "没有活跃钱包，请至少激活一个钱包。"
+   },
+   "no_alt_wallets_found": {
+      "message": "未找到关联钱包"
+   },
+   "no_associated_wallets_found": {
+      "message": "未找到关联钱包"
+   },
+   "no_balance_to_deposit": {
+      "message": "没有可存入的余额"
+   },
+   "no_bio_changes": {
+      "message": "没有简介变更"
+   },
+   "no_bundle_data_available": {
+      "message": "暂无 Bundle 数据"
+   },
+   "no_custom_labels_yet": {
+      "message": "您还没有分配任何自定义标签。"
+   },
+   "no_default_wallet_address": {
+      "message": "没有默认钱包地址，请先设置默认钱包"
+   },
+   "no_deleted_tweets_found": {
+      "message": "未找到已删除包含CA的推文"
+   },
+   "no_fee": {
+      "message": "无手续费"
+   },
+   "no_groups_found": {
+      "message": "暂无分组"
+   },
+   "no_holdings": {
+      "message": "暂无持仓"
+   },
+   "no_limit": {
+      "message": "无限制"
+   },
+   "no_other_wallets": {
+      "message": "没有其他钱包"
+   },
+   "no_position_to_withdraw": {
+      "message": "没有可提款的仓位"
+   },
+   "no_positions_yet": {
+      "message": "暂无持仓"
+   },
+   "no_results_found": {
+      "message": "没有结果"
+   },
+   "no_token_found": {
+      "message": "未找到代币"
+   },
+   "no_username_changes": {
+      "message": "暂无用户名变更"
+   },
+   "no_valid_twitter_usernames_found": {
+      "message": "未找到有效的推特用户名。"
+   },
+   "no_valid_wallet_addresses_found": {
+      "message": "未找到有效的钱包地址"
+   },
+   "no_wallet_found_yet": {
+      "message": "暂无钱包"
+   },
+   "no_wallet_mentions_found": {
+      "message": "推文中未找到钱包提及"
+   },
+   "no_wallets_found": {
+      "message": "未找到钱包"
+   },
+   "not_bundled": {
+      "message": "未bundle"
+   },
+   "not_speculation": {
+      "message": "而非投机。"
+   },
+   "of": {
+      "message": "/"
+   },
+   "off": {
+      "message": "关闭"
+   },
+   "old_username_changed": {
+      "message": "{time}更改"
+   },
+   "old_username_different_times": {
+      "message": "不同账户在不同时间使用过"
+   },
+   "old_username_looking_for": {
+      "message": "在找"
+   },
+   "old_username_multiple_accounts": {
+      "message": "这些账户曾使用过该用户名"
+   },
+   "old_username_single_account": {
+      "message": "这个账户曾使用过该用户名"
+   },
+   "old_username_view_profile": {
+      "message": "查看当前主页"
+   },
+   "on": {
+      "message": "开启"
+   },
+   "only_pnl_above_50k_is_displayed": {
+      "message": "仅显示高于 $30k 的 PnL。"
+   },
+   "only_send_sol_to_this_address": {
+      "message": "仅发送 SOL 到此地址。"
+   },
+   "open_sidepanel_to_explore_frontrun": {
+      "message": "打开 Frontrun"
+   },
+   "option_1": {
+      "message": "选项1"
+   },
+   "option_2": {
+      "message": "选项2"
+   },
+   "or": {
+      "message": "或"
+   },
+   "order_execution_failed": {
+      "message": "订单执行失败"
+   },
+   "order_summary": {
+      "message": "订单摘要"
+   },
+   "panel_background": {
+      "message": "面板背景"
+   },
+   "partial_success": {
+      "message": "部分成功"
+   },
+   "password_dialog_action_create_wallet": {
+      "message": "创建钱包"
+   },
+   "password_dialog_action_forgot": {
+      "message": "忘记密码？"
+   },
+   "password_dialog_action_labels_only": {
+      "message": "仅使用标签继续"
+   },
+   "password_dialog_action_reset_wallet": {
+      "message": "重置钱包"
+   },
+   "password_dialog_action_reset_wallets": {
+      "message": "重置并清除所有钱包数据"
+   },
+   "password_dialog_action_set_password": {
+      "message": "设置密码"
+   },
+   "password_dialog_action_try_other": {
+      "message": "尝试其它密码"
+   },
+   "password_dialog_action_unlock": {
+      "message": "解锁"
+   },
+   "password_dialog_clipboard_unavailable": {
+      "message": "无法使用剪贴板，请手动复制。"
+   },
+   "password_dialog_create_failed": {
+      "message": "创建并保存钱包失败"
+   },
+   "password_dialog_description_create": {
+      "message": "使用密码加密本地私钥，保护你的自托管钱包。"
+   },
+   "password_dialog_description_unlock": {
+      "message": "输入钱包密码以解密本地私钥。"
+   },
+   "password_dialog_forgot_description": {
+      "message": "密码仅保存在此设备上，我们无法替你找回。请再尝试一个密码或重置钱包。"
+   },
+   "password_dialog_forgot_label_info": {
+      "message": "你的标签数据会继续保留。"
+   },
+   "password_dialog_forgot_title": {
+      "message": "忘记密码？"
+   },
+   "password_dialog_handle_request_failed": {
+      "message": "密码弹窗处理失败"
+   },
+   "password_dialog_heading_create": {
+      "message": "创建钱包密码"
+   },
+   "password_dialog_heading_unlock": {
+      "message": "欢迎回来"
+   },
+   "password_dialog_hide_confirm_password": {
+      "message": "隐藏确认密码"
+   },
+   "password_dialog_hide_password": {
+      "message": "隐藏密码"
+   },
+   "password_dialog_hint_storage": {
+      "message": "妥善保管此密码，丢失后无法找回。"
+   },
+   "password_dialog_hint_strength": {
+      "message": "混合数字、符号和字母以提升强度。"
+   },
+   "password_dialog_label_create_password": {
+      "message": "创建密码"
+   },
+   "password_dialog_label_unlock_password": {
+      "message": "钱包密码"
+   },
+   "password_dialog_password_min_length": {
+      "message": "密码长度至少 {minLength} 个字符。"
+   },
+   "password_dialog_password_required": {
+      "message": "请填写密码"
+   },
+   "password_dialog_placeholder_create": {
+      "message": "创建一个更强的密码"
+   },
+   "password_dialog_placeholder_unlock": {
+      "message": "输入密码解锁"
+   },
+   "password_dialog_report_issue": {
+      "message": "报告问题。"
+   },
+   "password_dialog_reset_confirm_description_primary": {
+      "message": "重置会移除此设备上的所有加密钱包数据且无法撤销。"
+   },
+   "password_dialog_reset_confirm_description_secondary": {
+      "message": "继续之前，请确保你已备份所有钱包。"
+   },
+   "password_dialog_reset_confirm_title": {
+      "message": "确认重置钱包"
+   },
+   "password_dialog_reset_description": {
+      "message": "我们已从此设备移除所有加密钱包。请使用助记词或私钥重新导入并设置新密码。"
+   },
+   "password_dialog_reset_failed": {
+      "message": "清除加密钱包失败"
+   },
+   "password_dialog_reset_heading": {
+      "message": "钱包数据已清空"
+   },
+   "password_dialog_seed_copied": {
+      "message": "助记词已复制"
+   },
+   "password_dialog_seed_copy_failed": {
+      "message": "现在无法复制助记词"
+   },
+   "password_dialog_seed_generate_failed": {
+      "message": "生成助记词失败"
+   },
+   "password_dialog_seed_heading": {
+      "message": "写下这 12 个单词"
+   },
+   "password_dialog_seed_missing": {
+      "message": "未找到助记词，请重新生成。"
+   },
+   "password_dialog_seed_subheading": {
+      "message": "这是在新设备上恢复自托管钱包的唯一方式。"
+   },
+   "password_dialog_seed_warning_description": {
+      "message": "我们会生成 12 个助记词来解锁你的钱包，请在继续之前离线保存。"
+   },
+   "password_dialog_seed_warning_title": {
+      "message": "保管好你的恢复短语"
+   },
+   "password_dialog_session_expired": {
+      "message": "密码会话已失效，请重新开始。"
+   },
+   "password_dialog_show_confirm_password": {
+      "message": "显示确认密码"
+   },
+   "password_dialog_show_password": {
+      "message": "显示密码"
+   },
+   "password_dialog_title_create": {
+      "message": "设置钱包密码"
+   },
+   "password_dialog_title_unlock": {
+      "message": "解锁钱包"
+   },
+   "password_dialog_trading_beta_message": {
+      "message": "交易功能处于 Beta 阶段。我们正在快速迭代以提供早期访问。请期待持续改进。"
+   },
+   "paste_the_wallet_address": {
+      "message": "粘贴钱包地址"
+   },
+   "paste_your_exported_wallets_here": {
+      "message": "请粘贴你导出的钱包/推特标签..."
+   },
+   "pin": {
+      "message": "固定"
+   },
+   "pin_extension_for_quick_access": {
+      "message": "固定插件以快速访问"
+   },
+   "platform_integrations": {
+      "message": "平台开关"
+   },
+   "platform_settings": {
+      "message": "平台设置"
+   },
+   "please_enter_a_label": {
+      "message": "请输入标签"
+   },
+   "please_enter_a_primary_label": {
+      "message": "请输入主要标签"
+   },
+   "please_enter_invite_code": {
+      "message": "请输入邀请码"
+   },
+   "please_enter_the_amount": {
+      "message": "请输入金额"
+   },
+   "please_enter_the_destination_address": {
+      "message": "请输入目标地址"
+   },
+   "please_enter_twitter_usernames": {
+      "message": "请先粘贴导出的推特用户名/备注内容。"
+   },
+   "please_enter_wallet_address": {
+      "message": "请输入钱包地址"
+   },
+   "please_enter_wallet_addresses": {
+      "message": "请输入钱包地址"
+   },
+   "please_select_an_asset": {
+      "message": "请选择一个资产"
+   },
+   "please_select_at_least_one_asset": {
+      "message": "请至少选择一个资产"
+   },
+   "please_select_at_least_one_group": {
+      "message": "请至少选择一个分组"
+   },
+   "please_select_at_least_one_wallet": {
+      "message": "请至少选择一个钱包"
+   },
+   "pnl": {
+      "message": "盈利"
+   },
+   "pnl_90d": {
+      "message": "90天盈亏"
+   },
+   "pnl_over_50k": {
+      "message": "高于 $30k 的 PnL"
+   },
+   "position": {
+      "message": "位置"
+   },
+   "position_pnl_percentage": {
+      "message": "盈亏"
+   },
+   "positions": {
+      "message": "持仓"
+   },
+   "powered_by": {
+      "message": "数据来自"
+   },
+   "preset": {
+      "message": "预设"
+   },
+   "preview": {
+      "message": "预览"
+   },
+   "preview_panel": {
+      "message": "预览面板"
+   },
+   "price": {
+      "message": "价格"
+   },
+   "price_not_available": {
+      "message": "价格不可用，请稍后再试"
+   },
+   "primary_domain": {
+      "message": "主要域名"
+   },
+   "primary_label_is_required": {
+      "message": "主要标签为必填项"
+   },
+   "prioritize_frontrun": {
+      "message": "优先显示 Frontrun"
+   },
+   "prioritize_frontrun_tip": {
+      "message": "当同时有多个扩展程序显示时，优化用户体验"
+   },
+   "priority_fee": {
+      "message": "优先费"
+   },
+   "priority_fee_auto_tooltip": {
+      "message": "来自网络的实时优先费（自动计算）"
+   },
+   "priority_fee_cannot_be_negative": {
+      "message": "优先费不能为负数"
+   },
+   "priority_fee_must_be_a_number": {
+      "message": "优先费必须是数字"
+   },
+   "priority_fee_warning_exceeds_0_2": {
+      "message": "警告：优先费超过了 0.2 SOL"
+   },
+   "private_key_imported_successfully": {
+      "message": "私钥导入成功"
+   },
+   "processing": {
+      "message": "处理中..."
+   },
+   "processing_deposits": {
+      "message": "正在处理存款..."
+   },
+   "processing_withdrawals": {
+      "message": "正在处理提款..."
+   },
+   "profile": {
+      "message": "改名"
+   },
+   "profile_change": {
+      "message": "简介变更"
+   },
+   "profile_data": {
+      "message": "账户数据"
+   },
+   "profile_history": {
+      "message": "个人资料历史"
+   },
+   "profile_label_1": {
+      "message": "悬停「查看概览」以查看更多账户详情。"
+   },
+   "profile_label_2": {
+      "message": "为任何 X 用户创建并自定义标签。"
+   },
+   "profile_label_3": {
+      "message": "在每个个人资料页面查看KOL关注。"
+   },
+   "profiles": {
+      "message": "账户"
+   },
+   "program_derived_address": {
+      "message": "PDA"
+   },
+   "quick_buy": {
+      "message": "买入"
+   },
+   "quick_buy_amount": {
+      "message": "快速买入金额"
+   },
+   "quick_buy_label": {
+      "message": "快速买入"
+   },
+   "quick_buy_settings": {
+      "message": "快速买入设置"
+   },
+   "quick_sell": {
+      "message": "卖出"
+   },
+   "ranking": {
+      "message": "排名"
+   },
+   "read_more": {
+      "message": "【阅读更多】"
+   },
+   "read_more_in_alert": {
+      "message": "阅读更多"
+   },
+   "ready_to_frontrun": {
+      "message": "准备好 Frontrun"
+   },
+   "real_time_tracking": {
+      "message": "实时追踪"
+   },
+   "receive": {
+      "message": "接收"
+   },
+   "receive_address": {
+      "message": "接收地址"
+   },
+   "receive_sol": {
+      "message": "接收 SOL"
+   },
+   "recent_labels": {
+      "message": "最近的标签"
+   },
+   "recent_searches": {
+      "message": "最近搜索"
+   },
+   "recently_logged_in_as": {
+      "message": "最近登录账号"
+   },
+   "recipients": {
+      "message": "收款人"
+   },
+   "recommended_bribe_fee_tooltip": {
+      "message": "推荐小费为 {fee} SOL"
+   },
+   "recommended_priority_fee_tooltip": {
+      "message": "推荐优先费为 {fee} SOL"
+   },
+   "refresh": {
+      "message": "刷新"
+   },
+   "refresh_all_positions": {
+      "message": "刷新所有持仓"
+   },
+   "remaining": {
+      "message": "余额"
+   },
+   "remaining_balance": {
+      "message": "剩余余额"
+   },
+   "remaining_qty": {
+      "message": "数量"
+   },
+   "remind_later": {
+      "message": "稍后提醒"
+   },
+   "remove_from_selection": {
+      "message": "从选择中移除"
+   },
+   "report_bug": {
+      "message": "报告错误"
+   },
+   "report_bug_title": {
+      "message": "发现错误？告诉我们，我们会快速修复。"
+   },
+   "request_feature": {
+      "message": "请求功能"
+   },
+   "request_feature_title": {
+      "message": "有改进 Frontrun 的想法？"
+   },
+   "reset_to_default": {
+      "message": "恢复默认"
+   },
+   "retry_failed": {
+      "message": "重试失败"
+   },
+   "reveal_private_key": {
+      "message": "显示私钥"
+   },
+   "save": {
+      "message": "保存"
+   },
+   "save_changes": {
+      "message": "保存更改"
+   },
+   "save_fees": {
+      "message": "省 {fee} 手续费！"
+   },
+   "save_fees_percent": {
+      "message": "立省 {x}% 交易费"
+   },
+   "save_percentage": {
+      "message": "立省 {percentage}%"
+   },
+   "save_with_frontrun": {
+      "message": "用 Frontrun 立省 {savings}% →"
+   },
+   "saved": {
+      "message": "已保存"
+   },
+   "saving": {
+      "message": "保存中..."
+   },
+   "seamless_experience": {
+      "message": "为了获得更流畅的体验，请将您的标签导入到 Frontrun。"
+   },
+   "search_assets": {
+      "message": "搜索资产"
+   },
+   "search_for_alt_wallets": {
+      "message": "搜索关联钱包"
+   },
+   "search_placeholder": {
+      "message": "按标签、地址、关键词或名称搜索"
+   },
+   "search_wallets": {
+      "message": "搜索钱包"
+   },
+   "secure": {
+      "message": "安全"
+   },
+   "secure_signing": {
+      "message": "安全签名"
+   },
+   "select_all": {
+      "message": "全选"
+   },
+   "select_all_with_balance": {
+      "message": "选择有余额的钱包"
+   },
+   "select_asset": {
+      "message": "选择资产"
+   },
+   "select_assets": {
+      "message": "选择资产"
+   },
+   "select_from_wallets": {
+      "message": "从钱包选择"
+   },
+   "select_group": {
+      "message": "选择分组"
+   },
+   "select_multiple": {
+      "message": "选择多个"
+   },
+   "select_wallet": {
+      "message": "选择钱包"
+   },
+   "select_wallets": {
+      "message": "选择钱包"
+   },
+   "select_your_active_wallet": {
+      "message": "选择您的活跃钱包。"
+   },
+   "selected": {
+      "message": "已选"
+   },
+   "sell": {
+      "message": "卖出"
+   },
+   "sell_amt": {
+      "message": "卖出数量"
+   },
+   "sell_init": {
+      "message": "回本"
+   },
+   "sell_init_small": {
+      "message": "回本"
+   },
+   "sell_initial_failed": {
+      "message": "回本失败"
+   },
+   "sell_initial_insufficient_tokens": {
+      "message": "您没有足够的代币来覆盖您的初始仓位"
+   },
+   "sell_order": {
+      "message": "卖出订单"
+   },
+   "sell_settings": {
+      "message": "卖出设置"
+   },
+   "sell_sound_effect": {
+      "message": "卖出音效"
+   },
+   "selling": {
+      "message": "卖出中"
+   },
+   "send": {
+      "message": "发送"
+   },
+   "send_all": {
+      "message": "全部发送"
+   },
+   "send_all_assets": {
+      "message": "发送全部资产"
+   },
+   "send_failed": {
+      "message": "发送失败"
+   },
+   "send_sol": {
+      "message": "发送 SOL"
+   },
+   "sending": {
+      "message": "发送中..."
+   },
+   "set_as_default_wallet": {
+      "message": "设为活跃钱包"
+   },
+   "setting": {
+      "message": "设置"
+   },
+   "settings": {
+      "message": "设置"
+   },
+   "share": {
+      "message": "分享"
+   },
+   "show_all": {
+      "message": "显示全部"
+   },
+   "show_full_list": {
+      "message": "显示完整列表"
+   },
+   "show_positions": {
+      "message": "显示持仓"
+   },
+   "show_token": {
+      "message": "显示代币"
+   },
+   "show_translate": {
+      "message": "显示翻译"
+   },
+   "show_translate_tip": {
+      "message": "在 GMGN 中显示翻译(中文->英文)"
+   },
+   "show_wallets": {
+      "message": "显示钱包"
+   },
+   "signature": {
+      "message": "签名"
+   },
+   "signer": {
+      "message": "签署者"
+   },
+   "single": {
+      "message": "单选"
+   },
+   "skip": {
+      "message": "跳过"
+   },
+   "skip_intro": {
+      "message": "跳过介绍 >"
+   },
+   "slippage": {
+      "message": "滑点"
+   },
+   "slippage_cannot_be_greater_than_100": {
+      "message": "滑点不能大于100%"
+   },
+   "slippage_cannot_be_negative": {
+      "message": "滑点不能为负数"
+   },
+   "slippage_exceeded": {
+      "message": "滑点容忍度超出。请尝试增加滑点容忍度"
+   },
+   "slippage_must_be_a_number": {
+      "message": "滑点必须是数字"
+   },
+   "smart_followers": {
+      "message": "KOL关注"
+   },
+   "smart_wallet_insights": {
+      "message": "智能钱包洞察"
+   },
+   "sol": {
+      "message": "SOL"
+   },
+   "sol_balance_not_enough": {
+      "message": "SOL余额不足"
+   },
+   "sol_was_successfully_sent_to": {
+      "message": "SOL 成功发送至"
+   },
+   "sold": {
+      "message": "卖出"
+   },
+   "something_went_wrong": {
+      "message": "出现错误，请稍后再试"
+   },
+   "sound_volume": {
+      "message": "提示音量"
+   },
+   "start_fresh_with_a_brand_new_key_pair_generated_right_in_your_browser": {
+      "message": "使用 Google 账号安全地访问您的交易钱包。首次使用将自动创建钱包，已有钱包的用户可直接登录。"
+   },
+   "start_trading": {
+      "message": "开始交易"
+   },
+   "stop_loss": {
+      "message": "止损"
+   },
+   "succeeded": {
+      "message": "成功"
+   },
+   "success": {
+      "message": "成功"
+   },
+   "success_group_deleted": {
+      "message": "分组删除成功"
+   },
+   "success_group_updated": {
+      "message": "分组更新成功"
+   },
+   "success_imported_labels": {
+      "message": "标签导入成功！"
+   },
+   "success_wallets_removed": {
+      "message": "钱包移除成功"
+   },
+   "successfully_added_to_wallets": {
+      "message": "成功添加到钱包"
+   },
+   "successfully_added_wallet_to_group": {
+      "message": "成功添加钱包到分组！"
+   },
+   "successfully_added_wallets_to_group": {
+      "message": "成功添加钱包到分组！"
+   },
+   "successfully_created_group": {
+      "message": "创建分组成功"
+   },
+   "successfully_deleted_group": {
+      "message": "分组删除成功"
+   },
+   "successfully_deleted_wallets": {
+      "message": "钱包删除成功"
+   },
+   "successfully_imported_labels": {
+      "message": "标签导入成功！"
+   },
+   "successfully_imported_twitter_labels_title": {
+      "message": "推特标签导入成功！"
+   },
+   "successfully_imported_wallet_labels_title": {
+      "message": "钱包标签导入成功！"
+   },
+   "successfully_updated_group": {
+      "message": "分组更新成功"
+   },
+   "successfully_updated_label": {
+      "message": "标签更新成功！"
+   },
+   "support": {
+      "message": "支持"
+   },
+   "support_and_feedback": {
+      "message": "支持与反馈"
+   },
+   "support_telegram_description": {
+      "message": "快速获取帮助。在 Telegram 上联系支持"
+   },
+   "supported_formats": {
+      "message": "支持的格式"
+   },
+   "supported_wallets": {
+      "message": "支持的钱包组类型"
+   },
+   "swapped": {
+      "message": "已交换"
+   },
+   "switch_account": {
+      "message": "切换账号"
+   },
+   "switch_to_popup": {
+      "message": "切换到 Popup"
+   },
+   "switch_to_sidepanel": {
+      "message": "切换到 Sidepanel"
+   },
+   "tags": {
+      "message": "标签"
+   },
+   "tags_from": {
+      "message": "标签来自"
+   },
+   "take_profit": {
+      "message": "止盈"
+   },
+   "tampermonkey_twitter_labels": {
+      "message": "油猴脚本推特标签"
+   },
+   "target_mc": {
+      "message": "目标市值"
+   },
+   "telegram_community": {
+      "message": "电报社区"
+   },
+   "this_wallet_is_already_labeled_keep_the_current_label_or_update_it": {
+      "message": "此钱包已标记。保留当前标签或更新它。"
+   },
+   "this_will_permanently_remove_this_wallet_from_your_list": {
+      "message": "这将永久删除此钱包。您只能使用私钥重新导入它。"
+   },
+   "time": {
+      "message": "时间"
+   },
+   "time_days_ago": {
+      "message": "{count} 天前"
+   },
+   "time_month_ago": {
+      "message": "{count} 个月前"
+   },
+   "time_months_ago": {
+      "message": "{count} 个月前"
+   },
+   "time_today": {
+      "message": "今天"
+   },
+   "time_week_ago": {
+      "message": "{count} 周前"
+   },
+   "time_weeks_ago": {
+      "message": "{count} 周前"
+   },
+   "time_year_ago": {
+      "message": "{count} 年前"
+   },
+   "time_year_month_ago": {
+      "message": "{years} 年 {months} 个月前"
+   },
+   "time_year_months_ago": {
+      "message": "{years} 年 {months} 个月前"
+   },
+   "time_years_ago": {
+      "message": "{count} 年前"
+   },
+   "time_years_month_ago": {
+      "message": "{years} 年 {months} 个月前"
+   },
+   "time_years_months_ago": {
+      "message": "{years} 年 {months} 个月前"
+   },
+   "time_yesterday": {
+      "message": "昨天"
+   },
+   "tip": {
+      "message": "小费"
+   },
+   "tip_below_recommended_may_slow": {
+      "message": "费用低于推荐值 ({fee})\n执行可能延迟"
+   },
+   "tip_cannot_be_negative": {
+      "message": "小费不能为负数"
+   },
+   "tip_must_be_a_number": {
+      "message": "小费必须是数字"
+   },
+   "tip_warning_exceeds_0_2": {
+      "message": "警告：小费超过了 0.2 SOL"
+   },
+   "to": {
+      "message": "到"
+   },
+   "token": {
+      "message": "代币"
+   },
+   "token_balance_less_than_amount": {
+      "message": "余额为{tokenBalance}，少于{amount}"
+   },
+   "token_balance_not_enough": {
+      "message": "余额不足"
+   },
+   "token_creator_label_axiom": {
+      "message": "DA标签"
+   },
+   "token_creator_label_gmgn": {
+      "message": "代币创建者标签"
+   },
+   "token_verification_failed": {
+      "message": "代币验证失败，请刷新页面后重试。"
+   },
+   "tokens": {
+      "message": "发盘"
+   },
+   "top_holder": {
+      "message": "顶级持有者"
+   },
+   "top_holder_setting": {
+      "message": "前排持有者"
+   },
+   "top_mentions": {
+      "message": "顶级提及"
+   },
+   "top_moves": {
+      "message": "成就"
+   },
+   "top_moves_info": {
+      "message": "Top Moves 会展示该用户在主要代币上的重要近期交易：单笔 PnL ≥ $50,000，或持仓进入前 100 名。PnL 显示为绿色；持仓排名显示为黄色。"
+   },
+   "top_moves_setting_info": {
+      "message": "Top Moves 会展示该用户在主要代币上的重要近期交易：单笔 PnL ≥ $50,000，或持仓进入前 100 名"
+   },
+   "top_positions": {
+      "message": "顶级位置"
+   },
+   "top_trader": {
+      "message": "顶级交易者"
+   },
+   "total": {
+      "message": "总计"
+   },
+   "total_assets": {
+      "message": "总资产"
+   },
+   "total_cost": {
+      "message": "总费用"
+   },
+   "total_earnings": {
+      "message": "总收益"
+   },
+   "total_fees": {
+      "message": "总费用"
+   },
+   "total_sending": {
+      "message": "发送总额"
+   },
+   "total_size": {
+      "message": "总大小"
+   },
+   "total_transactions": {
+      "message": "交易总数"
+   },
+   "tp": {
+      "message": "TP"
+   },
+   "trade": {
+      "message": "交易"
+   },
+   "trade_failed": {
+      "message": "交易失败"
+   },
+   "trade_on_signals": {
+      "message": "基于信号交易，"
+   },
+   "trade_summary": {
+      "message": "交易摘要"
+   },
+   "trades": {
+      "message": "活跃交易"
+   },
+   "trading": {
+      "message": "交易"
+   },
+   "trading_feature_coming_soon": {
+      "message": "该功能即将上线。如需抢先体验，请联系我们。"
+   },
+   "trading_panel_add_funds_description": {
+      "message": "存入 SOL 以开始交易，节省高达 90% 的费用。"
+   },
+   "trading_panel_locked_description": {
+      "message": "通过弹窗登录以解锁您的钱包。"
+   },
+   "trading_panel_locked_title": {
+      "message": "交易已锁定"
+   },
+   "trading_panel_receive_funds": {
+      "message": "接收资金"
+   },
+   "trading_panel_tap_up_wallet": {
+      "message": "充值您的钱包"
+   },
+   "trading_panel_transparency": {
+      "message": "交易面板透明度"
+   },
+   "trading_panel_transparency_description": {
+      "message": "调整交易面板在页面上的可见度"
+   },
+   "trading_panel_unlock_button": {
+      "message": "在弹窗中解锁"
+   },
+   "trading_panel_unlock_failed": {
+      "message": "无法解锁密码"
+   },
+   "trading_settings": {
+      "message": "交易设置"
+   },
+   "trading_sound_settings": {
+      "message": "交易声音设置"
+   },
+   "transaction_confirmed": {
+      "message": "交易已确认"
+   },
+   "transaction_confirmed_sidepanel": {
+      "message": "交易已确认"
+   },
+   "transaction_delay": {
+      "message": "交易延迟"
+   },
+   "transaction_failed_due_to_low_liquidity": {
+      "message": "由于流动性不足，交易失败"
+   },
+   "transaction_failed_due_to_no_quotes": {
+      "message": "获得报价失败"
+   },
+   "transaction_overpaid": {
+      "message": "这笔交易额外花费了 {fee} 手续费"
+   },
+   "transaction_overpaid_prefix": {
+      "message": "这笔交易额外花费了"
+   },
+   "transaction_overpaid_suffix": {
+      "message": "手续费"
+   },
+   "transaction_signatures": {
+      "message": "交易签名"
+   },
+   "transactions": {
+      "message": "笔交易"
+   },
+   "transactions_failed": {
+      "message": "笔交易失败"
+   },
+   "transactions_required": {
+      "message": "笔交易"
+   },
+   "translate_size": {
+      "message": "翻译文本样式"
+   },
+   "trial": {
+      "message": "试用 3 天"
+   },
+   "try_again": {
+      "message": "重试"
+   },
+   "turnkey_enable_failed": {
+      "message": "启用 Turnkey 失败"
+   },
+   "turnkey_enabling": {
+      "message": "正在启用 Turnkey..."
+   },
+   "turnkey_google_auth_failed": {
+      "message": "Google 身份验证失败"
+   },
+   "turnkey_import_failed": {
+      "message": "导入到 Turnkey 失败"
+   },
+   "turnkey_imported_successfully": {
+      "message": "已成功导入到 Turnkey"
+   },
+   "turnkey_importing_keys": {
+      "message": "正在将私钥导入 Turnkey..."
+   },
+   "turnkey_initializing": {
+      "message": "正在初始化 Turnkey..."
+   },
+   "turnkey_refresh_and_retry": {
+      "message": "，请刷新页面后重试"
+   },
+   "turnkey_syncing_account": {
+      "message": "正在同步到您的账户..."
+   },
+   "tutorial": {
+      "message": "教程 ↗"
+   },
+   "tweet": {
+      "message": "推文"
+   },
+   "tweets": {
+      "message": "推文"
+   },
+   "twitter": {
+      "message": "Twitter"
+   },
+   "twitter_import_failed": {
+      "message": "导入推特标签失败，请重试。"
+   },
+   "twitter_import_started": {
+      "message": "正在导入 {count} 个推特标签, 整个过程可最多花费30分钟。"
+   },
+   "twitter_label": {
+      "message": "Twitter 标签"
+   },
+   "twitter_label_limit_reached": {
+      "message": "你已达到推特标签数量上限（{max}）。"
+   },
+   "twitter_settings": {
+      "message": "推特设置"
+   },
+   "unable_to_load_bundle_info": {
+      "message": "暂时无法加载 Bundle 信息。"
+   },
+   "unarchive": {
+      "message": "取消归档"
+   },
+   "undeleted_tweets": {
+      "message": "{undeletedTweetCount} 个未删除推文"
+   },
+   "unknown": {
+      "message": "未知"
+   },
+   "upgrade_to_passwordless": {
+      "message": "升级到无密码交易"
+   },
+   "upload": {
+      "message": "上传"
+   },
+   "upload_custom": {
+      "message": "上传自定义"
+   },
+   "uploading": {
+      "message": "上传中..."
+   },
+   "url_must_be_gif": {
+      "message": "URL 必须是可获取的 GIF 或 WebP 图片"
+   },
+   "use_autotrade": {
+      "message": "使用自动交易"
+   },
+   "use_colon_for_custom_labels": {
+      "message": "使用冒号自定义标签。"
+   },
+   "use_sidebar_for_wallets": {
+      "message": "使用侧边栏选择钱包"
+   },
+   "use_sidebar_for_wallets_description": {
+      "message": "在侧边栏中显示钱包选择。"
+   },
+   "user_id": {
+      "message": "用户 ID"
+   },
+   "username": {
+      "message": "改名"
+   },
+   "username_history": {
+      "message": "用户名历史"
+   },
+   "validator_tip": {
+      "message": "Jito小费"
+   },
+   "value": {
+      "message": "价值"
+   },
+   "variance": {
+      "message": "变化幅度"
+   },
+   "variance_description": {
+      "message": "所选钱包购买金额的变化幅度。0% 到 100% 随机分配。"
+   },
+   "verify_with_google": {
+      "message": "使用 Google 验证"
+   },
+   "view": {
+      "message": "查看"
+   },
+   "view_all": {
+      "message": "查看所有"
+   },
+   "view_all_positions": {
+      "message": "查看所有持仓"
+   },
+   "view_docs": {
+      "message": "查看文档"
+   },
+   "view_frontrun_insights_line": {
+      "message": "您现在可以在 X 和其他平台查看 Frontrun 洞察。"
+   },
+   "view_on_bscscan": {
+      "message": "在 BscScan 上查看"
+   },
+   "view_on_jito_explorer": {
+      "message": "在 Jito Explorer 查看"
+   },
+   "view_on_solscan": {
+      "message": "在 Solscan 上查看"
+   },
+   "view_on_twitter": {
+      "message": "在 Twitter 上查看"
+   },
+   "view_private_key": {
+      "message": "查看私钥"
+   },
+   "view_summary": {
+      "message": "查看概览"
+   },
+   "view_transaction": {
+      "message": "查看交易"
+   },
+   "wallet": {
+      "message": "钱包"
+   },
+   "wallet_address": {
+      "message": "钱包地址"
+   },
+   "wallet_address_is_required": {
+      "message": "钱包地址为必填项"
+   },
+   "wallet_address_placeholder": {
+      "message": "钱包地址"
+   },
+   "wallet_common_action_import_seed_phrase": {
+      "message": "导入助记词"
+   },
+   "wallet_common_assign_to_group_label": {
+      "message": "分配到分组"
+   },
+   "wallet_common_back": {
+      "message": "返回"
+   },
+   "wallet_common_confirm_password_placeholder": {
+      "message": "确认密码"
+   },
+   "wallet_common_continue": {
+      "message": "继续"
+   },
+   "wallet_common_copy_seed_phrase": {
+      "message": "复制助记词"
+   },
+   "wallet_common_enter_private_key": {
+      "message": "输入私钥"
+   },
+   "wallet_common_enter_seed_phrase": {
+      "message": "输入你的助记词"
+   },
+   "wallet_common_error_private_key_required": {
+      "message": "请输入私钥"
+   },
+   "wallet_common_error_seed_phrase_incomplete": {
+      "message": "请完整填写助记词的每个单词"
+   },
+   "wallet_common_import_private_key_description": {
+      "message": "粘贴一组可用的私钥，即可在本设备继续使用该钱包。"
+   },
+   "wallet_common_import_private_key_title": {
+      "message": "通过私钥导入"
+   },
+   "wallet_common_importing_wallets_description": {
+      "message": "导入过程中请保持此窗口开启。"
+   },
+   "wallet_common_importing_wallets_progress": {
+      "message": "正在将 Turnkey 钱包同步到自托管保管库……"
+   },
+   "wallet_common_importing_wallets_title": {
+      "message": "正在导入钱包"
+   },
+   "wallet_common_option_generate_wallet": {
+      "message": "生成新钱包"
+   },
+   "wallet_common_option_import_private_key": {
+      "message": "从私钥导入"
+   },
+   "wallet_common_option_import_seed_phrase": {
+      "message": "从助记词导入"
+   },
+   "wallet_common_password_create_title": {
+      "message": "创建密码"
+   },
+   "wallet_common_password_incorrect": {
+      "message": "密码错误"
+   },
+   "wallet_common_password_mismatch": {
+      "message": "两次输入的密码不一致"
+   },
+   "wallet_common_password_placeholder": {
+      "message": "输入密码"
+   },
+   "wallet_common_password_session_expired": {
+      "message": "密码会话已过期，请重试。"
+   },
+   "wallet_common_password_set_failed": {
+      "message": "设置密码失败"
+   },
+   "wallet_common_password_strength_medium": {
+      "message": "中"
+   },
+   "wallet_common_password_strength_strong": {
+      "message": "强"
+   },
+   "wallet_common_password_strength_weak": {
+      "message": "弱"
+   },
+   "wallet_common_private_key_placeholder": {
+      "message": "在此粘贴你的私钥"
+   },
+   "wallet_common_private_key_tab": {
+      "message": "私钥"
+   },
+   "wallet_common_private_key_warning": {
+      "message": "不要与任何人分享你的私钥。Frontrun 永远不会查看或存储你的私钥。"
+   },
+   "wallet_common_secure_wallets_description": {
+      "message": "选择要以何种方式将钱包导入保管库。"
+   },
+   "wallet_common_secure_wallets_title": {
+      "message": "保护你的钱包"
+   },
+   "wallet_common_seed_phrase_12_words": {
+      "message": "12个单词"
+   },
+   "wallet_common_seed_phrase_24_words": {
+      "message": "24个单词"
+   },
+   "wallet_common_seed_phrase_button": {
+      "message": "显示助记词"
+   },
+   "wallet_common_seed_phrase_description": {
+      "message": "粘贴 12 个助记词即可恢复已有钱包。"
+   },
+   "wallet_common_seed_phrase_hide": {
+      "message": "隐藏"
+   },
+   "wallet_common_seed_phrase_label": {
+      "message": "助记词"
+   },
+   "wallet_common_seed_phrase_missing": {
+      "message": "请填写助记词的全部单词"
+   },
+   "wallet_common_seed_phrase_show": {
+      "message": "显示"
+   },
+   "wallet_common_seed_phrase_tab": {
+      "message": "助记词"
+   },
+   "wallet_common_seed_phrase_title": {
+      "message": "你的助记词"
+   },
+   "wallet_common_seed_phrase_warning": {
+      "message": "不要与任何人分享你的助记词。Frontrun 永远不会查看或存储你的助记词。"
+   },
+   "wallet_common_seed_phrase_word_placeholder": {
+      "message": "单词"
+   },
+   "wallet_common_select_group_placeholder": {
+      "message": "选择一个分组"
+   },
+   "wallet_common_title_create_wallets": {
+      "message": "创建钱包"
+   },
+   "wallet_common_title_import_wallet": {
+      "message": "导入钱包"
+   },
+   "wallet_common_title_set_password": {
+      "message": "设置钱包密码"
+   },
+   "wallet_common_title_verify_password": {
+      "message": "验证密码"
+   },
+   "wallet_common_toast_copied": {
+      "message": "{label} 已复制到剪贴板"
+   },
+   "wallet_common_toast_copy_failed": {
+      "message": "复制失败"
+   },
+   "wallet_common_toast_import_failed": {
+      "message": "钱包导入失败"
+   },
+   "wallet_common_toast_import_success": {
+      "message": "钱包导入成功"
+   },
+   "wallet_common_verifying": {
+      "message": "正在验证..."
+   },
+   "wallet_create_chain_label": {
+      "message": "链"
+   },
+   "wallet_create_creating_state": {
+      "message": "正在创建..."
+   },
+   "wallet_create_password_description": {
+      "message": "创建一个密码以安全解锁你的钱包。"
+   },
+   "wallet_create_primary_cta": {
+      "message": "创建钱包"
+   },
+   "wallet_create_quantity_cap": {
+      "message": "最多 50"
+   },
+   "wallet_create_quantity_label": {
+      "message": "数量"
+   },
+   "wallet_create_seed_warning_intro": {
+      "message": "继续之前请认真阅读。"
+   },
+   "wallet_create_seed_warning_item1_body": {
+      "message": "拥有它的人可以访问你的资产。"
+   },
+   "wallet_create_seed_warning_item1_title": {
+      "message": "不要与任何人分享助记词。"
+   },
+   "wallet_create_seed_warning_item2_body": {
+      "message": "不要把它保存在截图或云笔记中。"
+   },
+   "wallet_create_seed_warning_item2_title": {
+      "message": "请安全保管并离线保存。"
+   },
+   "wallet_create_seed_warning_item3_body": {
+      "message": "助记词只存储在你的设备上。"
+   },
+   "wallet_create_seed_warning_item3_title": {
+      "message": "Frontrun 无法帮你找回。"
+   },
+   "wallet_create_seed_warning_item4_body": {
+      "message": "确保没有人能看到你的屏幕。"
+   },
+   "wallet_create_seed_warning_item4_title": {
+      "message": "在私密环境下查看助记词。"
+   },
+   "wallet_create_seed_warning_title": {
+      "message": "保护你的助记词"
+   },
+   "wallet_create_toast_created": {
+      "message": "成功创建 {count} 个钱包"
+   },
+   "wallet_create_toast_failed": {
+      "message": "创建钱包失败"
+   },
+   "wallet_create_verify_description": {
+      "message": "输入你已有的密码来解锁钱包。"
+   },
+   "wallet_created_successfully": {
+      "message": "创建钱包成功！"
+   },
+   "wallet_creation_failed": {
+      "message": "创建钱包失败！"
+   },
+   "wallet_dashboard": {
+      "message": "钱包面板"
+   },
+   "wallet_dashboard_disabled": {
+      "message": "钱包面板未启用"
+   },
+   "wallet_data": {
+      "message": "钱包数据"
+   },
+   "wallet_deleted_failed": {
+      "message": "钱包删除失败"
+   },
+   "wallet_deleted_successfully": {
+      "message": "钱包删除成功"
+   },
+   "wallet_history": {
+      "message": "钱包历史"
+   },
+   "wallet_history_for": {
+      "message": "@{twitterUsername} 的钱包历史"
+   },
+   "wallet_import_error_connection": {
+      "message": "无法建立 Solana 连接"
+   },
+   "wallet_import_error_no_valid_wallets": {
+      "message": "无法根据助记词生成有效的钱包"
+   },
+   "wallet_import_error_prepare_failed": {
+      "message": "无法准备钱包导入"
+   },
+   "wallet_import_importing_state": {
+      "message": "正在导入..."
+   },
+   "wallet_import_partial_due_to_batch_text": {
+      "message": "已导入 {imported} 个，共 {total} 个钱包。单次批量限制为 {batchLimit} 个钱包。"
+   },
+   "wallet_import_partial_due_to_batch_title": {
+      "message": "导入完成"
+   },
+   "wallet_import_partial_due_to_limit_text": {
+      "message": "已导入 {imported} 个，共 {total} 个钱包。你已达到标签数量上限（{max}）。"
+   },
+   "wallet_import_partial_due_to_limit_title": {
+      "message": "导入完成"
+   },
+   "wallet_import_password_description": {
+      "message": "设置一个密码，用于在此设备上加密导入的钱包。"
+   },
+   "wallet_import_primary_cta": {
+      "message": "导入钱包"
+   },
+   "wallet_import_saving_state": {
+      "message": "正在保存..."
+   },
+   "wallet_import_seed_created_toast": {
+      "message": "已通过助记词创建新钱包"
+   },
+   "wallet_import_seed_imported_toast": {
+      "message": "已从助记词导入 {count} 个钱包"
+   },
+   "wallet_import_verify_description": {
+      "message": "输入你已有的密码，以便安全地加密新钱包。"
+   },
+   "wallet_label": {
+      "message": "钱包标签"
+   },
+   "wallet_label_limit_reached": {
+      "message": "你已达到钱包标签数量上限（{max}）。"
+   },
+   "wallet_label_placeholder": {
+      "message": "钱包地址: 标签"
+   },
+   "wallet_locked": {
+      "message": "钱包已锁定"
+   },
+   "wallet_management": {
+      "message": "钱包管理"
+   },
+   "wallet_name_cannot_be_empty": {
+      "message": "钱包名称不能为空"
+   },
+   "wallet_name_cannot_exceed_max_length": {
+      "message": "钱包名称不能超过 {maxLength} 个字符"
+   },
+   "wallet_not_verified": {
+      "message": "此钱包尚未验证。"
+   },
+   "wallet_position_not_found": {
+      "message": "未找到钱包持仓：{address}"
+   },
+   "wallets": {
+      "message": "钱包"
+   },
+   "wallets_available": {
+      "message": "个钱包可用"
+   },
+   "wallets_failed_to_activate_retry": {
+      "message": "部分钱包激活失败，请重试。"
+   },
+   "wallets_failed_to_clear_retry": {
+      "message": "部分钱包清除失败，请重试。"
+   },
+   "we_are_confident_pocket_wallet": {
+      "message": "我们对该钱包可能是口袋钱包的置信度为{confidence}"
+   },
+   "welcome_to_frontrun": {
+      "message": "欢迎来到 Frontrun"
+   },
+   "win_rate": {
+      "message": "胜率"
+   },
+   "with_frontrun": {
+      "message": "通过 Frontrun"
+   },
+   "withdraw": {
+      "message": "提款"
+   },
+   "withdraw_all": {
+      "message": "全部提款"
+   },
+   "withdraw_failed": {
+      "message": "提款失败"
+   },
+   "withdrawals_completed": {
+      "message": "笔提款已成功完成"
+   },
+   "withdrawing": {
+      "message": "提款中"
+   },
+   "x_integration": {
+      "message": "X 集成"
+   },
+   "x_profile": {
+      "message": "X 账户"
+   },
+   "you_have_reached_the_maximum_number_of_wallets": {
+      "message": "您已达到最大钱包数量"
+   },
+   "you_saved": {
+      "message": "您节省了"
+   },
+   "your_account_is_activated": {
+      "message": "您的账户已激活！"
+   },
+   "your_private_key_will_provide_all_access_to_this_account_do_not_share_your_private_key_with_anyone_frontrun_never_sees_or_stores_your_key": {
+      "message": "您的私钥将提供对此账户的所有访问权限。请勿与任何人分享您的私钥。Frontrun 永远不会看到或存储您的私钥。"
+   },
+   "your_wallets": {
+      "message": "您的钱包"
+   }
+}

@@ -18,7 +18,7 @@ from trench_v2.providers.factory import build_risk_provider
 from trench_v2.providers.wallet_performance import MoralisTopTradersProvider
 from trench_v2.telegram.sender import BotApiTelegramSender, TelegramSender
 from trench_v2.telegram.topics import TopicFeature, topic_env_key
-from wallet_performance import WalletPerformanceCandidate, best_signal_from_wallet_performance
+from wallet_performance import WalletPerformanceCandidate, best_signal_from_wallet_token_confluence
 
 
 _BEST_WALLET_TOPIC_ENV_BY_PERIOD = {
@@ -515,14 +515,26 @@ class LiveSignalWorker:
             return
 
         self.stats.best_wallet_candidates_seen += len(wallet_candidates)
-        for wallet_candidate in wallet_candidates:
-            best_candidate = best_signal_from_wallet_performance(
-                wallet_candidate,
+        for period in ("week", "month", "year"):
+            best_candidate = best_signal_from_wallet_token_confluence(
+                chain=signal.chain.value,
+                token_address=signal.token_address,
+                token_symbol=signal.symbol,
+                token_name=signal.name,
+                period=period,
+                wallet_candidates=wallet_candidates,
                 min_score=self.settings.best_wallet_min_score,
+                risk_text=_risk_text(signal),
+                market_cap_usd=signal.market_cap_usd,
+                liquidity_usd=signal.liquidity_usd,
+                buys_5m=signal.buys_5m,
+                buys_1h=signal.buys_1h,
+                age_minutes=signal.pair_age_minutes,
+                url=signal.url,
             )
             if not best_candidate:
                 continue
-            if await self._send_best_wallet_signal(wallet_candidate.period, best_candidate):
+            if await self._send_best_wallet_signal(period, best_candidate):
                 self.stats.best_wallet_signals_sent += 1
             if self._best_signal_router.queue(best_candidate):
                 self.stats.best_wallet_signals_queued += 1

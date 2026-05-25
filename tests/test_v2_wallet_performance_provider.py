@@ -14,6 +14,9 @@ class FakeMoralisClient:
         self.calls.append((url, params))
         if isinstance(self.payload, Exception):
             raise self.payload
+        if isinstance(self.payload, list):
+            index = min(len(self.calls) - 1, len(self.payload) - 1)
+            return self.payload[index]
         return self.payload
 
 
@@ -27,6 +30,12 @@ async def test_moralis_top_traders_provider_normalizes_week_month_and_year_candi
                     "realized_profit_usd": "18500",
                     "realized_profit_percentage": 420,
                     "count_of_trades": 14,
+                },
+                {
+                    "address": "0x2222222222222222222222222222222222222222",
+                    "realized_profit_usd": "12500",
+                    "realized_profit_percentage": 310,
+                    "count_of_trades": 9,
                 }
             ]
         }
@@ -40,7 +49,7 @@ async def test_moralis_top_traders_provider_normalizes_week_month_and_year_candi
         periods=("week", "month", "year"),
     )
 
-    assert [candidate.period for candidate in candidates] == ["week", "month", "year"]
+    assert [candidate.period for candidate in candidates] == ["week", "week", "month", "month", "year", "year"]
     assert {call[0] for call in client.calls} == {
         "https://deep-index.moralis.io/api/v2.2/erc20/0xtoken/top-gainers"
     }
@@ -48,6 +57,7 @@ async def test_moralis_top_traders_provider_normalizes_week_month_and_year_candi
     assert all(call[1]["chain"] == "base" for call in client.calls)
     assert candidates[0].chain == "base"
     assert candidates[0].top_tokens == ("ALPHA",)
+    assert candidates[1].wallet_address == "0x2222222222222222222222222222222222222222"
 
 
 @pytest.mark.asyncio

@@ -71,14 +71,15 @@ class MoralisTopTradersProvider:
             rows = data.get("result")
             if not isinstance(rows, list) or not rows:
                 continue
-            best = _candidate_from_row(
-                rows[0],
-                chain=chain_query,
-                period=period,
-                token_symbol=token_symbol,
-            )
-            if best:
-                candidates.append(best)
+            for row in rows[:5]:
+                candidate = _candidate_from_row(
+                    row,
+                    chain=chain_query,
+                    period=period,
+                    token_symbol=token_symbol,
+                )
+                if candidate:
+                    candidates.append(candidate)
         return candidates
 
 

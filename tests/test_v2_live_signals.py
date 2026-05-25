@@ -453,6 +453,19 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
                 losses=2,
                 top_tokens=("ELITE",),
                 evidence_url="https://deep-index.moralis.io",
+            ),
+            WalletPerformanceCandidate(
+                chain="base",
+                wallet_address="0x2222222222222222222222222222222222222222",
+                period="week",
+                realized_pnl_usd=70_000,
+                roi_pct=760,
+                win_rate=0.84,
+                trades=20,
+                wins=17,
+                losses=3,
+                top_tokens=("ELITE",),
+                evidence_url="https://deep-index.moralis.io",
             )
         ]
     )
@@ -477,8 +490,11 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
     assert len(sent) == 1
     assert wallet_provider.calls == [(Chain.BASE, "0xelite", "ELITE", ("week", "month", "year"))]
     assert [topic_id for topic_id, _ in sender.messages] == [201, 901, 999, 999]
-    assert "Best Wallet Week" in sender.messages[1][1]
-    assert "Best Wallet Week" in sender.messages[3][1]
+    assert "Best Wallet Coin Week" in sender.messages[1][1]
+    assert "0xelite" in sender.messages[1][1]
+    assert "0x1111111111111111111111111111111111111111" not in sender.messages[1][1]
+    assert "0x2222222222222222222222222222222222222222" not in sender.messages[1][1]
+    assert "Best Wallet Coin Week" in sender.messages[3][1]
     assert worker.stats.best_wallet_signals_sent == 1
 
 

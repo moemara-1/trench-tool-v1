@@ -1,7 +1,11 @@
 import pytest
 
 from best_signals import BestSignalRouter
-from wallet_performance import WalletPerformanceCandidate, best_signal_from_wallet_performance
+from wallet_performance import (
+    WalletPerformanceCandidate,
+    best_signal_from_wallet_performance,
+    best_signal_from_wallet_token_confluence,
+)
 
 
 def _wallet_candidate(
@@ -31,6 +35,61 @@ def test_wallet_performance_signal_rejects_low_confidence_wallets():
     weak = _wallet_candidate(roi_pct=12.0, realized_pnl_usd=120.0, win_rate=0.45, trades=2)
 
     assert best_signal_from_wallet_performance(weak, min_score=95) is None
+
+
+def test_wallet_token_confluence_requires_multiple_profitable_wallets():
+    signal = best_signal_from_wallet_token_confluence(
+        chain="base",
+        token_address="0xtoken",
+        token_symbol="ALPHA",
+        token_name="Alpha Token",
+        period="week",
+        wallet_candidates=(_wallet_candidate(),),
+        min_score=95,
+    )
+
+    assert signal is None
+
+
+def test_wallet_token_confluence_alerts_coin_without_wallet_addresses():
+    wallet_a = _wallet_candidate(
+        roi_pct=900,
+        realized_pnl_usd=80_000,
+        win_rate=0.9,
+        trades=24,
+    )
+    wallet_b = _wallet_candidate(
+        roi_pct=720,
+        realized_pnl_usd=55_000,
+        win_rate=0.82,
+        trades=18,
+    )
+
+    signal = best_signal_from_wallet_token_confluence(
+        chain="base",
+        token_address="0xtoken",
+        token_symbol="ALPHA",
+        token_name="Alpha Token",
+        period="week",
+        wallet_candidates=(wallet_a, wallet_b),
+        min_score=95,
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        buys_5m=30,
+        buys_1h=180,
+        age_minutes=30,
+        url="https://dexscreener.com/base/0xtoken",
+    )
+
+    assert signal is not None
+    assert signal.source_label == "Best Wallet Coin Week"
+    assert signal.signal_family == "best_wallet_coin_week"
+    assert signal.token_address == "0xtoken"
+    assert signal.symbol == "ALPHA"
+    assert signal.score >= 95
+    rendered = " ".join((signal.source_label, signal.name, *signal.reasons))
+    assert "0x1111111111111111111111111111111111111111" not in rendered
+    assert any("2 profitable wallets" in reason for reason in signal.reasons)
 
 
 @pytest.mark.parametrize("period", ["week", "month", "year"])

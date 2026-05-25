@@ -8,7 +8,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Protocol
 
-from best_signals import BestSignalCandidate, BestSignalRouter
+from best_signals import BestSignalCandidate, BestSignalRouter, format_best_signal
 from quality_budget import PriorityDailyBudget
 from trench_v2.config import V2Settings
 from trench_v2.core.models import Chain, RiskLevel, RiskReport
@@ -19,6 +19,13 @@ from trench_v2.providers.wallet_performance import MoralisTopTradersProvider
 from trench_v2.telegram.sender import BotApiTelegramSender, TelegramSender
 from trench_v2.telegram.topics import TopicFeature, topic_env_key
 from wallet_performance import WalletPerformanceCandidate, best_signal_from_wallet_performance
+
+
+_BEST_WALLET_TOPIC_ENV_BY_PERIOD = {
+    "week": "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID",
+    "month": "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID",
+    "year": "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID",
+}
 
 
 class DiscoveryProvider(Protocol):
@@ -85,6 +92,7 @@ class LiveSignalStats:
     rejected_risk: int = 0
     best_signals_sent: int = 0
     best_wallet_candidates_seen: int = 0
+    best_wallet_signals_sent: int = 0
     best_wallet_signals_queued: int = 0
     best_wallet_last_error: str | None = None
     candidates_by_topic: dict[str, int] = field(default_factory=dict)
@@ -108,6 +116,7 @@ class LiveSignalStats:
             "rejected_risk": self.rejected_risk,
             "best_signals_sent": self.best_signals_sent,
             "best_wallet_candidates_seen": self.best_wallet_candidates_seen,
+            "best_wallet_signals_sent": self.best_wallet_signals_sent,
             "best_wallet_signals_queued": self.best_wallet_signals_queued,
             "best_wallet_last_error": self.best_wallet_last_error,
             "candidates_by_topic": dict(sorted(self.candidates_by_topic.items())),
@@ -151,6 +160,7 @@ class LiveSignalWorker:
         )
         self._risk_cache: dict[tuple[Chain, str], RiskReport] = {}
         self._sent_keys: set[str] = set()
+        self._sent_wallet_signal_keys: set[str] = set()
         self._sent_day: str | None = None
         self._task: asyncio.Task | None = None
         self._stop_event = asyncio.Event()
@@ -502,8 +512,32 @@ class LiveSignalWorker:
                 wallet_candidate,
                 min_score=self.settings.best_wallet_min_score,
             )
-            if best_candidate and self._best_signal_router.queue(best_candidate):
+            if not best_candidate:
+                continue
+            if await self._send_best_wallet_signal(wallet_candidate.period, best_candidate):
+                self.stats.best_wallet_signals_sent += 1
+            if self._best_signal_router.queue(best_candidate):
                 self.stats.best_wallet_signals_queued += 1
+
+    async def _send_best_wallet_signal(
+        self,
+        period: str,
+        candidate: BestSignalCandidate,
+    ) -> bool:
+        if not self.sender:
+            return False
+        topic_key = _BEST_WALLET_TOPIC_ENV_BY_PERIOD.get(period.lower().strip())
+        if not topic_key:
+            return False
+        topic_id = (self.settings.telegram_topic_ids or {}).get(topic_key, 0)
+        if topic_id <= 0:
+            return False
+        if candidate.dedupe_key in self._sent_wallet_signal_keys:
+            return False
+        if await self.sender.send(topic_id, format_best_signal(candidate)):
+            self._sent_wallet_signal_keys.add(candidate.dedupe_key)
+            return True
+        return False
 
     async def _flush_best_signals(self) -> None:
         best_topic_id = (self.settings.telegram_topic_ids or {}).get("TELEGRAM_BEST_SIGNALS_TOPIC_ID", 0)

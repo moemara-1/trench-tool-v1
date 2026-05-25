@@ -152,7 +152,7 @@ def create_app(settings: V2Settings | None = None) -> FastAPI:
         configured = working_topic_ids(runtime_settings)
         topics = [
             {
-                "chain": target.chain.value,
+                "chain": target.chain.value if target.chain else "all",
                 "feature": target.feature.value,
                 "title": target.title,
                 "env_key": target.env_key,

@@ -405,6 +405,7 @@ async def test_live_signal_worker_copies_risk_checked_elite_signal_to_best_topic
             {
                 "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
                 "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": "901",
                 "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
             }
         ),
@@ -444,12 +445,12 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
                 chain="base",
                 wallet_address="0x1111111111111111111111111111111111111111",
                 period="week",
-                realized_pnl_usd=18_500,
-                roi_pct=420,
-                win_rate=0.78,
-                trades=14,
-                wins=11,
-                losses=3,
+                realized_pnl_usd=80_000,
+                roi_pct=900,
+                win_rate=0.9,
+                trades=24,
+                wins=22,
+                losses=2,
                 top_tokens=("ELITE",),
                 evidence_url="https://deep-index.moralis.io",
             )
@@ -460,6 +461,7 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
             {
                 "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
                 "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": "901",
                 "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
             }
         ),
@@ -474,8 +476,10 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
 
     assert len(sent) == 1
     assert wallet_provider.calls == [(Chain.BASE, "0xelite", "ELITE", ("week", "month", "year"))]
-    assert [topic_id for topic_id, _ in sender.messages] == [201, 999, 999]
-    assert "Best Wallet Week" in sender.messages[2][1]
+    assert [topic_id for topic_id, _ in sender.messages] == [201, 901, 999, 999]
+    assert "Best Wallet Week" in sender.messages[1][1]
+    assert "Best Wallet Week" in sender.messages[3][1]
+    assert worker.stats.best_wallet_signals_sent == 1
 
 
 @pytest.mark.asyncio

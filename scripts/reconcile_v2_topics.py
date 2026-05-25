@@ -12,6 +12,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -25,18 +26,36 @@ ALIASES = {
     "TELEGRAM_SOL_MIGRATIONS_TRACKER_TOPIC_ID": "TELEGRAM_LATE_MIGRATION_TOPIC_ID",
 }
 
+TELEGRAM_TOPIC_COLORS = {
+    "blue": 0x6FB9F0,
+    "yellow": 0xFFD67E,
+    "violet": 0xCB86DB,
+    "green": 0x8EEE98,
+    "rose": 0xFF93B2,
+    "red": 0xFB6F5F,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class TopicSpec:
+    title: str
+    icon_color: int
+
 
 WANTED_TOPICS = {
-    "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "Best Signals",
-    "TELEGRAM_ETH_FRESHIES_TOPIC_ID": "ETH Freshies",
-    "TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID": "ETH Big Freshies",
-    "TELEGRAM_ETH_LOW_MC_FRESHIES_TOPIC_ID": "ETH Low MC Freshies",
-    "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "Base Freshies",
-    "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "Base Low MC Freshies",
-    "TELEGRAM_BASE_DEPLOYS_TOPIC_ID": "Base Deploys",
-    "TELEGRAM_BNB_FRESHIES_TOPIC_ID": "BNB Freshies",
-    "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": "BNB Big Freshies",
-    "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID": "BNB Low MC Freshies",
+    "TELEGRAM_BEST_SIGNALS_TOPIC_ID": TopicSpec("Best Signals", TELEGRAM_TOPIC_COLORS["red"]),
+    "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": TopicSpec("Best Wallets Week", TELEGRAM_TOPIC_COLORS["green"]),
+    "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID": TopicSpec("Best Wallets Month", TELEGRAM_TOPIC_COLORS["violet"]),
+    "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID": TopicSpec("Best Wallets Year", TELEGRAM_TOPIC_COLORS["yellow"]),
+    "TELEGRAM_ETH_FRESHIES_TOPIC_ID": TopicSpec("ETH Freshies", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID": TopicSpec("ETH Big Freshies", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_ETH_LOW_MC_FRESHIES_TOPIC_ID": TopicSpec("ETH Low MC Freshies", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_BASE_FRESHIES_TOPIC_ID": TopicSpec("Base Freshies", TELEGRAM_TOPIC_COLORS["violet"]),
+    "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": TopicSpec("Base Low MC Freshies", TELEGRAM_TOPIC_COLORS["violet"]),
+    "TELEGRAM_BASE_DEPLOYS_TOPIC_ID": TopicSpec("Base Deploys", TELEGRAM_TOPIC_COLORS["violet"]),
+    "TELEGRAM_BNB_FRESHIES_TOPIC_ID": TopicSpec("BNB Freshies", TELEGRAM_TOPIC_COLORS["yellow"]),
+    "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": TopicSpec("BNB Big Freshies", TELEGRAM_TOPIC_COLORS["yellow"]),
+    "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID": TopicSpec("BNB Low MC Freshies", TELEGRAM_TOPIC_COLORS["yellow"]),
 }
 
 
@@ -119,10 +138,13 @@ def main() -> None:
 
     telegram = TelegramClient(bot_token)
     created: list[str] = []
-    for key, title in WANTED_TOPICS.items():
+    for key, spec in WANTED_TOPICS.items():
         if active_topic_id(env, updates, key):
             continue
-        topic = telegram.request("createForumTopic", {"chat_id": chat_id, "name": title})
+        topic = telegram.request(
+            "createForumTopic",
+            {"chat_id": chat_id, "name": spec.title, "icon_color": spec.icon_color},
+        )
         updates[key] = str(topic["message_thread_id"])
         created.append(key)
         time.sleep(1.2)

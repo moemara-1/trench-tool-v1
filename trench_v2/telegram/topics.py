@@ -57,12 +57,15 @@ class TopicFeature(str, Enum):
     STREAMFLOW = "streamflow"
     VANISH = "vanish"
     SNS = "sns"
+    BEST_WALLETS_WEEK = "best_wallets_week"
+    BEST_WALLETS_MONTH = "best_wallets_month"
+    BEST_WALLETS_YEAR = "best_wallets_year"
     FEEDBACK = "feedback"
 
 
 @dataclass(frozen=True, slots=True)
 class TopicTarget:
-    chain: Chain
+    chain: Chain | None
     feature: TopicFeature
     title: str
     env_key: str
@@ -84,6 +87,16 @@ def build_default_topic_plan() -> tuple[TopicTarget, ...]:
                 feature=feature,
                 title=title,
                 env_key=env_key or topic_env_key(chain, feature),
+            )
+        )
+
+    def add_global(feature: TopicFeature, title: str, env_key: str) -> None:
+        targets.append(
+            TopicTarget(
+                chain=None,
+                feature=feature,
+                title=title,
+                env_key=env_key,
             )
         )
 
@@ -118,6 +131,10 @@ def build_default_topic_plan() -> tuple[TopicTarget, ...]:
         (TopicFeature.LOW_MC_FRESHIES, "BNB Low MC Freshies"),
     ]:
         add(Chain.BSC, feature, title)
+
+    add_global(TopicFeature.BEST_WALLETS_WEEK, "Best Wallets Week", "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID")
+    add_global(TopicFeature.BEST_WALLETS_MONTH, "Best Wallets Month", "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID")
+    add_global(TopicFeature.BEST_WALLETS_YEAR, "Best Wallets Year", "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID")
 
     return tuple(targets)
 

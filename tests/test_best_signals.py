@@ -115,3 +115,16 @@ def test_v1_best_signal_candidate_preserves_restored_source_family(message, fami
 
     assert candidate is not None
     assert candidate.signal_family == family
+
+
+def test_v1_best_signal_candidate_caps_score_to_reported_strength():
+    message = """SOL Strongfloor
+$PTAI Paladin Trump AI | Strength: 48/100
+Floor: $0.000816 | Bounces: 2 | Time: 9h
+MC: 977.9k
+<code>2SAt9qF6YjMBz9tb1U9jAYNBBVx5jqWQ7KRXDqD2pump</code>"""
+
+    candidate = candidate_from_v1_message(message)
+
+    assert candidate is not None
+    assert candidate.score == 48

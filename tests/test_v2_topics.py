@@ -38,6 +38,11 @@ def test_default_topic_plan_covers_live_signal_suites():
     assert (Chain.BASE, TopicFeature.SCAN) not in pairs
     assert (Chain.BSC, TopicFeature.SCAN) not in pairs
 
+    global_pairs = {(target.chain, target.feature) for target in plan}
+    assert (None, TopicFeature.BEST_WALLETS_WEEK) in global_pairs
+    assert (None, TopicFeature.BEST_WALLETS_MONTH) in global_pairs
+    assert (None, TopicFeature.BEST_WALLETS_YEAR) in global_pairs
+
 
 def test_working_topic_ids_filters_zero_and_missing_values():
     settings = V2Settings.from_env(

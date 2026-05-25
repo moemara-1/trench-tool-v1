@@ -205,7 +205,7 @@ class Settings(BaseSettings):
         description="Maximum Best Signals messages per day (0 = unlimited with quality gating)"
     )
     best_signals_min_score: int = Field(
-        default=95,
+        default=98,
         description="Minimum quality score for Best Signals"
     )
     

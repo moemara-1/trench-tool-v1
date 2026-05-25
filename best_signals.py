@@ -17,6 +17,10 @@ _ADDRESS_RE = re.compile(r"\b(0x[a-fA-F0-9]{32,}|[1-9A-HJ-NP-Za-km-z]{32,})\b")
 _CODE_RE = re.compile(r"<code>([^<]+)</code>", re.IGNORECASE)
 _HREF_RE = re.compile(r'href=["\']([^"\']+)["\']', re.IGNORECASE)
 _SYMBOL_RE = re.compile(r"\$([^\s<|]+)")
+_REPORTED_SCORE_RE = re.compile(
+    r"\b(?:strength|score|quality)\s*:\s*(\d{1,3})\s*/\s*100\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,7 +52,7 @@ class BestSignalRouter:
     def __init__(
         self,
         daily_cap: int = 0,
-        min_score: int = 95,
+        min_score: int = 98,
         dedupe_hours: int = 24,
     ):
         if min_score >= 100:
@@ -113,7 +117,7 @@ def candidate_from_v1_message(message: str, source_label: str = "V1 SOL") -> Bes
     address = _extract_address(message)
     if not address:
         return None
-    score = score_v1_alert_message(message)
+    score = _score_v1_for_best_feed(message)
     symbol = _extract_symbol(message)
     family = _family_from_message(message)
     return BestSignalCandidate(
@@ -226,6 +230,22 @@ def _extract_url(message: str) -> str | None:
         if "dexscreener" in lowered or "axiom" in lowered or "photon" in lowered:
             return url
     return urls[0] if urls else None
+
+
+def _score_v1_for_best_feed(message: str) -> int:
+    score = score_v1_alert_message(message)
+    reported_score = _reported_score_from_message(message)
+    if reported_score is None:
+        return score
+    return min(score, reported_score)
+
+
+def _reported_score_from_message(message: str) -> int | None:
+    plain = html.unescape(re.sub(r"<[^>]+>", " ", message))
+    match = _REPORTED_SCORE_RE.search(plain)
+    if not match:
+        return None
+    return max(0, min(100, int(match.group(1))))
 
 
 def _family_from_message(message: str) -> str:

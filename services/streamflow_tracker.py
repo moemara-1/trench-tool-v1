@@ -13,9 +13,15 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Streamflow program IDs
+# Streamflow program IDs (verified from official docs)
+# Main vesting/streaming program - this is the on-chain program
 STREAMFLOW_PROGRAM = "strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m"
-STREAMFLOW_TOKEN_PROGRAM = "strm6VQMrMpjjEp7yXpYBnDAWL4pJVmWFWtjnpTHpdN"
+
+# Additional Streamflow-related programs that may appear in lock transactions
+# The vesting program creates PDAs and interacts with these
+STREAMFLOW_PROGRAMS = {
+    "strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m",  # Main vesting program
+}
 
 
 @dataclass
@@ -45,10 +51,7 @@ class StreamflowTracker:
     
     def is_streamflow_lock(self, program_ids: list) -> bool:
         """Check if transaction involves Streamflow locking."""
-        is_lock = (
-            STREAMFLOW_PROGRAM in program_ids or 
-            STREAMFLOW_TOKEN_PROGRAM in program_ids
-        )
+        is_lock = any(pid in STREAMFLOW_PROGRAMS for pid in program_ids)
         if is_lock:
             logger.info(f"🔒 [Streamflow] LOCK TX DETECTED: programs={[p[:8]+'...' for p in program_ids[:3]]}")
         return is_lock

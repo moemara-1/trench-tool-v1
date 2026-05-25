@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import init_database, init_redis, close_database, close_redis
 from services.solana_listener import get_solana_listener
-from bsc.bsc_listener import get_bsc_listener
+
 
 # Configure logging
 logging.basicConfig(
@@ -32,7 +32,7 @@ bsc_listener_task = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    global solana_listener_task, bsc_listener_task
+    global solana_listener_task
 
     logger.info("🚀 Starting Trench Tool V1...")
 
@@ -46,12 +46,7 @@ async def lifespan(app: FastAPI):
     solana_listener_task = asyncio.create_task(solana_listener.start())
     logger.info("🟣 Solana listener started")
     
-    # Start BSC listener as background task
-    bsc_listener = get_bsc_listener()
-    bsc_listener_task = asyncio.create_task(bsc_listener.start())
-    logger.info("🟡 BSC listener started")
-    
-    logger.info("✅ Trench Tool V1 is running! (Solana + BSC)")
+    logger.info("✅ Trench Tool V1 is running! (Solana)")
     
     yield
     
@@ -67,15 +62,6 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             pass
     
-    # Stop BSC listener
-    await bsc_listener.stop()
-    if bsc_listener_task:
-        bsc_listener_task.cancel()
-        try:
-            await bsc_listener_task
-        except asyncio.CancelledError:
-            pass
-
     # Close database and Redis connections
     await close_database()
     await close_redis()
@@ -86,7 +72,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="Trench Tool V1",
-    description="Solana + BSC fresh wallet detection bot with BBB-style alerts",
+    description="Solana fresh wallet detection bot with BBB-style alerts",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -106,17 +92,10 @@ app.add_middleware(
 async def health_check():
     """Health check endpoint."""
     solana_listener = get_solana_listener()
-    bsc_listener = get_bsc_listener()
     
     return {
         "status": "healthy",
         "solana": solana_listener.get_stats(),
-        "bsc": {
-            "tx_received": bsc_listener._tx_received,
-            "tx_processed": bsc_listener._tx_processed,
-            "alerts_sent": bsc_listener._alerts_sent,
-            "errors": bsc_listener._errors,
-        },
     }
 
 
@@ -125,16 +104,9 @@ async def health_check():
 async def get_stats():
     """Get overall system statistics."""
     solana_listener = get_solana_listener()
-    bsc_listener = get_bsc_listener()
     
     return {
         "solana": solana_listener.get_stats(),
-        "bsc": {
-            "tx_received": bsc_listener._tx_received,
-            "tx_processed": bsc_listener._tx_processed,
-            "alerts_sent": bsc_listener._alerts_sent,
-            "errors": bsc_listener._errors,
-        },
     }
 
 

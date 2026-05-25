@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import httpx
 
 from config import settings
+from services.rpc_manager import get_rpc_manager
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +50,10 @@ class SNSTracker:
         
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Helius DAS API for domain lookup
+                # Helius DAS API for domain lookup (requires Helius endpoint)
+                rpc_url = get_rpc_manager().get_rpc_url()
                 response = await client.post(
-                    settings.solana_rpc_url,
+                    rpc_url,
                     json={
                         "jsonrpc": "2.0",
                         "id": 1,

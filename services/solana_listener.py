@@ -17,6 +17,8 @@ from services.tx_tracker import get_tx_tracker
 from services.rpc_manager import get_rpc_manager
 from alerts.telegram_bot import get_telegram_bot
 from alerts.channel_router import get_channel_router, FreshieChannel
+from services.late_migration_tracker import get_late_migration_tracker
+from services.strong_launch_tracker import get_strong_launch_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -269,7 +271,7 @@ class SolanaListener:
         self._errors = 0
         
         # Rate limiting - max 5 concurrent RPC requests
-        self._rpc_semaphore = asyncio.Semaphore(5)
+        self._rpc_semaphore = asyncio.Semaphore(2)  # Reduced from 5 to stay under rate limits
         self._tx_queue: asyncio.Queue = asyncio.Queue()  # Unbounded queue - drop nothing
     
     def detect_launchpad(self, program_ids: list) -> tuple:
@@ -684,10 +686,7 @@ MC: {mc_str} | CA: {age_str}
 ✅ Smart Socials (FrontrunPro + Gemini)
 ✅ Strong Launches & Floors
 ✅ Late Migrations & Dev Tracking
-
-<b>BSC Monitors:</b>
-✅ Fresh & Dormant Tracking
-✅ DEX Monitoring (Pancake, etc.)
+✅ Max Market Cap Filter (<$100M)
 
 <b>Infrastructure:</b>
 📡 Helius RPC: Connected
@@ -695,11 +694,13 @@ MC: {mc_str} | CA: {age_str}
 🔌 FrontrunPro Extension: Loaded"""
 
             topic_id = settings.telegram_feedback_topic_id if settings.telegram_feedback_topic_id > 0 else None
+            if not topic_id:
+                logger.info("Startup stats suppressed because feedback topic is disabled")
             
             logger.info(f"📢 Sending startup stats to Topic ID: {topic_id}")
             
-            # Fallback to general channel if no feedback topic set
-            await self.telegram.send_alert(startup_msg, topic_id=topic_id)
+            if topic_id:
+                await self.telegram.send_alert(startup_msg, topic_id=topic_id)
         except Exception as e:
             logger.error(f"Failed to send startup alert: {e}")
         
@@ -925,7 +926,7 @@ MC: {mc_str} | CA: {age_str}
                 signature = await asyncio.wait_for(self._tx_queue.get(), timeout=5.0)
                 
                 # Process with rate limiting delay
-                await asyncio.sleep(0.3)  # 300ms between requests per worker
+                await asyncio.sleep(0.5)  # 500ms between requests per worker to stay under limits
                 await self._fetch_and_process_tx(signature)
                 
             except asyncio.TimeoutError:
@@ -941,8 +942,8 @@ MC: {mc_str} | CA: {age_str}
         # Use semaphore to limit concurrent RPC requests
         async with self._rpc_semaphore:
             try:
-                # Small delay to spread out requests
-                await asyncio.sleep(0.1)
+                # Larger delay to stay under rate limits (100ms = 10 req/s per worker)
+                await asyncio.sleep(0.25)
                 
                 tx_payload = {
                     "jsonrpc": "2.0",
@@ -958,7 +959,7 @@ MC: {mc_str} | CA: {age_str}
                 if tx_response.status_code == 429:
                     self.rpc_manager.report_error(rpc_url, is_rate_limit=True)
                     logger.warning(f"Rate limited on {rpc_url[-20:]}, rotating and retrying...")
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(2.0)  # Wait longer before retry
                     rpc_url = self.rpc_manager.get_rpc_url()  # Get next endpoint
                     tx_response = await self._http_client.post(rpc_url, json=tx_payload)
 
@@ -1124,23 +1125,7 @@ MC: {mc_str} | CA: {age_str}
             # 3. WSOL Change: Catches Wrapped SOL swaps
             sol_spent = max(balance_change, sol_transferred, wsol_change)
 
-            # DEBUG LOGGING for 0.00 SOL investigation
-            if sol_spent < 0.01:
-                 # Only log if we found a token transfer but no SOL spent (suspicious)
-                 has_token_transfer = False
-                 for post in post_tokens:
-                     if post.get("mint") not in EXCLUDED_TOKENS and post.get("mint") != WSOL_MINT:
-                         # Check if balance increased
-                         pre_amt = 0
-                         for pre in pre_tokens:
-                             if pre.get("mint") == post.get("mint"):
-                                 pre_amt = pre.get("uiTokenAmount", {}).get("uiAmount", 0) or 0
-                         if (post.get("uiTokenAmount", {}).get("uiAmount", 0) or 0) > pre_amt:
-                             has_token_transfer = True
-                             break
-                 
-                 if has_token_transfer:
-                     logger.warning(f"⚠️ SUSPICIOUS 0.00 SOL: Sig={signature} | BalChange={balance_change:.4f} | InnerTrans={sol_transferred:.4f} | WSOLChange={wsol_change:.4f}")
+
 
             # If still roughly 0, logging will catch it later.
             
@@ -1158,6 +1143,9 @@ MC: {mc_str} | CA: {age_str}
                 if mint in EXCLUDED_TOKENS:
                     continue
                 
+                if post.get("owner") != wallet:
+                    continue
+                
                 post_amount = post.get("uiTokenAmount", {}).get("uiAmount", 0) or 0
                 
                 pre_amount = 0
@@ -1170,6 +1158,45 @@ MC: {mc_str} | CA: {age_str}
                     token_mint = mint
                     token_bought = post_amount - pre_amount
                     break
+                elif post_amount < pre_amount:
+                    token_mint = mint
+                    token_sold = pre_amount - post_amount
+                    is_sell = True
+                    is_full_sell = (post_amount == 0)
+                    
+                    # Process Sell immediately (update stats)
+                    # We need the DB session for this, so we do it inside a session block or fire-and-forget?
+                    # The listener is async, so we can await. But we need a session.
+                    # freshies_tracker needs a session.
+                    # For performance, maybe we create a quick session just for this update?
+                    from database import get_db_session
+                    from models import Wallet, Token, WalletType
+                    from sqlalchemy import select
+                    
+                    try:
+                        async with get_db_session() as session:
+                             # Ensure token/wallet exist
+                             token_db = await self.freshies_tracker.get_or_create_token(session, token_mint)
+                             result = await session.execute(select(Wallet).where(Wallet.address == wallet))
+                             wallet_db = result.scalar_one_or_none()
+                             
+                             if wallet_db and wallet_db.wallet_type == WalletType.FRESH: # Only track freshie sells
+                                 await self.freshies_tracker.process_token_sell(
+                                     session=session,
+                                     wallet=wallet_db,
+                                     token=token_db,
+                                     tx_signature=signature,
+                                     amount_tokens=token_sold,
+                                     is_full_sell=is_full_sell
+                                 )
+                                 await session.commit()
+                                 sell_type = "Full" if is_full_sell else "Partial"
+                                 logger.info(f"📉 Freshie {sell_type} Sell: {wallet[:8]}... sold {token_sold:.2f} tokens of {token_mint[:8]}...")
+                    except Exception as e:
+                        logger.error(f"Error processing sell: {e}")
+                    
+                    # We don't alert on sells in this loop (yet), so we return to avoid treating it as a buy
+                    return
             
             if not token_mint or token_mint in EXCLUDED_TOKENS:
                 logger.info(f"🚫 No valid mint / Excluded: {token_mint}")
@@ -1283,6 +1310,24 @@ MC: {mc_str} | CA: {age_str}
                     self.dev_held_tracker.record_dev_wallet(token_mint, wallet, 1_000_000_000.0)
             
             
+            # === LATE BONDING DETECTION (Pump.fun -> Raydium Migration) ===
+            late_bonding = await self.late_migration_tracker.check_late_bonding(token_mint, program_ids)
+            if late_bonding:
+                 # Fetch token data for the alert
+                lb_token_data = await self.token_fetcher.get_token_data(token_mint)
+                if lb_token_data:
+                    migration_msg = await self.late_migration_tracker.format_late_migration_alert(
+                        ticker=lb_token_data.symbol,
+                        token_name=lb_token_data.name,
+                        contract_address=token_mint,
+                        delay_hours=late_bonding.delay_hours,
+                        market_cap_str=lb_token_data.mc_string,
+                    )
+                    # Send to Late Migration topic
+                    migration_topic = settings.telegram_late_migration_topic_id
+                    await self.telegram.send_alert(migration_msg, topic_id=migration_topic)
+                    self.late_migration_tracker.increment_alerts()
+            
             alert_msg, classification = await self.format_alert(
                 token_address=token_mint,
                 wallet_address=wallet,
@@ -1298,8 +1343,17 @@ MC: {mc_str} | CA: {age_str}
                     # 1. Analyze Creator
                     # We assume the wallet in a freshie alert *might* be the creator/early buyer
                     #Ideally we'd fetch the actual mint tx, but evaluating the current wallet is a good proxy for "early whale"
-                    creator_profile = await self.creator_analyzer.analyze_creator(wallet)
-                    
+                    logger.info(f"👑 [Creator] Analyzing first-seen token creator: {wallet[:8]}...")
+                    try:
+                        creator_profile = await self.creator_analyzer.analyze_creator(wallet)
+                        if creator_profile:
+                            logger.info(f"👑 [Creator] Profile: wallet={wallet[:8]}... | is_good={creator_profile.is_good_creator} | value=${creator_profile.total_wallet_value_usd:,.0f} | score={creator_profile.score}")
+                        else:
+                            logger.info(f"👑 [Creator] No profile returned for {wallet[:8]}...")
+                    except Exception as e:
+                        logger.error(f"👑 [Creator] Error analyzing {wallet[:8]}...: {e}")
+                        creator_profile = None
+
                     if creator_profile and self.creator_analyzer.check_is_good_creator(creator_profile) and self.creator_analyzer.should_alert(wallet):
                         # Send Good Creator Alert
                         # Need token data again if format_alert didn't cache it publicly (it doesn't)
@@ -1339,6 +1393,10 @@ MC: {mc_str} | CA: {age_str}
                 # If valid freshie, check if it's a strong launch
                 token_data = await self.token_fetcher.get_token_data(token_mint)
                 if token_data:
+                    # FILTER: Max Market Cap Check
+                    if settings.max_market_cap > 0 and token_data.market_cap and token_data.market_cap > settings.max_market_cap:
+                         logger.info(f"🚫 IGNORED: {token_data.symbol} MC ${token_data.market_cap:,.0f} > ${settings.max_market_cap:,.0f} limit")
+                         return
                     # Gather scores (simulated/placeholder logic for now as we build up history)
                     # In real impl, we'd pull from compiled risk score
                     creator_score = 50 + (25 if creator_profile and creator_profile.is_good_creator else 0)
@@ -1413,13 +1471,17 @@ MC: {mc_str} | CA: {age_str}
                     logger.error(f"❌ Failed to send alert for {token_mint}")
             else:
                 # Log why alert was not generated
-                logger.info(f"🚫 NO ALERT: {sol_spent:.2f} SOL | Wallet age: {classification.wallet_age_hours}h | TX count: {classification.wallet_tx_count} | Valid: {classification.is_valid_alert}")
+                mc = classification.market_cap
+                mc_str = f"${mc:,.0f}" if mc else "?"
+                logger.info(f"🚫 NO ALERT: {sol_spent:.2f} SOL | MC: {mc_str} | Wallet age: {classification.wallet_age_hours}h | TX count: {classification.wallet_tx_count} | Valid: {classification.is_valid_alert}")
                 if classification.wallet_tx_count > 50:
                     logger.info(f"   └─ Reason: Wallet has {classification.wallet_tx_count} txs (max 50 for freshie)")
                 elif classification.wallet_age_hours >= 60*24:
                     logger.info(f"   └─ Reason: Wallet too old ({classification.wallet_age_hours}h = {classification.wallet_age_hours//24}d, max 60d)")
-                elif sol_spent < 0.47:
-                    logger.info(f"   └─ Reason: Amount {sol_spent:.2f} SOL < 0.47 SOL minimum")
+                elif sol_spent < settings.min_transaction_sol:
+                    logger.info(f"   └─ Reason: Amount {sol_spent:.2f} SOL < {settings.min_transaction_sol} SOL minimum")
+                elif mc and mc < settings.min_market_cap:
+                    logger.info(f"   └─ Reason: Market cap ${mc:,.0f} < ${settings.min_market_cap:,.0f} minimum")
             
             # === DORMANT WALLET DETECTION ===
             # Check if wallet qualifies for dormant alert (separate from freshies)
@@ -1436,6 +1498,9 @@ MC: {mc_str} | CA: {age_str}
                 # A truly dormant wallet has few txs spread over a long time
                 avg_txs_per_day = tx_count / max(age_days, 1)
                 is_low_activity = avg_txs_per_day < 5  # Less than 5 txs per day on average
+
+                # LOGGING FOR VERIFICATION
+                logger.info(f"🔍 [Dormant Check] {wallet[:8]}... | Age={age_days}d | TxCount={tx_count} | AvgTx={avg_txs_per_day:.1f}/d | LowActivity={is_low_activity}")
                 
                 # Use age_days as days_inactive if low activity, otherwise estimate
                 if is_low_activity and age_days >= settings.dormant_min_days:
@@ -1580,21 +1645,22 @@ MC: {mc_str} | CA: {age_str}
             
             if bundle_info:
                 # Calculate supply percentage if we have token data
-                if token_data and token_data.total_supply and token_data.total_supply > 0:
-                    bundle_info.supply_percent = (bundle_info.total_token_amount / token_data.total_supply) * 100
-                    
+                total_supply = getattr(token_data, 'total_supply', None) if token_data else None
+                if total_supply and total_supply > 0:
+                    bundle_info.supply_percent = (bundle_info.total_token_amount / total_supply) * 100
+
+                if token_data:
                     is_opening = token_data.age_minutes < 2 if token_data.age_minutes is not None else False
                     bundle_info.is_opening_bundle = bundle_info.is_opening_bundle or is_opening
                 
                 # BUNDLE ALERT CRITERIA:
-                # 1. Opening Bundle: Must exceed 1.0% supply
-                # 2. Regular Bundle: Must exceed 60 coordination score
+                # Only alert for OPENING bundles (at start of trading/launch)
+                # Must be opening bundle with >1% supply or coordination score >= 60
                 should_alert = False
                 if bundle_info.is_opening_bundle:
-                    if bundle_info.supply_percent >= 1.0:
+                    if bundle_info.supply_percent >= 1.0 or bundle_info.coordination_score >= 60:
                         should_alert = True
-                elif bundle_info.coordination_score >= 60:
-                    should_alert = True
+                        logger.info(f"📦 Opening bundle qualifies: supply={bundle_info.supply_percent:.2f}%, score={bundle_info.coordination_score:.0f}")
                 
                 if should_alert:
                     # Alert on coordinated activity (bundles)

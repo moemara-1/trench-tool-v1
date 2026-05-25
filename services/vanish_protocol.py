@@ -15,11 +15,16 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 
-# Vanish Protocol program IDs (Vanish uses multiple programs)
-VANISH_PROGRAM_IDS = {
-    "vanish1111111111111111111111111111111111111",  # Main Vanish
-    "VANish2222222222222222222222222222222222222",  # Vanish Router
-}
+# Vanish Protocol program IDs
+# NOTE: Vanish Protocol (vanish.trade) operates as a privacy routing layer
+# that routes trades through shared addresses. It integrates with Axiom
+# and other DEXes but doesn't have a dedicated on-chain program that can
+# be easily detected via program IDs. The detection is currently disabled
+# until Vanish publishes official program addresses.
+#
+# TODO: Update with real program IDs when Vanish releases documentation
+# For now, detection is effectively disabled with empty set
+VANISH_PROGRAM_IDS = set()  # Disabled - no valid program IDs available
 
 # Known launchpad programs for emoji classification
 LAUNCHPAD_PROGRAMS = {

@@ -11,8 +11,10 @@ from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
+from best_signals import BestSignalRouter, candidate_from_v1_message
 from config import settings
 from models import AlertPriority
+from quality_budget import PriorityDailyBudget, is_signal_alert_message
 
 logger = logging.getLogger(__name__)
 
@@ -233,28 +235,73 @@ MC: {market_cap_str} | CA: {coin_age_str} {x_link}
         if not target_chat:
             logger.warning("No chat_id configured, skipping Telegram alert")
             return None
+
+        is_signal_message = is_signal_alert_message(message)
+        if is_signal_message:
+            if not topic_id or topic_id <= 0:
+                logger.warning("Blocked signal alert with no configured topic")
+                return None
+            if settings.telegram_feedback_topic_id and topic_id == settings.telegram_feedback_topic_id:
+                logger.warning("Blocked signal alert routed to Feedback topic")
+                return None
         
         try:
-            # Build kwargs for send_message
-            kwargs = {
-                "chat_id": target_chat,
-                "text": message,
-                "parse_mode": ParseMode.HTML,
-                "disable_web_page_preview": True,
-                "disable_notification": disable_notification,
-            }
-            
-            # Add topic ID if specified (for Forum groups)
-            if topic_id and topic_id > 0:
-                kwargs["message_thread_id"] = topic_id
-            
-            result = await self.bot.send_message(**kwargs)
-            logger.info(f"Sent Telegram alert, message_id: {result.message_id}")
-            return result.message_id
+            message_id = await self._send_message(
+                message=message,
+                chat_id=target_chat,
+                topic_id=topic_id,
+                disable_notification=disable_notification,
+            )
+            if message_id and is_signal_message:
+                await self._maybe_send_best_signal(message, source_topic_id=topic_id)
+            return message_id
             
         except TelegramError as e:
             logger.error(f"Failed to send Telegram alert: {e}")
             return None
+
+    async def _send_message(
+        self,
+        message: str,
+        chat_id: str,
+        topic_id: int = None,
+        disable_notification: bool = False,
+    ) -> Optional[int]:
+        kwargs = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": ParseMode.HTML,
+            "disable_web_page_preview": True,
+            "disable_notification": disable_notification,
+        }
+        if topic_id and topic_id > 0:
+            kwargs["message_thread_id"] = topic_id
+
+        result = await self.bot.send_message(**kwargs)
+        logger.info(f"Sent Telegram alert, message_id: {result.message_id}")
+        return result.message_id
+
+    async def _maybe_send_best_signal(self, message: str, source_topic_id: int | None) -> None:
+        best_topic_id = settings.telegram_best_signals_topic_id
+        if best_topic_id <= 0 or source_topic_id == best_topic_id:
+            return
+        candidate = candidate_from_v1_message(message)
+        if not candidate:
+            return
+        router = get_best_signal_router()
+        if not router.queue(candidate):
+            return
+
+        async def send_best(text: str) -> bool:
+            message_id = await self._send_message(
+                message=text,
+                chat_id=self.chat_id,
+                topic_id=best_topic_id,
+                disable_notification=False,
+            )
+            return message_id is not None
+
+        await router.flush(send_best)
     
     async def send_freshie_alert(
         self,
@@ -351,6 +398,8 @@ LS: {last_seen_days}d | CA: {coin_age_str}
 
 # Singleton instance
 _telegram_bot: TelegramAlertBot | None = None
+_alert_quality_budget: PriorityDailyBudget | None = None
+_best_signal_router: BestSignalRouter | None = None
 
 
 def get_telegram_bot() -> TelegramAlertBot:
@@ -359,3 +408,27 @@ def get_telegram_bot() -> TelegramAlertBot:
     if _telegram_bot is None:
         _telegram_bot = TelegramAlertBot()
     return _telegram_bot
+
+
+def get_alert_quality_budget() -> PriorityDailyBudget:
+    """Get the singleton V1 quality-aware Telegram budget."""
+    global _alert_quality_budget
+    if _alert_quality_budget is None:
+        _alert_quality_budget = PriorityDailyBudget(
+            daily_cap=settings.alert_daily_cap,
+            min_score=settings.alert_min_quality_score,
+            standard_daily_cap=settings.alert_standard_daily_cap,
+            high_daily_cap=settings.alert_high_daily_cap,
+        )
+    return _alert_quality_budget
+
+
+def get_best_signal_router() -> BestSignalRouter:
+    """Get the singleton V1 best-signal router."""
+    global _best_signal_router
+    if _best_signal_router is None:
+        _best_signal_router = BestSignalRouter(
+            daily_cap=settings.best_signals_daily_cap,
+            min_score=settings.best_signals_min_score,
+        )
+    return _best_signal_router

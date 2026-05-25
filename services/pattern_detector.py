@@ -160,6 +160,13 @@ class PatternDetector:
             from alerts.telegram_bot import get_telegram_bot
             self._telegram = get_telegram_bot()
         return self._telegram
+
+    def _destination_topic_id(self) -> Optional[int]:
+        """Return the configured Patterns topic, or None when disabled."""
+        topic_id = getattr(settings, "telegram_patterns_topic_id", 0)
+        if topic_id and topic_id > 0:
+            return topic_id
+        return None
     
     def _get_or_create_token(self, token_address: str) -> TokenPatternState:
         """Get or create token state."""
@@ -395,12 +402,17 @@ class PatternDetector:
         # Format alert (async to fetch pair address for Axiom)
         alert = await self._format_pattern_alert(state, pattern_type, trigger_count, extra_data)
         
-        # Send to Telegram
-        topic_id = getattr(settings, 'telegram_patterns_topic_id', None)
-        if topic_id and topic_id > 0:
-            await self._get_telegram().send_alert(alert, topic_id=topic_id)
-        else:
-            await self._get_telegram().send_alert(alert)
+        # Send to Telegram only when a producer-backed patterns topic is configured.
+        # Sending without a topic lands in Telegram's General topic, which this group uses as Feedback.
+        topic_id = self._destination_topic_id()
+        if not topic_id:
+            logger.info(
+                "Pattern alert suppressed because the patterns topic is disabled: %s",
+                state.symbol,
+            )
+            return
+
+        await self._get_telegram().send_alert(alert, topic_id=topic_id)
         
         logger.info(f"🧪 Pattern triggered: {pattern_type.value} for {state.symbol}")
     

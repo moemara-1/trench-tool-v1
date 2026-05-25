@@ -60,13 +60,33 @@ class Settings(BaseSettings):
         default=30,
         description="Cooldown between duplicate alerts"
     )
+    alert_daily_cap: int = Field(
+        default=30,
+        description="Maximum V1 signal alerts per day across Telegram topics"
+    )
+    alert_min_quality_score: int = Field(
+        default=70,
+        description="Minimum heuristic quality score for V1 signal alerts"
+    )
+    alert_standard_daily_cap: int = Field(
+        default=8,
+        description="Daily cap for standard-quality V1 signal alerts"
+    )
+    alert_high_daily_cap: int = Field(
+        default=15,
+        description="Daily cap for high-quality V1 signal alerts"
+    )
     min_transaction_sol: float = Field(
-        default=0.47,
+        default=0.1,  # Lowered from 0.47 to allow more alerts
         description="Minimum transaction size to track"
     )
     min_market_cap: float = Field(
-        default=15000,
+        default=5000,  # Lowered from 15000 to allow more alerts
         description="Minimum market cap to alert (filter out micro caps)"
+    )
+    max_market_cap: float = Field(
+        default=100000000,
+        description="Maximum market cap to alert (filter out huge caps)"
     )
     
     # Fresh Wallet Thresholds
@@ -91,7 +111,7 @@ class Settings(BaseSettings):
     
     # Dormant Wallet Settings
     min_dormant_sol: float = Field(
-        default=3.0,
+        default=0.5,
         description="Minimum SOL for Dormants alert"
     )
     dormant_min_days: int = Field(
@@ -171,6 +191,18 @@ class Settings(BaseSettings):
     telegram_feedback_topic_id: int = Field(
         default=0,
         description="Topic ID for Feedback/Startup messages"
+    )
+    telegram_best_signals_topic_id: int = Field(
+        default=0,
+        description="Topic ID for the strongest cross-channel signals"
+    )
+    best_signals_daily_cap: int = Field(
+        default=7,
+        description="Maximum Best Signals messages per day"
+    )
+    best_signals_min_score: int = Field(
+        default=95,
+        description="Minimum quality score for Best Signals"
     )
     
     # Token Verification Settings

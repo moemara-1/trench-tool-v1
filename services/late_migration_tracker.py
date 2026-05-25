@@ -48,6 +48,8 @@ class LateMigrationTracker:
     
     # Threshold for "late" bonding (hours) - 24 hours = 1 day
     LATE_THRESHOLD_HOURS = 24
+    # Maximum age: Only alert for tokens that bonded within last 7 days
+    MAX_BONDING_AGE_DAYS = 7
     
     def __init__(self):
         # Track late bondings: token -> LateBonding
@@ -102,66 +104,82 @@ class LateMigrationTracker:
         program_ids: list,
     ) -> Optional[LateBonding]:
         """
-        Check if a bonding curve completion happened late (1+ day after launch).
-        
+        Check if a token migration/bonding happened late (1+ day after launch).
+
+        Detection strategy:
+        - Raydium AMM presence indicates migration (token graduated from pump.fun)
+        - We check the token's original launch time via DexScreener
+        - If the token was created 24h+ before this Raydium tx, it's a "late migration"
+
         Args:
             token_address: The token mint address
             program_ids: Program IDs from the transaction
-            
+
         Returns:
             LateBonding if this is a late bonding event, None otherwise
         """
-        # Only check pump.fun + Raydium migrations (bonding curve completions)
-        if PUMPFUN_PROGRAM not in program_ids:
+        # Check for Raydium migration (token graduating to Raydium pool)
+        # OR pump.fun transaction (could be initial launch or bonding completion)
+        is_raydium_tx = RAYDIUM_AMM in program_ids
+        is_pumpfun_tx = PUMPFUN_PROGRAM in program_ids
+
+        # We're interested in Raydium migrations OR pump.fun bonding events
+        if not is_raydium_tx and not is_pumpfun_tx:
             return None
-        
-        # Raydium AMM indicates the bonding curve completed and migrated
-        if RAYDIUM_AMM not in program_ids:
-            return None
-        
+
         # Already tracked this token
         if token_address in self._late_bondings:
             return None
-        
-        logger.debug(f"[LateMigration] Checking bonding for {token_address[:12]}...")
-        
+
+        logger.debug(f"[LateMigration] Checking migration for {token_address[:12]}... (raydium={is_raydium_tx}, pumpfun={is_pumpfun_tx})")
+
         # Get when this token was originally launched
         launch_time = await self.get_token_launch_time(token_address)
-        
+
         if not launch_time:
             logger.debug(f"[LateMigration] Could not fetch launch time for {token_address[:12]}")
             return None
-        
-        bonding_time = datetime.utcnow()
-        delay = bonding_time - launch_time
+
+        now = datetime.utcnow()
+        delay = now - launch_time
         delay_hours = int(delay.total_seconds() / 3600)
-        delay_days = delay.total_seconds() / 86400  # 86400 seconds in a day
-        
+        delay_days = delay.total_seconds() / 86400
+
         is_late = delay_hours >= self.LATE_THRESHOLD_HOURS
-        
+        is_too_old = delay_days > self.MAX_BONDING_AGE_DAYS
+
+        # Skip if token is too old (bonded more than 7 days ago)
+        if is_too_old:
+            logger.debug(
+                f"[LateMigration] Token too old: {token_address[:12]}... | "
+                f"launched={delay_days:.1f}d ago (max={self.MAX_BONDING_AGE_DAYS}d)"
+            )
+            return None
+
         if is_late:
             late_bonding = LateBonding(
                 token_address=token_address,
                 launch_time=launch_time,
-                bonding_time=bonding_time,
+                bonding_time=now,
                 delay_hours=delay_hours,
                 delay_days=delay_days,
                 is_late=True,
             )
-            
+
             self._late_bondings[token_address] = late_bonding
-            
+
+            migration_type = "RAYDIUM MIGRATION" if is_raydium_tx else "PUMP.FUN BONDING"
             logger.info(
-                f"🕐 [LateMigration] LATE BONDING DETECTED: "
+                f"🕐 [LateMigration] LATE {migration_type} DETECTED: "
                 f"token={token_address[:12]}... | "
                 f"launched={delay_days:.1f}d ago | "
                 f"threshold={self.LATE_THRESHOLD_HOURS}h"
             )
-            
+
             return late_bonding
         else:
             logger.debug(
-                f"[LateMigration] Normal bonding: {token_address[:12]}... | "
+                f"[LateMigration] Normal timing: {token_address[:12]}... | "
                 f"launched={delay_hours}h ago (threshold={self.LATE_THRESHOLD_HOURS}h)"
             )
             return None

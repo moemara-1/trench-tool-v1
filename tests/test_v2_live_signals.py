@@ -1,0 +1,597 @@
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from best_signals import BestSignalRouter
+from trench_v2.config import V2Settings
+from trench_v2.core.models import Chain, RiskLevel, RiskReport
+from trench_v2.engine.live_signals import LiveSignalWorker
+from trench_v2.providers.dexscreener import DexPair, DexTokenProfile
+
+
+class FakeDiscoveryProvider:
+    def __init__(self, pair: DexPair | None):
+        self.pair = pair
+        self.best_pair_calls = 0
+
+    async def latest_profiles(self):
+        return [DexTokenProfile(chain=Chain.BASE, address="0xabc")]
+
+    async def best_pair(self, profile):
+        self.best_pair_calls += 1
+        return self.pair
+
+
+class MultiDiscoveryProvider:
+    def __init__(self, pairs: list[DexPair]):
+        self.pairs = {pair.token_address: pair for pair in pairs}
+
+    async def latest_profiles(self):
+        return [
+            DexTokenProfile(chain=pair.chain, address=pair.token_address)
+            for pair in self.pairs.values()
+        ]
+
+    async def best_pair(self, profile):
+        return self.pairs.get(profile.address)
+
+
+class FakeSender:
+    def __init__(self):
+        self.messages = []
+
+    async def send(self, topic_id: int, text: str) -> bool:
+        self.messages.append((topic_id, text))
+        return True
+
+
+class FakeRiskProvider:
+    def __init__(self, report: RiskReport):
+        self.report = report
+        self.calls = []
+
+    async def fetch_risk(self, chain: Chain, address: str) -> RiskReport:
+        self.calls.append((chain, address))
+        return self.report
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_sends_low_mc_profile_to_configured_topic():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xabc",
+        symbol="BASE",
+        name="Base Token",
+        url="https://dexscreener.com/base/0xabc",
+        market_cap_usd=250_000,
+        liquidity_usd=20_000,
+        volume_24h_usd=100_000,
+        buys_5m=8,
+        buys_1h=50,
+        buys_24h=200,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=20),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "123",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "2",
+                "V2_SIGNAL_MIN_QUALITY": "70",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert sent[0].topic_env_key == "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID"
+    assert sender.messages[0][0] == 123
+    assert "V2 BASE Low Mc Freshies" in sender.messages[0][1]
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_emits_best_real_candidate_per_configured_topic():
+    now = datetime.now(timezone.utc)
+    pairs = [
+        DexPair(
+            chain=Chain.ETHEREUM,
+            token_address="0xethbig",
+            symbol="EBIG",
+            name="ETH Big",
+            url=None,
+            market_cap_usd=2_000_000,
+            liquidity_usd=120_000,
+            volume_24h_usd=260_000,
+            buys_5m=30,
+            buys_1h=180,
+            buys_24h=600,
+            pair_created_at=now - timedelta(minutes=30),
+        ),
+        DexPair(
+            chain=Chain.ETHEREUM,
+            token_address="0xethlow",
+            symbol="ELOW",
+            name="ETH Low",
+            url=None,
+            market_cap_usd=250_000,
+            liquidity_usd=60_000,
+            volume_24h_usd=160_000,
+            buys_5m=12,
+            buys_1h=80,
+            buys_24h=240,
+            pair_created_at=now - timedelta(minutes=40),
+        ),
+        DexPair(
+            chain=Chain.BASE,
+            token_address="0xbaselow",
+            symbol="BLOW",
+            name="Base Low",
+            url=None,
+            market_cap_usd=180_000,
+            liquidity_usd=70_000,
+            volume_24h_usd=180_000,
+            buys_5m=18,
+            buys_1h=90,
+            buys_24h=260,
+            pair_created_at=now - timedelta(minutes=25),
+        ),
+        DexPair(
+            chain=Chain.BSC,
+            token_address="0xbnbbig",
+            symbol="BBIG",
+            name="BNB Big",
+            url=None,
+            market_cap_usd=3_000_000,
+            liquidity_usd=130_000,
+            volume_24h_usd=280_000,
+            buys_5m=28,
+            buys_1h=170,
+            buys_24h=550,
+            pair_created_at=now - timedelta(minutes=35),
+        ),
+        DexPair(
+            chain=Chain.BSC,
+            token_address="0xbnblow",
+            symbol="BLOW",
+            name="BNB Low",
+            url=None,
+            market_cap_usd=200_000,
+            liquidity_usd=55_000,
+            volume_24h_usd=140_000,
+            buys_5m=11,
+            buys_1h=75,
+            buys_24h=230,
+            pair_created_at=now - timedelta(minutes=45),
+        ),
+    ]
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_ETH_FRESHIES_TOPIC_ID": "101",
+                "TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID": "102",
+                "TELEGRAM_ETH_LOW_MC_FRESHIES_TOPIC_ID": "103",
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "202",
+                "TELEGRAM_BASE_DEPLOYS_TOPIC_ID": "203",
+                "TELEGRAM_BNB_FRESHIES_TOPIC_ID": "301",
+                "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": "302",
+                "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID": "303",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "9",
+            }
+        ),
+        provider=MultiDiscoveryProvider(pairs),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    sent = await worker.run_once()
+
+    sent_topics = {signal.topic_env_key for signal in sent}
+    assert sent_topics == {
+        "TELEGRAM_ETH_FRESHIES_TOPIC_ID",
+        "TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID",
+        "TELEGRAM_ETH_LOW_MC_FRESHIES_TOPIC_ID",
+        "TELEGRAM_BASE_FRESHIES_TOPIC_ID",
+        "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID",
+        "TELEGRAM_BASE_DEPLOYS_TOPIC_ID",
+        "TELEGRAM_BNB_FRESHIES_TOPIC_ID",
+        "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID",
+        "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID",
+    }
+    assert [topic_id for topic_id, _ in sender.messages] == [102, 101, 302, 301, 103, 203, 202, 201, 303]
+    assert worker.stats.alerts_by_topic["TELEGRAM_BASE_DEPLOYS_TOPIC_ID"] == 1
+    assert worker.stats.candidates_by_topic["TELEGRAM_ETH_FRESHIES_TOPIC_ID"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_dedupes_repeated_profiles():
+    pair = DexPair(
+        chain=Chain.BSC,
+        token_address="0xabc",
+        symbol="BNB",
+        name="BNB Token",
+        url=None,
+        market_cap_usd=5_000_000,
+        liquidity_usd=50_000,
+        volume_24h_usd=90_000,
+        buys_5m=8,
+        buys_1h=70,
+        buys_24h=220,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env({"TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": "456"}),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    assert len(await worker.run_once()) == 1
+    assert await worker.run_once() == []
+    assert len(sender.messages) == 1
+    assert worker.stats.deduped == 1
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_skips_unconfigured_topic():
+    pair = DexPair(
+        chain=Chain.ETHEREUM,
+        token_address="0xabc",
+        symbol="ETH",
+        name="ETH Token",
+        url=None,
+        market_cap_usd=200_000,
+        liquidity_usd=20_000,
+        volume_24h_usd=90_000,
+        buys_5m=8,
+        buys_1h=70,
+        buys_24h=220,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings(),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    assert await worker.run_once() == []
+    assert sender.messages == []
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_enforces_daily_cap():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xabc",
+        symbol="CAP",
+        name="Cap Token",
+        url=None,
+        market_cap_usd=200_000,
+        liquidity_usd=20_000,
+        volume_24h_usd=90_000,
+        buys_5m=8,
+        buys_1h=70,
+        buys_24h=220,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "123",
+                "V2_SIGNAL_DAILY_CAP": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    assert len(await worker.run_once()) == 1
+    worker._sent_keys.clear()
+    assert await worker.run_once() == []
+    assert worker.stats.daily_sent == 1
+    assert len(sender.messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_spends_daily_cap_on_highest_quality_candidates_first():
+    now = datetime.now(timezone.utc)
+    pairs = [
+        DexPair(
+            chain=Chain.ETHEREUM,
+            token_address="0xstandard",
+            symbol="STD",
+            name="Standard Signal",
+            url=None,
+            market_cap_usd=1_000_000,
+            liquidity_usd=50_000,
+            volume_24h_usd=80_000,
+            buys_5m=10,
+            buys_1h=60,
+            buys_24h=220,
+            pair_created_at=now - timedelta(minutes=30),
+        ),
+        DexPair(
+            chain=Chain.BASE,
+            token_address="0xhigh",
+            symbol="HIGH",
+            name="High Signal",
+            url=None,
+            market_cap_usd=1_000_000,
+            liquidity_usd=100_000,
+            volume_24h_usd=160_000,
+            buys_5m=10,
+            buys_1h=60,
+            buys_24h=220,
+            pair_created_at=now - timedelta(minutes=30),
+        ),
+        DexPair(
+            chain=Chain.BSC,
+            token_address="0xelite",
+            symbol="ELITE",
+            name="Elite Signal",
+            url=None,
+            market_cap_usd=250_000,
+            liquidity_usd=120_000,
+            volume_24h_usd=260_000,
+            buys_5m=30,
+            buys_1h=180,
+            buys_24h=600,
+            pair_created_at=now - timedelta(minutes=30),
+        ),
+    ]
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_ETH_FRESHIES_TOPIC_ID": "101",
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BNB_FRESHIES_TOPIC_ID": "301",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "3",
+                "V2_SIGNAL_DAILY_CAP": "2",
+            }
+        ),
+        provider=MultiDiscoveryProvider(pairs),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    sent = await worker.run_once()
+
+    assert [signal.symbol for signal in sent] == ["ELITE", "HIGH"]
+    assert [topic_id for topic_id, _ in sender.messages] == [301, 201]
+    assert worker.stats.daily_sent == 2
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_copies_risk_checked_elite_signal_to_best_topic():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xelite",
+        symbol="ELITE",
+        name="Elite Token",
+        url="https://dexscreener.com/base/0xelite",
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        volume_24h_usd=260_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        best_signal_router=BestSignalRouter(daily_cap=7, min_score=95),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert [topic_id for topic_id, _ in sender.messages] == [201, 999]
+    assert "Best Signal" in sender.messages[1][1]
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_does_not_copy_risky_signal_to_best_topic():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xtrap",
+        symbol="TRAP",
+        name="Trap Token",
+        url=None,
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        volume_24h_usd=260_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.CRITICAL, is_honeypot=True)),
+        best_signal_router=BestSignalRouter(daily_cap=7, min_score=95),
+    )
+
+    assert await worker.run_once() == []
+    assert sender.messages == []
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_rejects_weak_latest_profile():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xweak",
+        symbol="WEAK",
+        name="Weak Token",
+        url=None,
+        market_cap_usd=8_000,
+        liquidity_usd=2_000,
+        volume_24h_usd=5_000,
+        buys_5m=1,
+        buys_1h=4,
+        buys_24h=8,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env({"TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "123"}),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    assert await worker.run_once() == []
+    assert sender.messages == []
+    assert worker.stats.rejected_low_quality == 1
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_allows_older_pairs_when_current_activity_is_strong():
+    pair = DexPair(
+        chain=Chain.ETHEREUM,
+        token_address="0xactive",
+        symbol="ACTIVE",
+        name="Active Older Pair",
+        url=None,
+        market_cap_usd=300_000,
+        liquidity_usd=120_000,
+        volume_24h_usd=250_000,
+        buys_5m=10,
+        buys_1h=180,
+        buys_24h=1_500,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(days=30),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_ETH_FRESHIES_TOPIC_ID": "101",
+                "TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID": "102",
+                "TELEGRAM_ETH_LOW_MC_FRESHIES_TOPIC_ID": "103",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "3",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    sent = await worker.run_once()
+
+    assert {signal.topic_env_key for signal in sent} == {
+        "TELEGRAM_ETH_FRESHIES_TOPIC_ID",
+        "TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID",
+        "TELEGRAM_ETH_LOW_MC_FRESHIES_TOPIC_ID",
+    }
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_blocks_honeypot_before_sending():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xtrap",
+        symbol="TRAP",
+        name="Trap Token",
+        url=None,
+        market_cap_usd=250_000,
+        liquidity_usd=80_000,
+        volume_24h_usd=220_000,
+        buys_5m=20,
+        buys_1h=120,
+        buys_24h=500,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=20),
+    )
+    sender = FakeSender()
+    risk_provider = FakeRiskProvider(
+        RiskReport(
+            level=RiskLevel.CRITICAL,
+            is_honeypot=True,
+            sell_tax_bps=9900,
+            reasons=["honeypot simulation failed"],
+        )
+    )
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "202",
+                "TELEGRAM_BASE_DEPLOYS_TOPIC_ID": "203",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "3",
+                "V2_SIGNAL_MIN_QUALITY": "70",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=risk_provider,
+    )
+
+    assert await worker.run_once() == []
+    assert sender.messages == []
+    assert worker.stats.rejected_risk == 3
+    assert risk_provider.calls == [(Chain.BASE, "0xtrap")]
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_blocks_unknown_risk_provider_state():
+    pair = DexPair(
+        chain=Chain.BSC,
+        token_address="0xunknown",
+        symbol="UNK",
+        name="Unknown Risk",
+        url=None,
+        market_cap_usd=300_000,
+        liquidity_usd=90_000,
+        volume_24h_usd=240_000,
+        buys_5m=20,
+        buys_1h=120,
+        buys_24h=500,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=20),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BNB_FRESHIES_TOPIC_ID": "301",
+                "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": "302",
+                "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID": "303",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "3",
+                "V2_SIGNAL_MIN_QUALITY": "70",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.MEDIUM, reasons=["Honeypot.is rate limited"])),
+    )
+
+    assert await worker.run_once() == []
+    assert sender.messages == []
+    assert worker.stats.rejected_risk == 3

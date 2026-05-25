@@ -6,10 +6,13 @@ Early signal when a proven creator launches a new token.
 
 import logging
 from datetime import datetime
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Set
 from dataclasses import dataclass
 
+import httpx
+
 from config import settings
+from services.rpc_manager import get_rpc_manager
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +39,19 @@ class GoodCreatorAnalyzer:
     - No history of rugs
     """
 
-    # Thresholds
-    SUCCESS_MC_THRESHOLD = 500_000  # $500K
-    GOOD_WALLET_VALUE_USD = 10_000  # $10K wallet value
+    # Thresholds (lowered for more alerts)
+    SUCCESS_MC_THRESHOLD = 100_000  # $100K for successful token
+    GOOD_WALLET_VALUE_USD = 1_000  # $1K wallet value
+    GOOD_WALLET_VALUE_SOL = 5  # 5 SOL minimum (~$1K)
+
+    # Alert cooldown
+    _alerted_wallets: Set[str] = set()
 
     def __init__(self):
         # Cache creator profiles: wallet -> CreatorProfile
         self._profiles: Dict[str, CreatorProfile] = {}
         self._alerts_sent = 0
+        self._alerted_wallets = set()
 
     async def analyze_creator(
         self,
@@ -51,7 +59,7 @@ class GoodCreatorAnalyzer:
         helius_client=None,
     ) -> Optional[CreatorProfile]:
         """
-        Analyze a token creator's history.
+        Analyze a token creator's history using Helius DAS API.
         Returns CreatorProfile if analysis successful.
         """
         if wallet_address in self._profiles:
@@ -60,36 +68,139 @@ class GoodCreatorAnalyzer:
 
         logger.info(f"👑 [Creator] ANALYZING: wallet={wallet_address[:12]}...")
         try:
-            # Would need to fetch wallet's token creation history
-            # For now, create a placeholder profile
-            profile = CreatorProfile(
-                wallet_address=wallet_address,
-                tokens_created=[],
-                successful_tokens=[],
-                total_wallet_value_usd=0,
-                first_seen=datetime.utcnow(),
-                is_good_creator=False,
-                score=0,
+            # Fetch wallet assets using Helius DAS API
+            wallet_value_usd = 0.0
+            wallet_value_sol = 0.0
+            tokens_created = []
+            successful_tokens = []
+
+            rpc_url = get_rpc_manager().get_rpc_url()
+
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                # Get wallet's SOL balance
+                sol_balance_payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "getBalance",
+                    "params": [wallet_address]
+                }
+
+                sol_response = await client.post(rpc_url, json=sol_balance_payload)
+                sol_result = sol_response.json()
+                sol_lamports = sol_result.get("result", {}).get("value", 0)
+                wallet_value_sol = sol_lamports / 1e9  # Convert lamports to SOL
+
+                # Get SOL price for USD calculation
+                try:
+                    from services.api_clients import get_jupiter_client
+                    sol_price = await get_jupiter_client().get_sol_price()
+                except:
+                    sol_price = 200.0  # Fallback
+
+                wallet_value_usd = wallet_value_sol * sol_price
+
+                # Get wallet's token holdings using DAS API
+                assets_payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "getAssetsByOwner",
+                    "params": {
+                        "ownerAddress": wallet_address,
+                        "page": 1,
+                        "limit": 100,
+                        "displayOptions": {
+                            "showFungible": True,
+                            "showNativeBalance": True
+                        }
+                    }
+                }
+
+                assets_response = await client.post(rpc_url, json=assets_payload)
+                assets_result = assets_response.json()
+                items = assets_result.get("result", {}).get("items", [])
+
+                # Calculate total token value
+                for item in items:
+                    token_info = item.get("token_info", {})
+                    price_info = token_info.get("price_info", {})
+
+                    if price_info:
+                        total_price = price_info.get("total_price", 0) or 0
+                        wallet_value_usd += total_price
+
+                logger.debug(f"[Creator] Wallet {wallet_address[:8]}... value: {wallet_value_sol:.2f} SOL, ${wallet_value_usd:,.0f}")
+
+            # Calculate score (0-100)
+            score = 0
+            if wallet_value_sol >= self.GOOD_WALLET_VALUE_SOL:
+                score += 50  # High SOL balance
+            elif wallet_value_sol >= 10:
+                score += 25  # Decent SOL balance
+
+            if wallet_value_usd >= self.GOOD_WALLET_VALUE_USD:
+                score += 30  # High USD value
+
+            if len(successful_tokens) > 0:
+                score += 20  # Has successful tokens
+
+            is_good = self.check_is_good_creator_from_values(
+                wallet_value_sol=wallet_value_sol,
+                wallet_value_usd=wallet_value_usd,
+                successful_count=len(successful_tokens)
             )
 
-            # Check wallet value if helius client available
-            if helius_client:
-                # Fetch wallet assets and calculate value
-                # This would be implemented with Helius DAS API
-                logger.debug(f"[Creator] Helius client available, would fetch wallet assets")
-            else:
-                logger.debug(f"[Creator] No Helius client, using placeholder profile")
+            profile = CreatorProfile(
+                wallet_address=wallet_address,
+                tokens_created=tokens_created,
+                successful_tokens=successful_tokens,
+                total_wallet_value_usd=wallet_value_usd,
+                first_seen=datetime.utcnow(),
+                is_good_creator=is_good,
+                score=score,
+            )
 
             self._profiles[wallet_address] = profile
-            logger.info(f"👑 [Creator] ANALYZED: wallet={wallet_address[:12]}... | is_good={profile.is_good_creator} | score={profile.score} | total_profiles={len(self._profiles)}")
+            logger.info(
+                f"👑 [Creator] ANALYZED: wallet={wallet_address[:12]}... | "
+                f"value={wallet_value_sol:.1f}SOL/${wallet_value_usd:,.0f} | "
+                f"is_good={is_good} | score={score}"
+            )
             return profile
 
         except Exception as e:
             logger.error(f"[Creator] Error analyzing creator {wallet_address[:12]}: {e}")
             return None
 
+    def check_is_good_creator_from_values(
+        self,
+        wallet_value_sol: float,
+        wallet_value_usd: float,
+        successful_count: int,
+    ) -> bool:
+        """Check if creator meets good creator criteria based on values."""
+        if successful_count > 0:
+            return True
+        if wallet_value_usd >= self.GOOD_WALLET_VALUE_USD:
+            return True
+        if wallet_value_sol >= self.GOOD_WALLET_VALUE_SOL:
+            return True
+        return False
+
+    def should_alert(self, wallet_address: str) -> bool:
+        """Check if we should alert for this creator (cooldown check)."""
+        if wallet_address in self._alerted_wallets:
+            return False
+        return True
+
+    def mark_alerted(self, wallet_address: str):
+        """Mark a wallet as alerted to prevent duplicate alerts."""
+        self._alerted_wallets.add(wallet_address)
+
     def check_is_good_creator(self, profile: CreatorProfile) -> bool:
         """Check if creator meets good creator criteria."""
+        if profile.is_good_creator:
+            logger.info(f"👑 [Creator] GOOD CREATOR FOUND: wallet={profile.wallet_address[:12]}... | score={profile.score} | value=${profile.total_wallet_value_usd:,.0f}")
+            return True
         if len(profile.successful_tokens) > 0:
             logger.info(f"👑 [Creator] GOOD CREATOR FOUND: wallet={profile.wallet_address[:12]}... | reason=successful_tokens ({len(profile.successful_tokens)})")
             return True

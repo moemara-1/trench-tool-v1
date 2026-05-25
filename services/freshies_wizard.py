@@ -144,6 +144,24 @@ class FreshiesWizard:
             from alerts.telegram_bot import get_telegram_bot
             self._telegram = get_telegram_bot()
         return self._telegram
+
+    def _destination_topic_id(self) -> Optional[int]:
+        """Return configured wizard destination without falling back to General."""
+        topic_ids = self._destination_topic_ids()
+        return topic_ids[0] if topic_ids else None
+
+    def _destination_topic_ids(self) -> List[int]:
+        """Return configured wizard destinations without falling back to General."""
+        topic_ids = []
+        wizard_topic = getattr(settings, 'telegram_wizard_topic_id', None)
+        if wizard_topic and wizard_topic > 0:
+            topic_ids.append(wizard_topic)
+
+        patterns_topic = getattr(settings, 'telegram_patterns_topic_id', None)
+        if patterns_topic and patterns_topic > 0 and patterns_topic not in topic_ids:
+            topic_ids.append(patterns_topic)
+
+        return topic_ids
     
     def _get_or_create_token(self, token_address: str) -> TokenWizardState:
         """Get or create token wizard state."""
@@ -236,6 +254,10 @@ class FreshiesWizard:
         state = self._tokens.get(token_address)
         if not state or not state.fresh_buys:
             return
+            
+        # USER REQUEST: Only alert if there are at least 2 fresh buys
+        if len(state.fresh_buys) < 2:
+            return
         
         now = datetime.utcnow()
         patterns_matched = set()
@@ -319,17 +341,18 @@ class FreshiesWizard:
         # Format alert (async to fetch pair address for Axiom)
         alert = await self._format_wizard_alert(state, pattern, trigger_count, all_matched)
         
-        # Send to Telegram (wizard topic)
-        topic_id = getattr(settings, 'telegram_wizard_topic_id', None)
-        if topic_id and topic_id > 0:
+        # Send to Telegram only when a producer-backed wizard/patterns topic is configured.
+        # Sending without a topic lands in Telegram's General topic, which this group uses as Feedback.
+        topic_ids = self._destination_topic_ids()
+        if not topic_ids:
+            logger.info(
+                "Freshies Wizard suppressed because wizard/patterns topics are disabled: %s",
+                state.symbol,
+            )
+            return
+
+        for topic_id in topic_ids:
             await self._get_telegram().send_alert(alert, topic_id=topic_id)
-        else:
-            # Fall back to patterns topic
-            topic_id = getattr(settings, 'telegram_patterns_topic_id', None)
-            if topic_id and topic_id > 0:
-                await self._get_telegram().send_alert(alert, topic_id=topic_id)
-            else:
-                await self._get_telegram().send_alert(alert)
         
         logger.info(f"🧙‍♂️ Wizard pattern: {pattern.value} for {state.symbol}")
     

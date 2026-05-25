@@ -205,6 +205,46 @@ class FreshiesTracker:
         # If we suppressed the alert, we still return the freshie if it WAS alert-worthy
         # This allows the caller to know it qualified
         return freshie if should_alert else None
+        
+    async def process_token_sell(
+        self,
+        session: AsyncSession,
+        wallet: Wallet,
+        token: Token,
+        tx_signature: str,
+        amount_tokens: float,
+        is_full_sell: bool = False,
+        suppress_alert: bool = False,
+    ) -> Optional[Freshie]:
+        """
+        Process a token sell transaction.
+        Tracks partial vs full sells.
+        """
+        # Check if transaction already exists
+        existing = await session.execute(
+            select(Freshie).where(Freshie.tx_signature == tx_signature)
+        )
+        if existing.scalar_one_or_none():
+            return None
+        
+        action = TradeAction.FULL_SELL if is_full_sell else TradeAction.PARTIAL_SELL
+        
+        # Create record
+        freshie = Freshie(
+            wallet_address=wallet.address,
+            token_address=token.contract_address,
+            tx_signature=tx_signature,
+            amount_sol=0, # Sell doesn't spend SOL (usually)
+            amount_tokens=amount_tokens,
+            action=action,
+            is_first_mention=False,
+            indicators={},
+        )
+        session.add(freshie)
+        
+        # We don't typically alert on individual sells via this method (SolanaListener handles it)
+        # But we return it so the caller knows it was recorded
+        return freshie
     
     async def _send_alert(
         self,

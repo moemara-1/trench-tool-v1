@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.git/
+.browser_data/
+.browser_data_test/
+strongfloor_state.json
+*.log
+logs/

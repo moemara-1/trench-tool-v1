@@ -97,6 +97,8 @@ class LiveSignalStats:
     best_wallet_last_error: str | None = None
     candidates_by_topic: dict[str, int] = field(default_factory=dict)
     alerts_by_topic: dict[str, int] = field(default_factory=dict)
+    rejected_budget_by_topic: dict[str, int] = field(default_factory=dict)
+    rejected_risk_by_topic: dict[str, int] = field(default_factory=dict)
     alerts_by_quality_band: dict[str, int] = field(default_factory=dict)
     last_signals: list[dict] = field(default_factory=list)
 
@@ -121,6 +123,8 @@ class LiveSignalStats:
             "best_wallet_last_error": self.best_wallet_last_error,
             "candidates_by_topic": dict(sorted(self.candidates_by_topic.items())),
             "alerts_by_topic": dict(sorted(self.alerts_by_topic.items())),
+            "rejected_budget_by_topic": dict(sorted(self.rejected_budget_by_topic.items())),
+            "rejected_risk_by_topic": dict(sorted(self.rejected_risk_by_topic.items())),
             "alerts_by_quality_band": dict(sorted(self.alerts_by_quality_band.items())),
             "last_signals": self.last_signals[-10:],
         }
@@ -229,6 +233,7 @@ class LiveSignalWorker:
             decision = self._daily_budget.reserve(checked_signal.quality_score, now=self.stats.last_run_at)
             if not decision.allowed:
                 self.stats.rejected_daily_budget += 1
+                _increment(self.stats.rejected_budget_by_topic, checked_signal.topic_env_key)
                 continue
             topic_id = (self.settings.telegram_topic_ids or {}).get(checked_signal.topic_env_key, 0)
             if await self.sender.send(topic_id, self._format_signal(checked_signal)):
@@ -278,6 +283,7 @@ class LiveSignalWorker:
 
         if not _risk_report_allows_alert(report):
             self.stats.rejected_risk += 1
+            _increment(self.stats.rejected_risk_by_topic, signal.topic_env_key)
             return None
 
         return replace(
@@ -472,6 +478,8 @@ class LiveSignalWorker:
         self.stats.last_signals = self.stats.last_signals[-10:]
 
     def _queue_best_signal(self, signal: LiveSignal) -> None:
+        if signal.risk_level is not RiskLevel.LOW:
+            return
         self._best_signal_router.queue(
             BestSignalCandidate(
                 source_label=f"V2 {signal.chain.label} {signal.feature.value.replace('_', ' ').title()}",
@@ -672,6 +680,16 @@ def _risk_reasons_are_actionable(report: RiskReport) -> bool:
         return False
     if any(marker in joined for marker in ("rate limited", "unavailable", "no risk provider", "unexpected payload")):
         return False
+    non_blocking_markers = (
+        "holder data missing or zero holders reported",
+        "simulation passed",
+        "found no high-risk",
+    )
+    if report.reasons and all(
+        any(marker in reason.lower() for marker in non_blocking_markers)
+        for reason in report.reasons
+    ):
+        return True
     return any(marker in joined for marker in ("simulation passed", "no high-risk", "found no high-risk"))
 
 

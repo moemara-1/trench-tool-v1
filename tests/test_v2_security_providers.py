@@ -50,7 +50,7 @@ async def test_goplus_provider_normalizes_contract_and_tax_risk():
 
 
 @pytest.mark.asyncio
-async def test_goplus_provider_blocks_tokens_with_no_reported_holders():
+async def test_goplus_provider_marks_zero_holders_as_unindexed_caution():
     client = FakeGetClient(
         {
             "result": {
@@ -68,9 +68,9 @@ async def test_goplus_provider_blocks_tokens_with_no_reported_holders():
 
     report = await provider.fetch_risk(Chain.BSC, "0xAbC")
 
-    assert report.level is RiskLevel.HIGH
-    assert report.malicious_contract is True
-    assert "no token holders reported" in report.reasons
+    assert report.level is RiskLevel.MEDIUM
+    assert report.malicious_contract is False
+    assert "holder data missing or zero holders reported" in report.reasons
 
 
 @pytest.mark.asyncio
@@ -96,7 +96,7 @@ async def test_honeypot_provider_normalizes_simulation_tax_and_honeypot_flags():
 
 
 @pytest.mark.asyncio
-async def test_honeypot_provider_blocks_tokens_with_no_reported_holders():
+async def test_honeypot_provider_marks_zero_holders_as_unindexed_caution():
     client = FakeGetClient(
         {
             "token": {"totalHolders": 0},
@@ -109,9 +109,9 @@ async def test_honeypot_provider_blocks_tokens_with_no_reported_holders():
 
     report = await provider.fetch_risk(Chain.BSC, "0xdef")
 
-    assert report.level is RiskLevel.HIGH
-    assert report.malicious_contract is True
-    assert "no token holders reported" in report.reasons
+    assert report.level is RiskLevel.MEDIUM
+    assert report.malicious_contract is False
+    assert "holder data missing or zero holders reported" in report.reasons
 
 
 @pytest.mark.asyncio

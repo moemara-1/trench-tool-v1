@@ -90,24 +90,24 @@ class GoPlusRiskProvider:
         if _falsey(token.get("is_open_source")):
             reasons.append("contract source is not verified")
 
-        holder_count = _int_or_none(token.get("holder_count"))
-        if holder_count == 0:
-            malicious_contract = True
-            reasons.append("no token holders reported")
+        holder_data_unavailable = _int_or_none(token.get("holder_count")) == 0
+        if holder_data_unavailable:
+            reasons.append("holder data missing or zero holders reported")
 
         liquidity_locked = _liquidity_locked(token.get("lp_holders"))
         if liquidity_locked is False:
             liquidity_pull_risk = True
             reasons.append("liquidity is not locked")
 
+        level = _level_for(
+            is_honeypot=is_honeypot,
+            max_tax_bps=max_tax_bps,
+            malicious_contract=malicious_contract,
+            liquidity_pull_risk=liquidity_pull_risk,
+            has_unverified_source="contract source is not verified" in reasons,
+        )
         return RiskReport(
-            level=_level_for(
-                is_honeypot=is_honeypot,
-                max_tax_bps=max_tax_bps,
-                malicious_contract=malicious_contract,
-                liquidity_pull_risk=liquidity_pull_risk,
-                has_unverified_source="contract source is not verified" in reasons,
-            ),
+            level=_medium_for_unindexed_holders(level, holder_data_unavailable),
             is_honeypot=is_honeypot,
             buy_tax_bps=buy_tax_bps,
             sell_tax_bps=sell_tax_bps,
@@ -162,17 +162,18 @@ class HoneypotRiskProvider:
         token = data.get("token") if isinstance(data.get("token"), dict) else {}
         holder_count = _int_or_none(token.get("totalHolders"))
         malicious_contract = summary_risk in {"high", "critical"}
+        holder_data_unavailable = holder_count == 0
         if holder_count == 0:
-            malicious_contract = True
-            reasons.append("no token holders reported")
+            reasons.append("holder data missing or zero holders reported")
+        level = _level_for(
+            is_honeypot=is_honeypot,
+            max_tax_bps=max_tax_bps,
+            malicious_contract=malicious_contract,
+            liquidity_pull_risk=False,
+            has_unverified_source=False,
+        )
         return RiskReport(
-            level=_level_for(
-                is_honeypot=is_honeypot,
-                max_tax_bps=max_tax_bps,
-                malicious_contract=malicious_contract,
-                liquidity_pull_risk=False,
-                has_unverified_source=False,
-            ),
+            level=_medium_for_unindexed_holders(level, holder_data_unavailable),
             is_honeypot=is_honeypot,
             buy_tax_bps=buy_tax_bps,
             sell_tax_bps=sell_tax_bps,
@@ -310,3 +311,9 @@ def _level_for(
     if has_unverified_source or max_tax_bps >= 500:
         return RiskLevel.MEDIUM
     return RiskLevel.LOW
+
+
+def _medium_for_unindexed_holders(level: RiskLevel, holder_data_unavailable: bool) -> RiskLevel:
+    if holder_data_unavailable and level is RiskLevel.LOW:
+        return RiskLevel.MEDIUM
+    return level

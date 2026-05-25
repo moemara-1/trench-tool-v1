@@ -518,6 +518,46 @@ async def test_live_signal_worker_does_not_copy_risky_signal_to_best_topic():
 
 
 @pytest.mark.asyncio
+async def test_live_signal_worker_sends_unindexed_medium_risk_to_source_topic_only():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xunindexed",
+        symbol="INDEX",
+        name="Unindexed Token",
+        url=None,
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        volume_24h_usd=260_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(
+            RiskReport(level=RiskLevel.MEDIUM, reasons=["holder data missing or zero holders reported"])
+        ),
+        best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert [topic_id for topic_id, _ in sender.messages] == [201]
+    assert worker.stats.best_signals_sent == 0
+
+
+@pytest.mark.asyncio
 async def test_live_signal_worker_rejects_weak_latest_profile():
     pair = DexPair(
         chain=Chain.BASE,

@@ -54,6 +54,8 @@ class BestSignalRouter:
         daily_cap: int = 0,
         min_score: int = 98,
         dedupe_hours: int = 24,
+        chain_daily_caps: dict[str, int] | None = None,
+        chain_cooldown_minutes: dict[str, int] | None = None,
     ):
         if min_score >= 100:
             raise ValueError("min_score must be below 100 so elite routing can reserve priority bands")
@@ -70,8 +72,15 @@ class BestSignalRouter:
             else None
         )
         self._dedupe_ttl = timedelta(hours=dedupe_hours)
+        self._chain_daily_caps = _normalize_int_map(chain_daily_caps)
+        self._chain_cooldowns = {
+            chain: timedelta(minutes=minutes)
+            for chain, minutes in _normalize_int_map(chain_cooldown_minutes).items()
+        }
         self._buffer: dict[str, BestSignalCandidate] = {}
         self._sent_at_by_key: dict[str, datetime] = {}
+        self._sent_count_by_day_and_chain: dict[tuple[str, str], int] = {}
+        self._sent_at_by_chain: dict[str, datetime] = {}
 
     def queue(self, candidate: BestSignalCandidate, now: datetime | None = None) -> bool:
         now = _normalize_now(now)
@@ -90,12 +99,15 @@ class BestSignalRouter:
         now = _normalize_now(now)
         sent = 0
         for candidate in sorted(self._buffer.values(), key=_sort_key):
+            if not self._chain_allows(candidate, now):
+                continue
             if self._budget:
                 decision = self._budget.reserve(candidate.score, now=now)
                 if not decision.allowed:
                     continue
             if await send(format_best_signal(candidate)):
                 self._sent_at_by_key[candidate.dedupe_key] = now
+                self._record_chain_sent(candidate, now)
                 self._buffer.pop(candidate.dedupe_key, None)
                 sent += 1
             else:
@@ -111,6 +123,27 @@ class BestSignalRouter:
         ]
         for key in expired:
             self._sent_at_by_key.pop(key, None)
+
+    def _chain_allows(self, candidate: BestSignalCandidate, now: datetime) -> bool:
+        chain = candidate.chain.lower()
+        daily_cap = self._chain_daily_caps.get(chain)
+        if daily_cap is not None:
+            chain_key = (_day_key(now), chain)
+            if self._sent_count_by_day_and_chain.get(chain_key, 0) >= daily_cap:
+                return False
+
+        cooldown = self._chain_cooldowns.get(chain)
+        if cooldown is not None:
+            sent_at = self._sent_at_by_chain.get(chain)
+            if sent_at and now - sent_at < cooldown:
+                return False
+        return True
+
+    def _record_chain_sent(self, candidate: BestSignalCandidate, now: datetime) -> None:
+        chain = candidate.chain.lower()
+        chain_key = (_day_key(now), chain)
+        self._sent_count_by_day_and_chain[chain_key] = self._sent_count_by_day_and_chain.get(chain_key, 0) + 1
+        self._sent_at_by_chain[chain] = now
 
 
 def candidate_from_v1_message(message: str, source_label: str = "V1 SOL") -> BestSignalCandidate | None:
@@ -294,3 +327,17 @@ def _normalize_now(now: datetime | None) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value
+
+
+def _day_key(now: datetime) -> str:
+    return now.strftime("%Y-%m-%d")
+
+
+def _normalize_int_map(values: dict[str, int] | None) -> dict[str, int]:
+    if not values:
+        return {}
+    return {
+        key.lower().strip(): value
+        for key, value in values.items()
+        if key.strip() and value > 0
+    }

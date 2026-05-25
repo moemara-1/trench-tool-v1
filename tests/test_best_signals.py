@@ -19,10 +19,11 @@ def _candidate(
     address: str,
     symbol: str = "BEST",
     family: str = "freshies",
+    chain: str = "base",
 ) -> BestSignalCandidate:
     return BestSignalCandidate(
         source_label="V2 BASE Freshies",
-        chain="base",
+        chain=chain,
         signal_family=family,
         token_address=address,
         symbol=symbol,
@@ -96,6 +97,46 @@ async def test_best_signal_router_supports_unlimited_daily_cap_with_quality_floo
     assert "$SECOND" in sender.messages[0]
     assert "$FIRST" in sender.messages[1]
     assert "$THIRD" in sender.messages[2]
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_caps_solana_without_blocking_other_chains():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=95,
+        chain_daily_caps={"solana": 1},
+    )
+    sender = RecordingBestSender()
+    now = datetime(2026, 5, 25, tzinfo=timezone.utc)
+
+    assert router.queue(_candidate(100, "So11111111111111111111111111111111111111111", "SOL1", chain="solana")) is True
+    assert await router.flush(sender.send, now=now) == 1
+
+    assert router.queue(_candidate(100, "So22222222222222222222222222222222222222222", "SOL2", chain="solana")) is True
+    assert router.queue(_candidate(98, "0xbase", "BASE", chain="base")) is True
+
+    assert await router.flush(sender.send, now=now) == 1
+    assert len(sender.messages) == 2
+    assert "$BASE" in sender.messages[1]
+    assert "$SOL2" not in sender.messages[1]
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_applies_chain_cooldown():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=95,
+        chain_cooldown_minutes={"solana": 60},
+    )
+    sender = RecordingBestSender()
+    now = datetime(2026, 5, 25, 12, 0, tzinfo=timezone.utc)
+
+    assert router.queue(_candidate(100, "So11111111111111111111111111111111111111111", "SOL1", chain="solana")) is True
+    assert await router.flush(sender.send, now=now) == 1
+
+    assert router.queue(_candidate(100, "So22222222222222222222222222222222222222222", "SOL2", chain="solana")) is True
+    assert await router.flush(sender.send, now=now) == 0
+    assert await router.flush(sender.send, now=datetime(2026, 5, 25, 13, 1, tzinfo=timezone.utc)) == 1
 
 
 @pytest.mark.parametrize(

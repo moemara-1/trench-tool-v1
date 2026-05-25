@@ -208,6 +208,14 @@ class Settings(BaseSettings):
         default=98,
         description="Minimum quality score for Best Signals"
     )
+    best_signals_solana_daily_cap: int = Field(
+        default=3,
+        description="Maximum SOL copies to Best Signals per day"
+    )
+    best_signals_solana_cooldown_minutes: int = Field(
+        default=60,
+        description="Minimum minutes between SOL copies to Best Signals"
+    )
     
     # Token Verification Settings
     min_liquidity_usd: float = Field(

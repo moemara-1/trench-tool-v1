@@ -50,6 +50,30 @@ async def test_goplus_provider_normalizes_contract_and_tax_risk():
 
 
 @pytest.mark.asyncio
+async def test_goplus_provider_blocks_tokens_with_no_reported_holders():
+    client = FakeGetClient(
+        {
+            "result": {
+                "0xabc": {
+                    "is_honeypot": "0",
+                    "buy_tax": "0",
+                    "sell_tax": "0",
+                    "holder_count": "0",
+                    "is_open_source": "1",
+                }
+            }
+        }
+    )
+    provider = GoPlusRiskProvider(client=client)
+
+    report = await provider.fetch_risk(Chain.BSC, "0xAbC")
+
+    assert report.level is RiskLevel.HIGH
+    assert report.malicious_contract is True
+    assert "no token holders reported" in report.reasons
+
+
+@pytest.mark.asyncio
 async def test_honeypot_provider_normalizes_simulation_tax_and_honeypot_flags():
     client = FakeGetClient(
         {
@@ -69,6 +93,25 @@ async def test_honeypot_provider_normalizes_simulation_tax_and_honeypot_flags():
     assert "honeypot simulation failed" in report.reasons
     assert client.calls[0][0] == "https://api.honeypot.is/v2/IsHoneypot"
     assert client.calls[0][1]["chainID"] == "56"
+
+
+@pytest.mark.asyncio
+async def test_honeypot_provider_blocks_tokens_with_no_reported_holders():
+    client = FakeGetClient(
+        {
+            "token": {"totalHolders": 0},
+            "honeypotResult": {"isHoneypot": False},
+            "simulationResult": {"buyTax": 0, "sellTax": 0},
+            "summary": {"risk": "low"},
+        }
+    )
+    provider = HoneypotRiskProvider(client=client)
+
+    report = await provider.fetch_risk(Chain.BSC, "0xdef")
+
+    assert report.level is RiskLevel.HIGH
+    assert report.malicious_contract is True
+    assert "no token holders reported" in report.reasons
 
 
 @pytest.mark.asyncio
@@ -104,4 +147,3 @@ async def test_composite_risk_provider_keeps_highest_risk_and_combines_reasons()
     assert report.sell_tax_bps == 800
     assert "contract source is not verified" in report.reasons
     assert "sell tax 8.00%" in report.reasons
-

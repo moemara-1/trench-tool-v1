@@ -90,6 +90,11 @@ class GoPlusRiskProvider:
         if _falsey(token.get("is_open_source")):
             reasons.append("contract source is not verified")
 
+        holder_count = _int_or_none(token.get("holder_count"))
+        if holder_count == 0:
+            malicious_contract = True
+            reasons.append("no token holders reported")
+
         liquidity_locked = _liquidity_locked(token.get("lp_holders"))
         if liquidity_locked is False:
             liquidity_pull_risk = True
@@ -154,11 +159,17 @@ class HoneypotRiskProvider:
 
         summary = data.get("summary") if isinstance(data.get("summary"), dict) else {}
         summary_risk = str(summary.get("risk") or "").lower()
+        token = data.get("token") if isinstance(data.get("token"), dict) else {}
+        holder_count = _int_or_none(token.get("totalHolders"))
+        malicious_contract = summary_risk in {"high", "critical"}
+        if holder_count == 0:
+            malicious_contract = True
+            reasons.append("no token holders reported")
         return RiskReport(
             level=_level_for(
                 is_honeypot=is_honeypot,
                 max_tax_bps=max_tax_bps,
-                malicious_contract=summary_risk in {"high", "critical"},
+                malicious_contract=malicious_contract,
                 liquidity_pull_risk=False,
                 has_unverified_source=False,
             ),
@@ -166,6 +177,7 @@ class HoneypotRiskProvider:
             buy_tax_bps=buy_tax_bps,
             sell_tax_bps=sell_tax_bps,
             delayed_honeypot=is_honeypot,
+            malicious_contract=malicious_contract,
             reasons=reasons or ["Honeypot.is simulation passed"],
         )
 
@@ -261,6 +273,15 @@ def _float_or_none(value: object) -> float | None:
         return None
 
 
+def _int_or_none(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _liquidity_locked(lp_holders: object) -> bool | None:
     if not isinstance(lp_holders, list) or not lp_holders:
         return None
@@ -289,4 +310,3 @@ def _level_for(
     if has_unverified_source or max_tax_bps >= 500:
         return RiskLevel.MEDIUM
     return RiskLevel.LOW
-

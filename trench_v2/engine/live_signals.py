@@ -302,7 +302,10 @@ class LiveSignalWorker:
         liquidity = pair.liquidity_usd
         if market_cap is None or liquidity is None:
             return []
-        if liquidity < 10_000:
+        if liquidity < 20_000:
+            self.stats.rejected_low_quality += 1
+            return []
+        if _rug_like_market(pair):
             self.stats.rejected_low_quality += 1
             return []
         if market_cap < 25_000 or market_cap > self._CHAIN_MAX_MC[pair.chain]:
@@ -598,6 +601,32 @@ def _risk_report_allows_alert(report: RiskReport) -> bool:
     if max(report.buy_tax_bps or 0, report.sell_tax_bps or 0) >= 500:
         return False
     return _risk_reasons_are_actionable(report)
+
+
+def _rug_like_market(pair: DexPair) -> bool:
+    price_changes = [
+        value
+        for value in (pair.price_change_5m, pair.price_change_1h, pair.price_change_24h)
+        if value is not None
+    ]
+    if any(change <= -45 for change in price_changes):
+        return True
+
+    if pair.price_change_5m is not None and pair.price_change_5m <= -20 and pair.sells_5m > pair.buys_5m:
+        return True
+
+    if pair.sells_1h >= max(20, int(pair.buys_1h * 1.25)):
+        return True
+
+    liquidity = pair.liquidity_usd or 0
+    volume = pair.volume_24h_usd or 0
+    age_minutes = None
+    if pair.pair_created_at is not None:
+        age_minutes = max(0, int((datetime.now(timezone.utc) - pair.pair_created_at).total_seconds() // 60))
+    if liquidity > 0 and volume / liquidity >= 8 and (age_minutes is None or age_minutes <= 90):
+        return True
+
+    return False
 
 
 def _risk_reasons_are_actionable(report: RiskReport) -> bool:

@@ -38,6 +38,12 @@ class DexPair:
     buys_1h: int
     buys_24h: int
     pair_created_at: datetime | None
+    sells_5m: int = 0
+    sells_1h: int = 0
+    sells_24h: int = 0
+    price_change_5m: float | None = None
+    price_change_1h: float | None = None
+    price_change_24h: float | None = None
 
 
 class DexScreenerProvider:
@@ -178,6 +184,12 @@ class DexScreenerProvider:
             buys_1h=_int_or_zero(((item.get("txns") or {}).get("h1") or {}).get("buys")),
             buys_24h=_int_or_zero(((item.get("txns") or {}).get("h24") or {}).get("buys")),
             pair_created_at=_datetime_from_ms(item.get("pairCreatedAt")),
+            sells_5m=_int_or_zero(((item.get("txns") or {}).get("m5") or {}).get("sells")),
+            sells_1h=_int_or_zero(((item.get("txns") or {}).get("h1") or {}).get("sells")),
+            sells_24h=_int_or_zero(((item.get("txns") or {}).get("h24") or {}).get("sells")),
+            price_change_5m=_float_or_none((item.get("priceChange") or {}).get("m5")),
+            price_change_1h=_float_or_none((item.get("priceChange") or {}).get("h1")),
+            price_change_24h=_float_or_none((item.get("priceChange") or {}).get("h24")),
         )
 
     def _profile_from_search_pair(self, item: object) -> DexTokenProfile | None:
@@ -223,6 +235,12 @@ class DexScreenerProvider:
             buys_1h=_int_or_zero(_nested_value(transactions, "h1", "buys")),
             buys_24h=_int_or_zero(_nested_value(transactions, "h24", "buys")),
             pair_created_at=_datetime_from_iso(attributes.get("pool_created_at")),
+            sells_5m=_int_or_zero(_nested_value(transactions, "m5", "sells")),
+            sells_1h=_int_or_zero(_nested_value(transactions, "h1", "sells")),
+            sells_24h=_int_or_zero(_nested_value(transactions, "h24", "sells")),
+            price_change_5m=_float_or_none(_nested_value(attributes, "price_change_percentage", "m5")),
+            price_change_1h=_float_or_none(_nested_value(attributes, "price_change_percentage", "h1")),
+            price_change_24h=_float_or_none(_nested_value(attributes, "price_change_percentage", "h24")),
         )
 
 

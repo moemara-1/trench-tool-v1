@@ -543,6 +543,41 @@ async def test_live_signal_worker_rejects_weak_latest_profile():
 
 
 @pytest.mark.asyncio
+async def test_live_signal_worker_rejects_rug_like_selloff_even_with_large_volume():
+    pair = DexPair(
+        chain=Chain.BSC,
+        token_address="0x8aa4e31d599bba7b3f5977e7d157cd899129538b",
+        symbol="RUG",
+        name="Rug Like Token",
+        url="https://www.geckoterminal.com/bsc/pools/0x888e2d39bab6a25bdf401d2037c4d91e04c2f1ff",
+        market_cap_usd=300_000,
+        liquidity_usd=46_822,
+        volume_24h_usd=484_353,
+        buys_5m=80,
+        buys_1h=387,
+        buys_24h=387,
+        sells_5m=120,
+        sells_1h=530,
+        sells_24h=530,
+        price_change_5m=-22,
+        price_change_1h=-99.9,
+        price_change_24h=-99.9,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=27),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env({"TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": "123"}),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+    )
+
+    assert await worker.run_once() == []
+    assert sender.messages == []
+    assert worker.stats.rejected_low_quality == 1
+
+
+@pytest.mark.asyncio
 async def test_live_signal_worker_allows_older_pairs_when_current_activity_is_strong():
     pair = DexPair(
         chain=Chain.ETHEREUM,

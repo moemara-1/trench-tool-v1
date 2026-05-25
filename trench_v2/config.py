@@ -38,8 +38,10 @@ class V2Settings:
     signal_max_alerts_per_cycle: int = 14
     signal_daily_cap: int = 30
     signal_min_quality: int = 82
-    best_signals_daily_cap: int = 7
+    best_signals_daily_cap: int = 0
     best_signals_min_score: int = 95
+    best_wallet_signals_enabled: bool = True
+    best_wallet_min_score: int = 95
     solana_provider_health_enabled: bool = False
     command_providers_enabled: bool = False
 
@@ -74,8 +76,10 @@ class V2Settings:
             signal_max_alerts_per_cycle=_env_int(env.get("V2_SIGNAL_MAX_ALERTS_PER_CYCLE"), default=14),
             signal_daily_cap=_env_int(env.get("V2_SIGNAL_DAILY_CAP"), default=30),
             signal_min_quality=_env_int(env.get("V2_SIGNAL_MIN_QUALITY"), default=82),
-            best_signals_daily_cap=_env_int(env.get("BEST_SIGNALS_DAILY_CAP"), default=7),
+            best_signals_daily_cap=_env_nonnegative_int(env.get("BEST_SIGNALS_DAILY_CAP"), default=0),
             best_signals_min_score=_env_int(env.get("BEST_SIGNALS_MIN_SCORE"), default=95),
+            best_wallet_signals_enabled=_env_bool(env.get("BEST_WALLET_SIGNALS_ENABLED"), default=True),
+            best_wallet_min_score=_env_int(env.get("BEST_WALLET_MIN_SCORE"), default=95),
             solana_provider_health_enabled=_env_bool(
                 env.get("V2_SOLANA_PROVIDER_HEALTH_ENABLED"),
                 default=False,
@@ -158,3 +162,13 @@ def _env_int(value: str | None, default: int) -> int:
     except ValueError:
         return default
     return parsed if parsed > 0 else default
+
+
+def _env_nonnegative_int(value: str | None, default: int) -> int:
+    if value is None or not value.strip():
+        return default
+    try:
+        parsed = int(value)
+    except ValueError:
+        return default
+    return parsed if parsed >= 0 else default

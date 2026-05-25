@@ -47,7 +47,7 @@ class BestSignalRouter:
 
     def __init__(
         self,
-        daily_cap: int = 7,
+        daily_cap: int = 0,
         min_score: int = 95,
         dedupe_hours: int = 24,
     ):
@@ -55,11 +55,15 @@ class BestSignalRouter:
             raise ValueError("min_score must be below 100 so elite routing can reserve priority bands")
         self.daily_cap = daily_cap
         self.min_score = min_score
-        self._budget = PriorityDailyBudget(
-            daily_cap=daily_cap,
-            min_score=min_score,
-            high_score=min(99, min_score + 3),
-            elite_score=100,
+        self._budget = (
+            PriorityDailyBudget(
+                daily_cap=daily_cap,
+                min_score=min_score,
+                high_score=min(99, min_score + 3),
+                elite_score=100,
+            )
+            if daily_cap > 0
+            else None
         )
         self._dedupe_ttl = timedelta(hours=dedupe_hours)
         self._buffer: dict[str, BestSignalCandidate] = {}
@@ -82,15 +86,17 @@ class BestSignalRouter:
         now = _normalize_now(now)
         sent = 0
         for candidate in sorted(self._buffer.values(), key=_sort_key):
-            decision = self._budget.reserve(candidate.score, now=now)
-            if not decision.allowed:
-                continue
+            if self._budget:
+                decision = self._budget.reserve(candidate.score, now=now)
+                if not decision.allowed:
+                    continue
             if await send(format_best_signal(candidate)):
                 self._sent_at_by_key[candidate.dedupe_key] = now
                 self._buffer.pop(candidate.dedupe_key, None)
                 sent += 1
             else:
-                self._budget.release(candidate.score, now=now)
+                if self._budget:
+                    self._budget.release(candidate.score, now=now)
         return sent
 
     def _expire_dedupe(self, now: datetime) -> None:
@@ -226,6 +232,20 @@ def _family_from_message(message: str) -> str:
     lower = message.lower()
     if "strongfloor" in lower or "strong floor" in lower:
         return "strongfloor"
+    if "strong launch" in lower:
+        return "strong_launch"
+    if "streamflow" in lower:
+        return "streamflow"
+    if "dev held" in lower:
+        return "dev_held"
+    if "good creator" in lower or "creator" in lower:
+        return "good_creator"
+    if "socials" in lower:
+        return "socials"
+    if "sns" in lower:
+        return "sns"
+    if "vanish" in lower:
+        return "vanish"
     if "dormant" in lower:
         return "dormants"
     if "fresh buys" in lower or "wizard" in lower:
@@ -254,4 +274,3 @@ def _normalize_now(now: datetime | None) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value
-

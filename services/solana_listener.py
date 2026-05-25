@@ -118,6 +118,27 @@ DEXES = {
     "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD": ("marinade", "🧂"),
 }
 
+
+def _positive_topic_id(topic_id: int) -> int | None:
+    return topic_id if topic_id > 0 else None
+
+
+def good_creator_topic_id() -> int | None:
+    return _positive_topic_id(settings.telegram_good_creator_topic_id)
+
+
+def socials_topic_id() -> int | None:
+    return _positive_topic_id(settings.telegram_socials_topic_id)
+
+
+def strong_launch_topic_id() -> int | None:
+    return _positive_topic_id(settings.telegram_strong_launch_topic_id)
+
+
+def _is_socials_queue_size_error(error: Exception) -> bool:
+    text = str(error).lower()
+    return "max single record size" in text or "max_record_size" in text
+
 # Combined for backward compatibility (all programs we monitor)
 LAUNCHPADS = {**TRUE_LAUNCHPADS, **DEXES}
 
@@ -151,7 +172,6 @@ class SolanaListener:
             if not self._redis_client:
                 # Initialize Redis if needed
                 import redis.asyncio as redis
-                from config import settings
                 self._redis_client = redis.from_url(settings.redis_url)
                 
             # Queue payload
@@ -172,7 +192,19 @@ class SolanaListener:
             }
             
             import orjson
-            await self._redis_client.lpush("trench:socials:queue", orjson.dumps(payload))
+            queue_key = "trench:socials:queue"
+            encoded = orjson.dumps(payload)
+            try:
+                await self._redis_client.lpush(queue_key, encoded)
+            except Exception as queue_error:
+                if not _is_socials_queue_size_error(queue_error):
+                    raise
+                logger.warning("[Socials] Redis queue exceeded Upstash record limit; clearing stale queue")
+                await self._redis_client.delete(queue_key)
+                await self._redis_client.lpush(queue_key, encoded)
+
+            max_length = max(1, settings.socials_queue_max_length)
+            await self._redis_client.ltrim(queue_key, 0, max_length - 1)
             logger.debug(f"📤 [Socials] Queued {token_data.symbol} for checking")
             
         except Exception as e:
@@ -1369,9 +1401,7 @@ MC: {mc_str} | CA: {age_str}
                                 wallet_value_str=f"${creator_profile.total_wallet_value_usd:,.0f}",
                                 market_cap_str=token_data.mc_string,
                             )
-                            # Send to Freshies topic? Or separate? Using Freshies for visibility
-                            topic = settings.telegram_freshies_topic_id if settings.telegram_freshies_topic_id > 0 else None
-                            await self.telegram.send_alert(creator_msg, topic_id=topic)
+                            await self.telegram.send_alert(creator_msg, topic_id=good_creator_topic_id())
                             self.creator_analyzer.mark_alerted(wallet)
                             self.creator_analyzer.increment_alerts()
                             self._creator_alerts_sent += 1
@@ -1426,9 +1456,7 @@ MC: {mc_str} | CA: {age_str}
                                 coin_age_str=token_data.age_string,
                             )
                             
-                            # Send to Socials topic if configured, else Freshies
-                            socials_topic = settings.telegram_socials_topic_id if settings.telegram_socials_topic_id > 0 else settings.telegram_freshies_topic_id
-                            await self.telegram.send_alert(socials_msg, topic_id=socials_topic)
+                            await self.telegram.send_alert(socials_msg, topic_id=socials_topic_id())
                             self.socials_checker.mark_alerted(token_mint)
                             self.socials_checker.increment_alerts()
                             self._socials_alerts_sent += 1
@@ -1451,9 +1479,7 @@ MC: {mc_str} | CA: {age_str}
                             market_cap_str=token_data.mc_string,
                             coin_age_str=token_data.age_string,
                         )
-                        # Send to Strong Launch topic (or Freshies if not set)
-                        topic = settings.telegram_strong_launch_topic_id if settings.telegram_strong_launch_topic_id > 0 else settings.telegram_freshies_topic_id
-                        await self.telegram.send_alert(launch_msg, topic_id=topic)
+                        await self.telegram.send_alert(launch_msg, topic_id=strong_launch_topic_id())
                         self.strong_launch_tracker.increment_alerts()
                         self._strong_launch_alerts_sent += 1
 

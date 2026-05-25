@@ -15,8 +15,10 @@ from trench_v2.core.models import Chain, RiskLevel, RiskReport
 from trench_v2.providers.base import RiskProvider
 from trench_v2.providers.dexscreener import DexPair, DexScreenerProvider, DexTokenProfile
 from trench_v2.providers.factory import build_risk_provider
+from trench_v2.providers.wallet_performance import MoralisTopTradersProvider
 from trench_v2.telegram.sender import BotApiTelegramSender, TelegramSender
 from trench_v2.telegram.topics import TopicFeature, topic_env_key
+from wallet_performance import WalletPerformanceCandidate, best_signal_from_wallet_performance
 
 
 class DiscoveryProvider(Protocol):
@@ -25,6 +27,18 @@ class DiscoveryProvider(Protocol):
 
     async def best_pair(self, profile: DexTokenProfile) -> DexPair | None:
         """Return the best pair for a token profile."""
+
+
+class WalletPerformanceProvider(Protocol):
+    async def best_wallets_for_token(
+        self,
+        *,
+        chain: Chain,
+        token_address: str,
+        token_symbol: str,
+        periods: tuple[str, ...],
+    ) -> list[WalletPerformanceCandidate]:
+        """Return verified top-wallet candidates for the token."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +84,9 @@ class LiveSignalStats:
     risk_checked: int = 0
     rejected_risk: int = 0
     best_signals_sent: int = 0
+    best_wallet_candidates_seen: int = 0
+    best_wallet_signals_queued: int = 0
+    best_wallet_last_error: str | None = None
     candidates_by_topic: dict[str, int] = field(default_factory=dict)
     alerts_by_topic: dict[str, int] = field(default_factory=dict)
     alerts_by_quality_band: dict[str, int] = field(default_factory=dict)
@@ -90,6 +107,9 @@ class LiveSignalStats:
             "risk_checked": self.risk_checked,
             "rejected_risk": self.rejected_risk,
             "best_signals_sent": self.best_signals_sent,
+            "best_wallet_candidates_seen": self.best_wallet_candidates_seen,
+            "best_wallet_signals_queued": self.best_wallet_signals_queued,
+            "best_wallet_last_error": self.best_wallet_last_error,
             "candidates_by_topic": dict(sorted(self.candidates_by_topic.items())),
             "alerts_by_topic": dict(sorted(self.alerts_by_topic.items())),
             "alerts_by_quality_band": dict(sorted(self.alerts_by_quality_band.items())),
@@ -113,11 +133,13 @@ class LiveSignalWorker:
         sender: TelegramSender | None = None,
         risk_provider: RiskProvider | None = None,
         best_signal_router: BestSignalRouter | None = None,
+        wallet_performance_provider: WalletPerformanceProvider | None = None,
     ):
         self.settings = settings
         self.provider = provider or DexScreenerProvider()
         self.sender = sender or self._sender_from_settings(settings)
         self.risk_provider = risk_provider or build_risk_provider(settings)
+        self.wallet_performance_provider = wallet_performance_provider or self._wallet_provider_from_settings(settings)
         self.stats = LiveSignalStats()
         self._daily_budget = PriorityDailyBudget(
             daily_cap=settings.signal_daily_cap,
@@ -206,6 +228,7 @@ class LiveSignalWorker:
                 _increment(self.stats.alerts_by_topic, checked_signal.topic_env_key)
                 _increment(self.stats.alerts_by_quality_band, decision.band)
                 self._queue_best_signal(checked_signal)
+                await self._queue_best_wallet_signals(checked_signal)
                 self._remember(checked_signal)
                 sent.append(checked_signal)
             else:
@@ -456,6 +479,29 @@ class LiveSignalWorker:
             )
         )
 
+    async def _queue_best_wallet_signals(self, signal: LiveSignal) -> None:
+        if not self.wallet_performance_provider:
+            return
+        try:
+            wallet_candidates = await self.wallet_performance_provider.best_wallets_for_token(
+                chain=signal.chain,
+                token_address=signal.token_address,
+                token_symbol=signal.symbol,
+                periods=("week", "month", "year"),
+            )
+        except Exception as exc:
+            self.stats.best_wallet_last_error = type(exc).__name__
+            return
+
+        self.stats.best_wallet_candidates_seen += len(wallet_candidates)
+        for wallet_candidate in wallet_candidates:
+            best_candidate = best_signal_from_wallet_performance(
+                wallet_candidate,
+                min_score=self.settings.best_wallet_min_score,
+            )
+            if best_candidate and self._best_signal_router.queue(best_candidate):
+                self.stats.best_wallet_signals_queued += 1
+
     async def _flush_best_signals(self) -> None:
         best_topic_id = (self.settings.telegram_topic_ids or {}).get("TELEGRAM_BEST_SIGNALS_TOPIC_ID", 0)
         if best_topic_id <= 0 or not self.sender:
@@ -498,6 +544,13 @@ class LiveSignalWorker:
         if not settings.telegram_bot_token or not settings.telegram_chat_id:
             return None
         return BotApiTelegramSender(settings.telegram_bot_token, settings.telegram_chat_id)
+
+    def _wallet_provider_from_settings(self, settings: V2Settings) -> WalletPerformanceProvider | None:
+        if not settings.best_wallet_signals_enabled or not settings.command_providers_enabled:
+            return None
+        if not settings.moralis_api_key:
+            return None
+        return MoralisTopTradersProvider(settings.moralis_api_key)
 
 
 def _money(value: float | None) -> str:

@@ -7,6 +7,7 @@ from trench_v2.config import V2Settings
 from trench_v2.core.models import Chain, RiskLevel, RiskReport
 from trench_v2.engine.live_signals import LiveSignalWorker
 from trench_v2.providers.dexscreener import DexPair, DexTokenProfile
+from wallet_performance import WalletPerformanceCandidate
 
 
 class FakeDiscoveryProvider:
@@ -53,6 +54,16 @@ class FakeRiskProvider:
     async def fetch_risk(self, chain: Chain, address: str) -> RiskReport:
         self.calls.append((chain, address))
         return self.report
+
+
+class FakeWalletPerformanceProvider:
+    def __init__(self, candidates):
+        self.candidates = candidates
+        self.calls = []
+
+    async def best_wallets_for_token(self, *, chain, token_address, token_symbol, periods):
+        self.calls.append((chain, token_address, token_symbol, periods))
+        return self.candidates
 
 
 @pytest.mark.asyncio
@@ -408,6 +419,63 @@ async def test_live_signal_worker_copies_risk_checked_elite_signal_to_best_topic
     assert len(sent) == 1
     assert [topic_id for topic_id, _ in sender.messages] == [201, 999]
     assert "Best Signal" in sender.messages[1][1]
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xelite",
+        symbol="ELITE",
+        name="Elite Token",
+        url="https://dexscreener.com/base/0xelite",
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        volume_24h_usd=260_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+    sender = FakeSender()
+    wallet_provider = FakeWalletPerformanceProvider(
+        [
+            WalletPerformanceCandidate(
+                chain="base",
+                wallet_address="0x1111111111111111111111111111111111111111",
+                period="week",
+                realized_pnl_usd=18_500,
+                roi_pct=420,
+                win_rate=0.78,
+                trades=14,
+                wins=11,
+                losses=3,
+                top_tokens=("ELITE",),
+                evidence_url="https://deep-index.moralis.io",
+            )
+        ]
+    )
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
+        wallet_performance_provider=wallet_provider,
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert wallet_provider.calls == [(Chain.BASE, "0xelite", "ELITE", ("week", "month", "year"))]
+    assert [topic_id for topic_id, _ in sender.messages] == [201, 999, 999]
+    assert "Best Wallet Week" in sender.messages[2][1]
 
 
 @pytest.mark.asyncio

@@ -40,8 +40,10 @@ def test_signal_quality_default_prioritizes_actionable_alerts():
 
     assert settings.signal_min_quality == 82
     assert settings.signal_daily_cap == 30
-    assert settings.best_signals_daily_cap == 7
+    assert settings.best_signals_daily_cap == 0
     assert settings.best_signals_min_score == 95
+    assert settings.best_wallet_signals_enabled is True
+    assert settings.best_wallet_min_score == 95
 
 
 def test_settings_prefers_explicit_v1_bsc_rpc_url_over_alchemy_bsc_url():

@@ -76,6 +76,10 @@ class Settings(BaseSettings):
         default=15,
         description="Daily cap for high-quality V1 signal alerts"
     )
+    socials_queue_max_length: int = Field(
+        default=200,
+        description="Maximum Redis list length for queued socials checks"
+    )
     min_transaction_sol: float = Field(
         default=0.1,  # Lowered from 0.47 to allow more alerts
         description="Minimum transaction size to track"
@@ -197,8 +201,8 @@ class Settings(BaseSettings):
         description="Topic ID for the strongest cross-channel signals"
     )
     best_signals_daily_cap: int = Field(
-        default=7,
-        description="Maximum Best Signals messages per day"
+        default=0,
+        description="Maximum Best Signals messages per day (0 = unlimited with quality gating)"
     )
     best_signals_min_score: int = Field(
         default=95,

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 import services.solana_listener as solana_listener
+from services.socials_checker import SocialProfile, SocialsChecker
 
 
 class FakeRedis:
@@ -41,6 +42,81 @@ def _token_data():
         twitter="https://x.com/social",
         website="https://social.example",
     )
+
+
+def test_socials_checker_alerts_on_complete_basic_socials_when_enrichment_is_weak():
+    checker = SocialsChecker()
+    profile = SocialProfile(
+        token_address="token",
+        twitter_url="https://x.com/social",
+        telegram_url="https://t.me/social",
+        website_url="https://social.example",
+        twitter_followers=0,
+        has_verified_twitter=False,
+        has_active_telegram=True,
+        social_score=75,
+        enhanced_score=15,
+        checked_at=solana_listener.datetime.utcnow(),
+    )
+
+    assert checker.is_alertable_socials(profile) is True
+
+
+def test_socials_checker_keeps_partial_basic_socials_quiet_without_enrichment():
+    checker = SocialsChecker()
+    profile = SocialProfile(
+        token_address="token",
+        twitter_url="https://x.com/social",
+        telegram_url="https://t.me/social",
+        website_url=None,
+        twitter_followers=0,
+        has_verified_twitter=False,
+        has_active_telegram=True,
+        social_score=55,
+        enhanced_score=15,
+        checked_at=solana_listener.datetime.utcnow(),
+    )
+
+    assert checker.is_alertable_socials(profile) is False
+
+
+def test_socials_checker_returns_unalerted_alertable_profiles():
+    checker = SocialsChecker()
+    checker._profiles["token"] = SocialProfile(
+        token_address="token",
+        twitter_url="https://x.com/social",
+        telegram_url="https://t.me/social",
+        website_url="https://social.example",
+        twitter_followers=0,
+        has_verified_twitter=False,
+        has_active_telegram=True,
+        social_score=75,
+        enhanced_score=15,
+        checked_at=solana_listener.datetime.utcnow(),
+    )
+
+    profiles = checker.get_alertable_profiles(limit=1)
+
+    assert [profile.token_address for profile in profiles] == ["token"]
+
+
+def test_socials_checker_excludes_already_alerted_profiles_from_background_flush():
+    checker = SocialsChecker()
+    checker._profiles["token"] = SocialProfile(
+        token_address="token",
+        twitter_url="https://x.com/social",
+        telegram_url="https://t.me/social",
+        website_url="https://social.example",
+        twitter_followers=0,
+        has_verified_twitter=False,
+        has_active_telegram=True,
+        social_score=75,
+        enhanced_score=15,
+        checked_at=solana_listener.datetime.utcnow(),
+    )
+    checker.mark_alerted("token")
+
+    assert checker.get_alertable_profiles(limit=1) == []
 
 
 @pytest.mark.asyncio

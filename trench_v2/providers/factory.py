@@ -36,8 +36,7 @@ def build_risk_provider(settings: V2Settings) -> RiskProvider:
         return NullRiskProvider()
 
     providers: list[object] = []
-    if settings.goplus_api_key:
-        providers.append(GoPlusRiskProvider(api_key=settings.goplus_api_key))
+    providers.append(GoPlusRiskProvider(api_key=settings.goplus_api_key))
 
     # Honeypot.is supports public checks in many deployments and also accepts an
     # API key when available, so keep it as the default free EVM risk source.

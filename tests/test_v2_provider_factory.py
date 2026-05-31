@@ -3,7 +3,7 @@ from trench_v2.engine.scanner import TokenScanner
 from trench_v2.providers.factory import build_risk_provider, build_scanner
 from trench_v2.providers.holders import MoralisHolderClusterProvider
 from trench_v2.providers.market import DexScreenerMarketDataProvider
-from trench_v2.providers.security import CompositeRiskProvider
+from trench_v2.providers.security import CompositeRiskProvider, GoPlusRiskProvider, HoneypotRiskProvider
 
 
 def test_provider_factory_keeps_command_providers_disabled_for_explicit_empty_settings():
@@ -18,6 +18,13 @@ def test_provider_factory_enables_live_command_providers_from_env_defaults():
 
     assert isinstance(scanner.market_data, DexScreenerMarketDataProvider)
     assert isinstance(scanner.risk_provider, CompositeRiskProvider)
+
+
+def test_provider_factory_uses_public_goplus_and_honeypot_by_default():
+    provider = build_risk_provider(V2Settings.from_env({}))
+
+    assert isinstance(provider, CompositeRiskProvider)
+    assert [type(source) for source in provider.providers] == [GoPlusRiskProvider, HoneypotRiskProvider]
 
 
 def test_provider_factory_uses_configured_security_keys():

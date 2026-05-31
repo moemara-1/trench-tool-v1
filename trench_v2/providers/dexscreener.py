@@ -54,7 +54,7 @@ class DexScreenerProvider:
         "https://api.dexscreener.com/token-boosts/latest/v1",
         "https://api.dexscreener.com/token-boosts/top/v1",
     )
-    _SEARCH_QUERIES = ("eth", "uniswap", "bsc", "pancakeswap")
+    _SEARCH_QUERIES = ("eth", "uniswap", "base", "aerodrome", "baseswap", "bsc", "pancakeswap")
     _GECKO_NETWORKS = {
         "eth": Chain.ETHEREUM,
         "bsc": Chain.BSC,

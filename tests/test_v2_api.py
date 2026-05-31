@@ -57,6 +57,7 @@ async def test_v2_topics_endpoint_reports_configured_topic_inventory():
             "TELEGRAM_ETH_MAINNET_TOPIC_ID": "111",
             "TELEGRAM_BASE_PRE_APPROVALS_TOPIC_ID": "222",
             "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": "333",
+            "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
         }
     )
     transport = httpx.ASGITransport(app=create_app(settings=settings))
@@ -66,8 +67,9 @@ async def test_v2_topics_endpoint_reports_configured_topic_inventory():
     assert response.status_code == 200
     payload = response.json()
     configured = {topic["env_key"] for topic in payload["topics"] if topic["configured"]}
-    assert payload["configured_count"] == 1
+    assert payload["configured_count"] == 2
     assert "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID" in configured
+    assert "TELEGRAM_BEST_SIGNALS_TOPIC_ID" in configured
     assert "TELEGRAM_ETH_MAINNET_TOPIC_ID" not in configured
     assert "TELEGRAM_BASE_PRE_APPROVALS_TOPIC_ID" not in configured
 

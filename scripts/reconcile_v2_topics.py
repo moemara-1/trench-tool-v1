@@ -26,6 +26,18 @@ ALIASES = {
     "TELEGRAM_SOL_MIGRATIONS_TRACKER_TOPIC_ID": "TELEGRAM_LATE_MIGRATION_TOPIC_ID",
 }
 
+SHARED_TOPIC_KEYS = {
+    "TELEGRAM_BEST_SIGNALS_TOPIC_ID",
+    "TELEGRAM_BUNDLES_TOPIC_ID",
+    "TELEGRAM_SNS_TOPIC_ID",
+    "TELEGRAM_VANISH_TOPIC_ID",
+    "TELEGRAM_STREAMFLOW_TOPIC_ID",
+    "TELEGRAM_DEV_HELD_TOPIC_ID",
+    "TELEGRAM_GOOD_CREATOR_TOPIC_ID",
+    "TELEGRAM_SOCIALS_TOPIC_ID",
+    "TELEGRAM_STRONG_LAUNCH_TOPIC_ID",
+}
+
 TELEGRAM_TOPIC_COLORS = {
     "blue": 0x6FB9F0,
     "yellow": 0xFFD67E,
@@ -47,6 +59,14 @@ WANTED_TOPICS = {
     "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": TopicSpec("Best Wallets Week", TELEGRAM_TOPIC_COLORS["green"]),
     "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID": TopicSpec("Best Wallets Month", TELEGRAM_TOPIC_COLORS["violet"]),
     "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID": TopicSpec("Best Wallets Year", TELEGRAM_TOPIC_COLORS["yellow"]),
+    "TELEGRAM_BUNDLES_TOPIC_ID": TopicSpec("Bundles (SOL)", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_SNS_TOPIC_ID": TopicSpec("SNS Tracker", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_VANISH_TOPIC_ID": TopicSpec("Vanish Buys (SOL)", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_STREAMFLOW_TOPIC_ID": TopicSpec("Streamflow locks", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_DEV_HELD_TOPIC_ID": TopicSpec("DEV Held", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_GOOD_CREATOR_TOPIC_ID": TopicSpec("Good Token Creator", TELEGRAM_TOPIC_COLORS["green"]),
+    "TELEGRAM_SOCIALS_TOPIC_ID": TopicSpec("Socials check", TELEGRAM_TOPIC_COLORS["blue"]),
+    "TELEGRAM_STRONG_LAUNCH_TOPIC_ID": TopicSpec("Strong launches", TELEGRAM_TOPIC_COLORS["green"]),
     "TELEGRAM_ETH_FRESHIES_TOPIC_ID": TopicSpec("ETH Freshies", TELEGRAM_TOPIC_COLORS["blue"]),
     "TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID": TopicSpec("ETH Big Freshies", TELEGRAM_TOPIC_COLORS["blue"]),
     "TELEGRAM_ETH_LOW_MC_FRESHIES_TOPIC_ID": TopicSpec("ETH Low MC Freshies", TELEGRAM_TOPIC_COLORS["blue"]),
@@ -171,14 +191,15 @@ def main() -> None:
         backup = ENV_PATH.with_suffix(".env.topic-backup-" + time.strftime("%Y%m%d%H%M%S"))
         backup.write_text(original)
         write_env(ENV_PATH, lines, updates)
-        if "TELEGRAM_BEST_SIGNALS_TOPIC_ID" in updates and SHARED_ENV_PATH.exists():
+        shared_updates = {key: value for key, value in updates.items() if key in SHARED_TOPIC_KEYS}
+        if shared_updates and SHARED_ENV_PATH.exists():
             shared_original = SHARED_ENV_PATH.read_text()
             shared_backup = SHARED_ENV_PATH.with_suffix(".env.topic-backup-" + time.strftime("%Y%m%d%H%M%S"))
             shared_backup.write_text(shared_original)
             write_env(
                 SHARED_ENV_PATH,
                 shared_original.splitlines(),
-                {"TELEGRAM_BEST_SIGNALS_TOPIC_ID": updates["TELEGRAM_BEST_SIGNALS_TOPIC_ID"]},
+                shared_updates,
             )
 
     print(f"aliases_or_created={len(updates)}")

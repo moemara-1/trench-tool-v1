@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RPCEndpoint:
     """Single RPC endpoint with stats tracking."""
-    api_key: str
+    api_key: str = ""
+    rpc_url_override: str | None = None
+    ws_url_override: str | None = None
     request_count: int = 0
     error_count: int = 0
     last_429_time: Optional[datetime] = None
@@ -26,11 +28,21 @@ class RPCEndpoint:
 
     @property
     def rpc_url(self) -> str:
+        if self.rpc_url_override:
+            return self.rpc_url_override
         return f"https://mainnet.helius-rpc.com/?api-key={self.api_key}"
 
     @property
     def ws_url(self) -> str:
+        if self.ws_url_override:
+            return self.ws_url_override
         return f"wss://mainnet.helius-rpc.com/?api-key={self.api_key}"
+
+    @property
+    def label(self) -> str:
+        if self.api_key:
+            return f"...{self.api_key[-8:]}"
+        return self.rpc_url.split("//", 1)[-1].split("/", 1)[0]
 
     @property
     def is_available(self) -> bool:
@@ -63,20 +75,31 @@ class HeliusRPCManager:
     # 100ms interval = 10 req/s max, should stay under limit
     MIN_REQUEST_INTERVAL_MS = 100
     # Cooldown duration after rate limit (seconds)
-    RATE_LIMIT_COOLDOWN_SEC = 5.0
+    RATE_LIMIT_COOLDOWN_SEC = 60.0
 
-    def __init__(self, api_keys: List[str]):
-        if not api_keys:
-            raise ValueError("At least one Helius API key is required")
-
+    def __init__(
+        self,
+        api_keys: List[str],
+        fallback_rpc_url: str | None = None,
+        fallback_ws_url: str | None = None,
+    ):
         self._endpoints = [RPCEndpoint(api_key=key.strip()) for key in api_keys if key.strip()]
+        if fallback_rpc_url and fallback_ws_url:
+            self._endpoints.append(
+                RPCEndpoint(
+                    rpc_url_override=fallback_rpc_url.strip(),
+                    ws_url_override=fallback_ws_url.strip(),
+                )
+            )
+        if not self._endpoints:
+            raise ValueError("At least one Solana RPC endpoint is required")
         self._current_index = 0
         self._lock = threading.Lock()
         self._last_request_time = 0.0
 
         logger.info(f"🔄 HeliusRPCManager initialized with {len(self._endpoints)} endpoints (throttled)")
         for i, ep in enumerate(self._endpoints):
-            logger.debug(f"  Endpoint {i+1}: ...{ep.api_key[-8:]}")
+            logger.debug(f"  Endpoint {i+1}: {ep.label}")
     
     @property
     def endpoint_count(self) -> int:
@@ -109,7 +132,8 @@ class HeliusRPCManager:
                 attempts += 1
 
             # All endpoints in cooldown - use first one anyway
-            endpoint = self._endpoints[0]
+            self._wait_for_next_endpoint()
+            endpoint = self._next_endpoint_by_cooldown()
             endpoint.request_count += 1
             self._last_request_time = time.time()
             return endpoint.rpc_url
@@ -117,10 +141,19 @@ class HeliusRPCManager:
     def get_ws_url(self) -> str:
         """
         Get a WebSocket URL.
-        For WebSocket, we typically want to stick with one connection,
-        so this returns the first endpoint's WS URL.
+        Rotate across available endpoints so a rate-limited WebSocket key
+        does not trap the listener in a reconnect loop.
         """
-        return self._endpoints[0].ws_url
+        with self._lock:
+            attempts = 0
+            while attempts < len(self._endpoints):
+                endpoint = self._endpoints[self._current_index]
+                self._current_index = (self._current_index + 1) % len(self._endpoints)
+                if endpoint.is_available:
+                    return endpoint.ws_url
+                attempts += 1
+            self._wait_for_next_endpoint()
+            return self._next_endpoint_by_cooldown().ws_url
     
     def get_all_ws_urls(self) -> List[str]:
         """Get all WebSocket URLs for potential multi-connection setups."""
@@ -133,13 +166,43 @@ class HeliusRPCManager:
         """
         with self._lock:
             for endpoint in self._endpoints:
-                if endpoint.rpc_url == rpc_url:
+                if endpoint.rpc_url == rpc_url or endpoint.ws_url == rpc_url:
                     endpoint.error_count += 1
                     if is_rate_limit:
                         endpoint.last_429_time = datetime.utcnow()
                         endpoint.set_cooldown(self.RATE_LIMIT_COOLDOWN_SEC)
                         logger.warning(f"⚠️ Rate limit hit on endpoint ...{endpoint.api_key[-8:]}, cooldown {self.RATE_LIMIT_COOLDOWN_SEC}s")
                     break
+
+    def seconds_until_available(self) -> float:
+        """Seconds until any endpoint leaves cooldown, or 0 if one is ready."""
+        with self._lock:
+            return self._seconds_until_available_unlocked()
+
+    def _seconds_until_available_unlocked(self) -> float:
+        if any(endpoint.is_available for endpoint in self._endpoints):
+            return 0.0
+        now = datetime.utcnow()
+        waits = [
+            max(0.0, (endpoint.cooldown_until - now).total_seconds())
+            for endpoint in self._endpoints
+            if endpoint.cooldown_until is not None
+        ]
+        return min(waits) if waits else 0.0
+
+    def _wait_for_next_endpoint(self) -> None:
+        delay = self._seconds_until_available_unlocked()
+        if delay <= 0:
+            return
+        sleep_for = min(delay, self.RATE_LIMIT_COOLDOWN_SEC)
+        logger.warning(f"All Helius endpoints cooling down; pausing {sleep_for:.1f}s")
+        time.sleep(sleep_for)
+
+    def _next_endpoint_by_cooldown(self) -> RPCEndpoint:
+        return min(
+            self._endpoints,
+            key=lambda endpoint: endpoint.cooldown_until or datetime.utcnow(),
+        )
     
     def get_stats(self) -> dict:
         """Get usage statistics for all endpoints."""
@@ -153,7 +216,7 @@ class HeliusRPCManager:
                 "total_errors": total_errors,
                 "endpoints": [
                     {
-                        "key_suffix": f"...{ep.api_key[-8:]}",
+                        "key_suffix": ep.label,
                         "requests": ep.request_count,
                         "errors": ep.error_count,
                         "last_429": ep.last_429_time.isoformat() if ep.last_429_time else None,
@@ -167,10 +230,14 @@ class HeliusRPCManager:
 _rpc_manager: Optional[HeliusRPCManager] = None
 
 
-def init_rpc_manager(api_keys: List[str]) -> HeliusRPCManager:
+def init_rpc_manager(
+    api_keys: List[str],
+    fallback_rpc_url: str | None = None,
+    fallback_ws_url: str | None = None,
+) -> HeliusRPCManager:
     """Initialize the global RPC manager with API keys."""
     global _rpc_manager
-    _rpc_manager = HeliusRPCManager(api_keys)
+    _rpc_manager = HeliusRPCManager(api_keys, fallback_rpc_url, fallback_ws_url)
     return _rpc_manager
 
 
@@ -181,7 +248,9 @@ def get_rpc_manager() -> HeliusRPCManager:
         # Fallback: try to initialize from settings
         from config import settings
         api_keys = settings.helius_api_keys
-        if not api_keys:
+        fallback_rpc_url = _generic_fallback_url(settings.solana_rpc_url)
+        fallback_ws_url = _generic_fallback_url(settings.solana_ws_url)
+        if not api_keys and not (fallback_rpc_url and fallback_ws_url):
             # Ultimate fallback: extract from legacy URL
             rpc_url = settings.solana_rpc_url
             if "api-key=" in rpc_url:
@@ -189,5 +258,13 @@ def get_rpc_manager() -> HeliusRPCManager:
                 api_keys = [key]
             else:
                 raise ValueError("No Helius API keys configured")
-        _rpc_manager = HeliusRPCManager(api_keys)
+        _rpc_manager = HeliusRPCManager(api_keys, fallback_rpc_url, fallback_ws_url)
     return _rpc_manager
+
+
+def _generic_fallback_url(url: str) -> str | None:
+    if not url:
+        return None
+    if "mainnet.helius-rpc.com" in url:
+        return None
+    return url

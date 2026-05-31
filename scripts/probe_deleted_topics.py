@@ -31,10 +31,6 @@ DELETE_KEYS = {
     "TELEGRAM_BASE_ENS_BUYS_TOPIC_ID": "Base ENS Buys",
     "TELEGRAM_BUNDLES_TOPIC_ID": "Bundles(SOL)",
     "TELEGRAM_SOL_BUNDLES_TOPIC_ID": "Bundles(SOL)",
-    "TELEGRAM_PATTERNS_TOPIC_ID": "Patterns (SOL)",
-    "TELEGRAM_SOL_PATTERNS_TOPIC_ID": "Patterns (SOL)",
-    "TELEGRAM_WIZARD_TOPIC_ID": "Freshies Wizard",
-    "TELEGRAM_SOL_WIZARD_TOPIC_ID": "Freshies Wizard",
     "TELEGRAM_SNS_TOPIC_ID": "SNS Tracker",
     "TELEGRAM_SOL_SNS_TOPIC_ID": "SNS Tracker",
     "TELEGRAM_SOCIALS_TOPIC_ID": "Socials check",
@@ -45,11 +41,14 @@ DELETE_KEYS = {
     "TELEGRAM_SOL_GOOD_CREATOR_TOPIC_ID": "Good Token creators",
     "TELEGRAM_STRONG_LAUNCH_TOPIC_ID": "Strong launches",
     "TELEGRAM_SOL_STRONG_LAUNCH_TOPIC_ID": "Strong launches",
-    "TELEGRAM_STRONGFLOOR_TOPIC_ID": "Strong floor",
-    "TELEGRAM_SOL_STRONGFLOOR_TOPIC_ID": "Strong floor",
     "TELEGRAM_STREAMFLOW_TOPIC_ID": "Streamflow locks",
     "TELEGRAM_SOL_STREAMFLOW_TOPIC_ID": "Streamflow locks",
     "TELEGRAM_VANISH_TOPIC_ID": "Vanish Buys(SOL)",
+    "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": "Best Wallets Week",
+    "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID": "Best Wallets Month",
+    "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID": "Best Wallets Year",
+    "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "Base Low MC Freshies",
+    "TELEGRAM_FEEDBACK_TOPIC_ID": "Feedback",
 }
 
 

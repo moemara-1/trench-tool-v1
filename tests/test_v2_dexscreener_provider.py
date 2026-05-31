@@ -88,3 +88,7 @@ async def test_latest_pairs_includes_search_and_geckoterminal_network_pools():
     assert by_chain[Chain.ETHEREUM].token_address == "0xeth"
     assert by_chain[Chain.ETHEREUM].liquidity_usd == 60_000
     assert by_chain[Chain.ETHEREUM].buys_1h == 45
+    search_urls = [url for url in provider.client.urls if "/latest/dex/search" in url]
+    assert any("q=base" in url for url in search_urls)
+    assert any("q=aerodrome" in url for url in search_urls)
+    assert any("q=baseswap" in url for url in search_urls)

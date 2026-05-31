@@ -88,6 +88,10 @@ class Settings(BaseSettings):
         default=5000,  # Lowered from 15000 to allow more alerts
         description="Minimum market cap to alert (filter out micro caps)"
     )
+    solana_ws_stale_seconds: int = Field(
+        default=300,
+        description="Seconds without Solana websocket transaction activity before backup polling activates"
+    )
     max_market_cap: float = Field(
         default=100000000,
         description="Maximum market cap to alert (filter out huge caps)"

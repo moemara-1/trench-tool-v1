@@ -60,6 +60,7 @@ class TopicFeature(str, Enum):
     BEST_WALLETS_WEEK = "best_wallets_week"
     BEST_WALLETS_MONTH = "best_wallets_month"
     BEST_WALLETS_YEAR = "best_wallets_year"
+    BEST_SIGNALS = "best_signals"
     FEEDBACK = "feedback"
 
 
@@ -132,6 +133,7 @@ def build_default_topic_plan() -> tuple[TopicTarget, ...]:
     ]:
         add(Chain.BSC, feature, title)
 
+    add_global(TopicFeature.BEST_SIGNALS, "Best Signals", "TELEGRAM_BEST_SIGNALS_TOPIC_ID")
     add_global(TopicFeature.BEST_WALLETS_WEEK, "Best Wallets Week", "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID")
     add_global(TopicFeature.BEST_WALLETS_MONTH, "Best Wallets Month", "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID")
     add_global(TopicFeature.BEST_WALLETS_YEAR, "Best Wallets Year", "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID")

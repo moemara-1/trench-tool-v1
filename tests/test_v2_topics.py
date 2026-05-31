@@ -26,6 +26,7 @@ def test_default_topic_plan_covers_live_signal_suites():
     assert (Chain.SOLANA, TopicFeature.WIZARD) in pairs
     assert (Chain.ETHEREUM, TopicFeature.LOW_MC_FRESHIES) in pairs
     assert (Chain.BSC, TopicFeature.BIG_FRESHIES) in pairs
+    assert (Chain.BASE, TopicFeature.LOW_MC_FRESHIES) in pairs
     assert (Chain.SOLANA, TopicFeature.BUNDLES) not in pairs
     assert (Chain.SOLANA, TopicFeature.GOOD_CREATOR) not in pairs
     assert (Chain.SOLANA, TopicFeature.SNS) not in pairs
@@ -39,6 +40,7 @@ def test_default_topic_plan_covers_live_signal_suites():
     assert (Chain.BSC, TopicFeature.SCAN) not in pairs
 
     global_pairs = {(target.chain, target.feature) for target in plan}
+    assert (None, TopicFeature.BEST_SIGNALS) in global_pairs
     assert (None, TopicFeature.BEST_WALLETS_WEEK) in global_pairs
     assert (None, TopicFeature.BEST_WALLETS_MONTH) in global_pairs
     assert (None, TopicFeature.BEST_WALLETS_YEAR) in global_pairs

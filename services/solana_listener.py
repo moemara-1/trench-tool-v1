@@ -5,7 +5,7 @@ Real-time transaction monitoring with freshie sub-channel alerts.
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from collections import defaultdict
 
@@ -135,6 +135,10 @@ def strong_launch_topic_id() -> int | None:
     return _positive_topic_id(settings.telegram_strong_launch_topic_id)
 
 
+def dev_held_topic_id() -> int | None:
+    return _positive_topic_id(settings.telegram_dev_held_topic_id)
+
+
 def _is_socials_queue_size_error(error: Exception) -> bool:
     text = str(error).lower()
     return "max single record size" in text or "max_record_size" in text
@@ -217,6 +221,9 @@ class SolanaListener:
         
         self._running = False
         self._http_client: httpx.AsyncClient | None = None
+        self._ws_connected = False
+        self._last_ws_connected_at: datetime | None = None
+        self._last_tx_received_at: datetime | None = None
         
         self.token_fetcher = get_token_fetcher()
         self.helius = get_helius_client()
@@ -696,12 +703,18 @@ MC: {mc_str} | CA: {age_str}
             self._seen_tokens.add(token_address)
         
         return message, dormant_class
+
+    def _capture_first_seen_for_enrichment(self, token_address: str) -> bool:
+        """Snapshot first-seen state before format_alert mutates _seen_tokens."""
+        return token_address not in self._seen_tokens
     
     async def start(self):
         """Start the listener with WebSocket + parallel polling."""
         self._running = True
         self._http_client = httpx.AsyncClient(timeout=30.0)
         self._ws_connected = False
+        self._last_ws_connected_at = None
+        self._last_tx_received_at = None
         
         logger.info("🚀 Starting Solana listener...")
         
@@ -769,6 +782,35 @@ MC: {mc_str} | CA: {age_str}
                 if floor_stats["tokens_tracked"] > 0:
                     logger.debug(f"🧱 Strongfloor: Tracking {floor_stats['tokens_tracked']} tokens")
 
+                # === SOCIALS ALERT FLUSH ===
+                # Transaction processing can discover strong socials before enrichment is available.
+                # Flush cached, unalerted high-quality profiles so the Socials topic stays live.
+                for social_profile in self.socials_checker.get_alertable_profiles(limit=2):
+                    try:
+                        token_data = await self.token_fetcher.get_token_data(social_profile.token_address)
+                        social_profile = await self.socials_checker.analyze_enhanced(social_profile)
+                        if not self.socials_checker.is_alertable_socials(social_profile):
+                            continue
+                        socials_msg = await self.socials_checker.format_socials_alert(
+                            ticker=token_data.symbol if token_data else "???",
+                            token_name=token_data.name if token_data else "Unknown",
+                            contract_address=social_profile.token_address,
+                            profile=social_profile,
+                            market_cap_str=token_data.mc_string if token_data else "?",
+                            coin_age_str=token_data.age_string if token_data else "?",
+                        )
+                        msg_id = await self.telegram.send_alert(socials_msg, topic_id=socials_topic_id())
+                        if msg_id:
+                            self.socials_checker.mark_alerted(social_profile.token_address)
+                            self.socials_checker.increment_alerts()
+                            self._socials_alerts_sent += 1
+                            logger.info(
+                                f"ðŸ“± SOCIALS ALERT FLUSHED: {social_profile.token_address[:12]}... | "
+                                f"Score: {max(social_profile.enhanced_score, social_profile.social_score)}/100"
+                            )
+                    except Exception as e:
+                        logger.debug(f"Error flushing socials alert for {social_profile.token_address[:12]}: {e}")
+
                 # === DEV HELD CHECKING ===
                 # Check dev wallets that haven't been alerted yet
                 holdings_to_check = self.dev_held_tracker.get_holdings_to_check()
@@ -801,7 +843,7 @@ MC: {mc_str} | CA: {age_str}
                                 )
 
                                 # Send alert
-                                topic = settings.telegram_freshies_topic_id if settings.telegram_freshies_topic_id > 0 else None
+                                topic = dev_held_topic_id()
                                 await self.telegram.send_alert(dev_msg, topic_id=topic)
 
                                 # Mark as alerted
@@ -884,9 +926,11 @@ MC: {mc_str} | CA: {age_str}
         DEX_PROGRAMS = list(LAUNCHPADS.keys())
         
         while self._running:
+            ws_url = self.rpc_manager.get_ws_url()
             try:
                 async with websockets.connect(ws_url, ping_interval=30) as ws:
                     self._ws_connected = True
+                    self._last_ws_connected_at = datetime.utcnow()
                     logger.info(f"✅ WebSocket connected! Subscribing to {len(DEX_PROGRAMS)} DEX programs...")
                     
                     # Subscribe to logs for each DEX program
@@ -924,6 +968,7 @@ MC: {mc_str} | CA: {age_str}
                                 if signature and signature not in self._processed_sigs:
                                     self._processed_sigs.add(signature)
                                     self._tx_received += 1
+                                    self._last_tx_received_at = datetime.utcnow()
                                     
                                     # Limit cache size
                                     if len(self._processed_sigs) > 5000:
@@ -947,6 +992,10 @@ MC: {mc_str} | CA: {age_str}
                             
             except Exception as e:
                 self._ws_connected = False
+                self.rpc_manager.report_error(
+                    ws_url,
+                    is_rate_limit="429" in str(e) or "too many requests" in str(e).lower(),
+                )
                 logger.error(f"WebSocket error: {e}. Reconnecting in 5s...")
                 await asyncio.sleep(5)
     
@@ -1036,7 +1085,7 @@ MC: {mc_str} | CA: {age_str}
             while self._running:
                 try:
                     # ONLY poll if WebSocket is disconnected
-                    if self._ws_connected:
+                    if not self._should_backup_poll():
                         await asyncio.sleep(30)  # Check every 30s if WS is still up
                         continue
 
@@ -1049,7 +1098,12 @@ MC: {mc_str} | CA: {age_str}
                         "params": [program_id, {"limit": 10}]
                     }
                     
-                    response = await self._http_client.post(self.rpc_manager.get_rpc_url(), json=payload)
+                    rpc_url = self.rpc_manager.get_rpc_url()
+                    response = await self._http_client.post(rpc_url, json=payload)
+                    if response.status_code == 429:
+                        self.rpc_manager.report_error(rpc_url, is_rate_limit=True)
+                        await asyncio.sleep(max(5.0, self.rpc_manager.seconds_until_available()))
+                        continue
                     result = response.json()
                     signatures = result.get("result", [])
                     
@@ -1059,6 +1113,7 @@ MC: {mc_str} | CA: {age_str}
                         if signature and signature not in self._processed_sigs:
                             self._processed_sigs.add(signature)
                             self._tx_received += 1
+                            self._last_tx_received_at = datetime.utcnow()
                             
                             # Limit cache size
                             if len(self._processed_sigs) > 5000:
@@ -1360,6 +1415,7 @@ MC: {mc_str} | CA: {age_str}
                     await self.telegram.send_alert(migration_msg, topic_id=migration_topic)
                     self.late_migration_tracker.increment_alerts()
             
+            first_seen_for_enrichment = self._capture_first_seen_for_enrichment(token_mint)
             alert_msg, classification = await self.format_alert(
                 token_address=token_mint,
                 wallet_address=wallet,
@@ -1369,9 +1425,8 @@ MC: {mc_str} | CA: {age_str}
             
             if alert_msg:
                 # === DEV HELD & CREATOR ANALYSIS (New Token / First Mention) ===
-                is_first_seen = token_mint not in self._seen_tokens
                 creator_profile = None  # Initialize to avoid unbound variable error
-                if is_first_seen:
+                if first_seen_for_enrichment:
                     # 1. Analyze Creator
                     # We assume the wallet in a freshie alert *might* be the creator/early buyer
                     #Ideally we'd fetch the actual mint tx, but evaluating the current wallet is a good proxy for "early whale"
@@ -1445,7 +1500,7 @@ MC: {mc_str} | CA: {age_str}
                         # Run enhanced analysis (smart followers + LLM)
                         social_profile = await self.socials_checker.analyze_enhanced(social_profile)
                         
-                        if self.socials_checker.is_enhanced_socials(social_profile):
+                        if self.socials_checker.is_alertable_socials(social_profile):
                             # Format and send socials alert
                             socials_msg = await self.socials_checker.format_socials_alert(
                                 ticker=token_data.symbol,
@@ -1792,8 +1847,24 @@ MC: {mc_str} | CA: {age_str}
         except Exception as e:
             logger.error(f"Error processing transaction: {e}")
             self._errors += 1
+
+    def _should_backup_poll(self, now: datetime | None = None) -> bool:
+        """Return true when WebSocket is disconnected or connected-but-stale."""
+
+        if not getattr(self, "_ws_connected", False):
+            return True
+
+        current_time = now or datetime.utcnow()
+        last_activity = getattr(self, "_last_tx_received_at", None) or getattr(self, "_last_ws_connected_at", None)
+        if last_activity is None:
+            return True
+
+        stale_after = max(30, settings.solana_ws_stale_seconds)
+        return current_time - last_activity > timedelta(seconds=stale_after)
     
     def get_stats(self) -> dict:
+        queue = getattr(self, "_tx_queue", None)
+        queue_size = queue.qsize() if queue and hasattr(queue, "qsize") else 0
         return {
             "transactions_received": self._tx_received,
             "transactions_processed": self._tx_processed,
@@ -1812,7 +1883,29 @@ MC: {mc_str} | CA: {age_str}
             "errors": self._errors,
             "running": self._running,
             "unique_tokens": len(self._seen_tokens),
+            "websocket_connected": getattr(self, "_ws_connected", False),
+            "websocket_stale": self._should_backup_poll(),
+            "last_ws_connected_at": _iso_or_none(getattr(self, "_last_ws_connected_at", None)),
+            "last_tx_received_at": _iso_or_none(getattr(self, "_last_tx_received_at", None)),
+            "queue_size": queue_size,
+            "modules": {
+                "sns": self.sns_tracker.get_stats(),
+                "vanish": self.vanish_tracker.get_stats(),
+                "bundles": self.bundle_detector.get_stats(),
+                "late_migration": self.late_migration_tracker.get_stats(),
+                "streamflow": self.streamflow_tracker.get_stats(),
+                "dev_held": self.dev_held_tracker.get_stats(),
+                "good_creator": self.creator_analyzer.get_stats(),
+                "socials": self.socials_checker.get_stats(),
+                "strong_launch": self.strong_launch_tracker.get_stats(),
+                "strongfloor": self.strongfloor_tracker.get_stats(),
+            },
+            "rpc": self.rpc_manager.get_stats(),
         }
+
+
+def _iso_or_none(value: datetime | None) -> str | None:
+    return value.isoformat() if value else None
 
 
 _solana_listener: SolanaListener | None = None

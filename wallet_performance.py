@@ -96,7 +96,7 @@ def best_signal_from_wallet_token_confluence(
     eligible = tuple(
         candidate
         for candidate in wallet_candidates
-        if candidate.period.lower().strip() == normalized_period and _has_enough_evidence(candidate)
+        if candidate.period.lower().strip() == normalized_period and _has_enough_token_confluence_evidence(candidate)
     )
     if len(eligible) < min_wallets:
         return None
@@ -156,7 +156,7 @@ def score_wallet_token_confluence(
     *,
     period: str,
 ) -> int:
-    eligible = [candidate for candidate in wallet_candidates if _has_enough_evidence(candidate)]
+    eligible = [candidate for candidate in wallet_candidates if _has_enough_token_confluence_evidence(candidate)]
     if len(eligible) < 2:
         return 0
 
@@ -175,6 +175,10 @@ def score_wallet_token_confluence(
         score += 2
     elif period == "year":
         score += 3
+    if total_pnl <= 1_000:
+        score = min(score, 92)
+    elif total_pnl < 5_000:
+        score = min(score, 94)
     return max(0, min(100, score))
 
 
@@ -182,6 +186,17 @@ def score_wallet_token_confluence(
 def _has_enough_evidence(candidate: WalletPerformanceCandidate) -> bool:
     return (
         candidate.trades >= 3
+        and candidate.wins > candidate.losses
+        and candidate.win_rate >= 0.55
+        and candidate.realized_pnl_usd > 0
+        and candidate.roi_pct >= 50
+        and bool(candidate.wallet_address.strip())
+    )
+
+
+def _has_enough_token_confluence_evidence(candidate: WalletPerformanceCandidate) -> bool:
+    return (
+        candidate.trades >= 2
         and candidate.wins > candidate.losses
         and candidate.win_rate >= 0.55
         and candidate.realized_pnl_usd > 0

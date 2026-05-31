@@ -92,6 +92,46 @@ def test_wallet_token_confluence_alerts_coin_without_wallet_addresses():
     assert any("2 profitable wallets" in reason for reason in signal.reasons)
 
 
+def test_wallet_token_confluence_allows_new_token_two_trade_top_trader_rows_but_caps_low_pnl_score():
+    wallets = tuple(
+        WalletPerformanceCandidate(
+            chain="eth",
+            wallet_address=f"0x{i:040d}",
+            period="year",
+            realized_pnl_usd=200.0,
+            roi_pct=1500.0,
+            win_rate=1.0,
+            trades=2,
+            wins=2,
+            losses=0,
+            top_tokens=("COIN",),
+        )
+        for i in range(1, 6)
+    )
+
+    signal = best_signal_from_wallet_token_confluence(
+        chain="eth",
+        token_address="0xcoin",
+        token_symbol="COIN",
+        token_name="Coin",
+        period="year",
+        wallet_candidates=wallets,
+        min_score=92,
+    )
+
+    assert signal is not None
+    assert signal.score == 92
+    assert best_signal_from_wallet_token_confluence(
+        chain="eth",
+        token_address="0xcoin",
+        token_symbol="COIN",
+        token_name="Coin",
+        period="year",
+        wallet_candidates=wallets,
+        min_score=95,
+    ) is None
+
+
 @pytest.mark.parametrize("period", ["week", "month", "year"])
 def test_wallet_performance_signal_converts_top_wallet_periods(period):
     signal = best_signal_from_wallet_performance(_wallet_candidate(period=period), min_score=95)

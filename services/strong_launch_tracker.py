@@ -51,7 +51,7 @@ class StrongLaunchTracker:
     """
     
     # Minimum total score to alert
-    MIN_SCORE_THRESHOLD = 60
+    MIN_SCORE_THRESHOLD = 55
     
     def __init__(self):
         self._launches: Dict[str, StrongLaunch] = {}

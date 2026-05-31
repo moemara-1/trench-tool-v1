@@ -39,11 +39,24 @@ def test_signal_quality_default_prioritizes_actionable_alerts():
     settings = V2Settings.from_env({})
 
     assert settings.signal_min_quality == 82
-    assert settings.signal_daily_cap == 30
+    assert settings.signal_daily_cap == 0
+    assert settings.signal_topic_daily_cap == 5
     assert settings.best_signals_daily_cap == 0
-    assert settings.best_signals_min_score == 98
+    assert settings.best_signals_min_score == 96
     assert settings.best_wallet_signals_enabled is True
-    assert settings.best_wallet_min_score == 98
+    assert settings.best_wallet_min_score == 92
+
+
+def test_signal_daily_cap_allows_zero_for_topic_fairness():
+    settings = V2Settings.from_env(
+        {
+            "V2_SIGNAL_DAILY_CAP": "0",
+            "V2_SIGNAL_TOPIC_DAILY_CAP": "2",
+        }
+    )
+
+    assert settings.signal_daily_cap == 0
+    assert settings.signal_topic_daily_cap == 2
 
 
 def test_settings_prefers_explicit_v1_bsc_rpc_url_over_alchemy_bsc_url():

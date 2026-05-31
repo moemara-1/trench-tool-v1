@@ -18,7 +18,11 @@ from trench_v2.providers.factory import build_risk_provider
 from trench_v2.providers.wallet_performance import MoralisTopTradersProvider
 from trench_v2.telegram.sender import BotApiTelegramSender, TelegramSender
 from trench_v2.telegram.topics import TopicFeature, topic_env_key
-from wallet_performance import WalletPerformanceCandidate, best_signal_from_wallet_token_confluence
+from wallet_performance import (
+    WalletPerformanceCandidate,
+    best_signal_from_wallet_token_confluence,
+    score_wallet_token_confluence,
+)
 
 
 _BEST_WALLET_TOPIC_ENV_BY_PERIOD = {
@@ -91,11 +95,17 @@ class LiveSignalStats:
     risk_checked: int = 0
     rejected_risk: int = 0
     best_signals_sent: int = 0
+    best_wallet_tokens_checked: int = 0
+    best_wallet_provider_empty: int = 0
     best_wallet_candidates_seen: int = 0
     best_wallet_signals_sent: int = 0
     best_wallet_signals_queued: int = 0
     best_wallet_last_error: str | None = None
+    best_wallet_candidates_by_period: dict[str, int] = field(default_factory=dict)
+    best_wallet_rejected_by_period: dict[str, int] = field(default_factory=dict)
+    best_wallet_last_score_by_period: dict[str, int] = field(default_factory=dict)
     candidates_by_topic: dict[str, int] = field(default_factory=dict)
+    skipped_unconfigured_by_topic: dict[str, int] = field(default_factory=dict)
     alerts_by_topic: dict[str, int] = field(default_factory=dict)
     rejected_budget_by_topic: dict[str, int] = field(default_factory=dict)
     rejected_risk_by_topic: dict[str, int] = field(default_factory=dict)
@@ -117,11 +127,17 @@ class LiveSignalStats:
             "risk_checked": self.risk_checked,
             "rejected_risk": self.rejected_risk,
             "best_signals_sent": self.best_signals_sent,
+            "best_wallet_tokens_checked": self.best_wallet_tokens_checked,
+            "best_wallet_provider_empty": self.best_wallet_provider_empty,
             "best_wallet_candidates_seen": self.best_wallet_candidates_seen,
             "best_wallet_signals_sent": self.best_wallet_signals_sent,
             "best_wallet_signals_queued": self.best_wallet_signals_queued,
             "best_wallet_last_error": self.best_wallet_last_error,
+            "best_wallet_candidates_by_period": dict(sorted(self.best_wallet_candidates_by_period.items())),
+            "best_wallet_rejected_by_period": dict(sorted(self.best_wallet_rejected_by_period.items())),
+            "best_wallet_last_score_by_period": dict(sorted(self.best_wallet_last_score_by_period.items())),
             "candidates_by_topic": dict(sorted(self.candidates_by_topic.items())),
+            "skipped_unconfigured_by_topic": dict(sorted(self.skipped_unconfigured_by_topic.items())),
             "alerts_by_topic": dict(sorted(self.alerts_by_topic.items())),
             "rejected_budget_by_topic": dict(sorted(self.rejected_budget_by_topic.items())),
             "rejected_risk_by_topic": dict(sorted(self.rejected_risk_by_topic.items())),
@@ -154,10 +170,15 @@ class LiveSignalWorker:
         self.risk_provider = risk_provider or build_risk_provider(settings)
         self.wallet_performance_provider = wallet_performance_provider or self._wallet_provider_from_settings(settings)
         self.stats = LiveSignalStats()
-        self._daily_budget = PriorityDailyBudget(
-            daily_cap=settings.signal_daily_cap,
-            min_score=settings.signal_min_quality,
+        self._daily_budget = (
+            PriorityDailyBudget(
+                daily_cap=settings.signal_daily_cap,
+                min_score=settings.signal_min_quality,
+            )
+            if settings.signal_daily_cap > 0
+            else None
         )
+        self._topic_budgets: dict[str, PriorityDailyBudget] = {}
         self._best_signal_router = best_signal_router or BestSignalRouter(
             daily_cap=settings.best_signals_daily_cap,
             min_score=settings.best_signals_min_score,
@@ -193,7 +214,7 @@ class LiveSignalWorker:
     async def run_once(self) -> list[LiveSignal]:
         self.stats.last_run_at = datetime.now(timezone.utc)
         self._reset_daily_counter_if_needed(self.stats.last_run_at)
-        if self._daily_budget.sent_count(now=self.stats.last_run_at) >= self.settings.signal_daily_cap:
+        if self._global_daily_cap_reached(self.stats.last_run_at):
             return []
 
         profiles = await self.provider.latest_profiles()
@@ -223,31 +244,42 @@ class LiveSignalWorker:
         for signal in self._ordered_signals(best_by_topic.values()):
             if len(sent) >= self.settings.signal_max_alerts_per_cycle:
                 break
-            if self._daily_budget.sent_count(now=self.stats.last_run_at) >= self.settings.signal_daily_cap:
+            if self._global_daily_cap_reached(self.stats.last_run_at):
                 break
             checked_signal = await self._risk_checked_signal(signal)
             if not checked_signal:
                 continue
             if not self.sender:
                 continue
-            decision = self._daily_budget.reserve(checked_signal.quality_score, now=self.stats.last_run_at)
-            if not decision.allowed:
+            topic_budget = self._topic_budget_for(checked_signal.topic_env_key)
+            topic_decision = topic_budget.reserve(checked_signal.quality_score, now=self.stats.last_run_at)
+            if not topic_decision.allowed:
                 self.stats.rejected_daily_budget += 1
                 _increment(self.stats.rejected_budget_by_topic, checked_signal.topic_env_key)
                 continue
+            global_decision = None
+            if self._daily_budget is not None:
+                global_decision = self._daily_budget.reserve(checked_signal.quality_score, now=self.stats.last_run_at)
+                if not global_decision.allowed:
+                    topic_budget.release(checked_signal.quality_score, now=self.stats.last_run_at)
+                    self.stats.rejected_daily_budget += 1
+                    _increment(self.stats.rejected_budget_by_topic, checked_signal.topic_env_key)
+                    continue
             topic_id = (self.settings.telegram_topic_ids or {}).get(checked_signal.topic_env_key, 0)
             if await self.sender.send(topic_id, self._format_signal(checked_signal)):
                 self._sent_keys.add(checked_signal.dedupe_key)
                 self.stats.alerts_sent += 1
-                self.stats.daily_sent = self._daily_budget.sent_count(now=self.stats.last_run_at)
+                self.stats.daily_sent = self._daily_sent_count(now=self.stats.last_run_at)
                 _increment(self.stats.alerts_by_topic, checked_signal.topic_env_key)
-                _increment(self.stats.alerts_by_quality_band, decision.band)
+                _increment(self.stats.alerts_by_quality_band, (global_decision or topic_decision).band)
                 self._queue_best_signal(checked_signal)
                 await self._queue_best_wallet_signals(checked_signal)
                 self._remember(checked_signal)
                 sent.append(checked_signal)
             else:
-                self._daily_budget.release(checked_signal.quality_score, now=self.stats.last_run_at)
+                topic_budget.release(checked_signal.quality_score, now=self.stats.last_run_at)
+                if self._daily_budget is not None:
+                    self._daily_budget.release(checked_signal.quality_score, now=self.stats.last_run_at)
 
         await self._flush_best_signals()
         self.stats.last_error = None
@@ -262,13 +294,14 @@ class LiveSignalWorker:
     def _collect_best_signals(self, pair: DexPair, best_by_topic: dict[str, LiveSignal]) -> None:
         for signal in self._signals_from_pair(pair):
             self.stats.candidates_seen += 1
-            _increment(self.stats.candidates_by_topic, signal.topic_env_key)
             if signal.dedupe_key in self._sent_keys:
                 self.stats.deduped += 1
                 continue
             topic_id = (self.settings.telegram_topic_ids or {}).get(signal.topic_env_key, 0)
             if topic_id <= 0:
+                _increment(self.stats.skipped_unconfigured_by_topic, signal.topic_env_key)
                 continue
+            _increment(self.stats.candidates_by_topic, signal.topic_env_key)
             previous = best_by_topic.get(signal.topic_env_key)
             if previous is None or signal.quality_score > previous.quality_score:
                 best_by_topic[signal.topic_env_key] = signal
@@ -281,7 +314,7 @@ class LiveSignalWorker:
             self._risk_cache[key] = report
             self.stats.risk_checked += 1
 
-        if not _risk_report_allows_alert(report):
+        if not _risk_report_allows_alert(report, signal):
             self.stats.rejected_risk += 1
             _increment(self.stats.rejected_risk_by_topic, signal.topic_env_key)
             return None
@@ -503,6 +536,7 @@ class LiveSignalWorker:
     async def _queue_best_wallet_signals(self, signal: LiveSignal) -> None:
         if not self.wallet_performance_provider:
             return
+        self.stats.best_wallet_tokens_checked += 1
         try:
             wallet_candidates = await self.wallet_performance_provider.best_wallets_for_token(
                 chain=signal.chain,
@@ -514,15 +548,29 @@ class LiveSignalWorker:
             self.stats.best_wallet_last_error = type(exc).__name__
             return
 
+        self.stats.best_wallet_last_error = None
         self.stats.best_wallet_candidates_seen += len(wallet_candidates)
+        if not wallet_candidates:
+            self.stats.best_wallet_provider_empty += 1
+        for candidate in wallet_candidates:
+            period = candidate.period.lower().strip()
+            if period in _BEST_WALLET_TOPIC_ENV_BY_PERIOD:
+                _increment(self.stats.best_wallet_candidates_by_period, period)
         for period in ("week", "month", "year"):
+            period_candidates = tuple(
+                candidate
+                for candidate in wallet_candidates
+                if candidate.period.lower().strip() == period
+            )
+            score = score_wallet_token_confluence(period_candidates, period=period)
+            self.stats.best_wallet_last_score_by_period[period] = score
             best_candidate = best_signal_from_wallet_token_confluence(
                 chain=signal.chain.value,
                 token_address=signal.token_address,
                 token_symbol=signal.symbol,
                 token_name=signal.name,
                 period=period,
-                wallet_candidates=wallet_candidates,
+                wallet_candidates=period_candidates,
                 min_score=self.settings.best_wallet_min_score,
                 risk_text=_risk_text(signal),
                 market_cap_usd=signal.market_cap_usd,
@@ -533,6 +581,7 @@ class LiveSignalWorker:
                 url=signal.url,
             )
             if not best_candidate:
+                _increment(self.stats.best_wallet_rejected_by_period, period)
                 continue
             if await self._send_best_wallet_signal(period, best_candidate):
                 self.stats.best_wallet_signals_sent += 1
@@ -575,10 +624,28 @@ class LiveSignalWorker:
     def _reset_daily_counter_if_needed(self, now: datetime) -> None:
         day = now.date().isoformat()
         if self._sent_day == day:
-            self.stats.daily_sent = self._daily_budget.sent_count(now=now)
+            self.stats.daily_sent = self._daily_sent_count(now=now)
             return
         self._sent_day = day
-        self.stats.daily_sent = self._daily_budget.sent_count(now=now)
+        self.stats.daily_sent = self._daily_sent_count(now=now)
+
+    def _topic_budget_for(self, topic_env_key: str) -> PriorityDailyBudget:
+        budget = self._topic_budgets.get(topic_env_key)
+        if budget is None:
+            budget = PriorityDailyBudget(
+                daily_cap=self.settings.signal_topic_daily_cap,
+                min_score=self.settings.signal_min_quality,
+            )
+            self._topic_budgets[topic_env_key] = budget
+        return budget
+
+    def _global_daily_cap_reached(self, now: datetime) -> bool:
+        return self._daily_budget is not None and self._daily_budget.sent_count(now=now) >= self.settings.signal_daily_cap
+
+    def _daily_sent_count(self, now: datetime) -> int:
+        if self._daily_budget is not None:
+            return self._daily_budget.sent_count(now=now)
+        return sum(budget.sent_count(now=now) for budget in self._topic_budgets.values())
 
     def _format_signal(self, signal: LiveSignal) -> str:
         title = f"V2 {signal.chain.label} {signal.feature.value.replace('_', ' ').title()}"
@@ -645,16 +712,37 @@ def _tax(value: int | None) -> str:
     return f"{value / 100:.1f}%"
 
 
-def _risk_report_allows_alert(report: RiskReport) -> bool:
-    if report.level in {RiskLevel.HIGH, RiskLevel.CRITICAL}:
-        return False
+def _risk_report_allows_alert(report: RiskReport, signal: LiveSignal | None = None) -> bool:
     if report.is_honeypot or report.delayed_honeypot:
         return False
-    if report.malicious_contract or report.liquidity_pull_risk:
+    if report.malicious_contract:
+        return False
+    if report.liquidity_pull_risk and not _high_risk_base_source_alert_allowed(report, signal):
         return False
     if max(report.buy_tax_bps or 0, report.sell_tax_bps or 0) >= 500:
         return False
+    if report.level is RiskLevel.CRITICAL:
+        return False
+    if report.level is RiskLevel.HIGH:
+        return _high_risk_base_source_alert_allowed(report, signal)
     return _risk_reasons_are_actionable(report)
+
+
+def _high_risk_base_source_alert_allowed(report: RiskReport, signal: LiveSignal | None) -> bool:
+    if signal is None or signal.chain is not Chain.BASE:
+        return False
+    if signal.quality_score < 95:
+        return False
+    joined = " ".join(reason.lower() for reason in report.reasons)
+    if not joined:
+        return False
+    allowed_markers = (
+        "liquidity is not locked",
+        "simulation passed",
+        "honeypot.is unavailable",
+        "goplus unavailable",
+    )
+    return all(any(marker in reason.lower() for marker in allowed_markers) for reason in report.reasons)
 
 
 def _rug_like_market(pair: DexPair) -> bool:

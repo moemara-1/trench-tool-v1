@@ -36,12 +36,13 @@ class V2Settings:
     signal_worker_enabled: bool = True
     signal_poll_seconds: int = 300
     signal_max_alerts_per_cycle: int = 14
-    signal_daily_cap: int = 30
+    signal_daily_cap: int = 0
+    signal_topic_daily_cap: int = 5
     signal_min_quality: int = 82
     best_signals_daily_cap: int = 0
-    best_signals_min_score: int = 98
+    best_signals_min_score: int = 96
     best_wallet_signals_enabled: bool = True
-    best_wallet_min_score: int = 98
+    best_wallet_min_score: int = 92
     solana_provider_health_enabled: bool = False
     command_providers_enabled: bool = False
 
@@ -74,12 +75,13 @@ class V2Settings:
             signal_worker_enabled=_env_bool(env.get("V2_SIGNAL_WORKER_ENABLED"), default=True),
             signal_poll_seconds=_env_int(env.get("V2_SIGNAL_POLL_SECONDS"), default=300),
             signal_max_alerts_per_cycle=_env_int(env.get("V2_SIGNAL_MAX_ALERTS_PER_CYCLE"), default=14),
-            signal_daily_cap=_env_int(env.get("V2_SIGNAL_DAILY_CAP"), default=30),
+            signal_daily_cap=_env_nonnegative_int(env.get("V2_SIGNAL_DAILY_CAP"), default=0),
+            signal_topic_daily_cap=_env_int(env.get("V2_SIGNAL_TOPIC_DAILY_CAP"), default=5),
             signal_min_quality=_env_int(env.get("V2_SIGNAL_MIN_QUALITY"), default=82),
             best_signals_daily_cap=_env_nonnegative_int(env.get("BEST_SIGNALS_DAILY_CAP"), default=0),
-            best_signals_min_score=_env_int(env.get("BEST_SIGNALS_MIN_SCORE"), default=98),
+            best_signals_min_score=_env_int(env.get("BEST_SIGNALS_MIN_SCORE"), default=96),
             best_wallet_signals_enabled=_env_bool(env.get("BEST_WALLET_SIGNALS_ENABLED"), default=True),
-            best_wallet_min_score=_env_int(env.get("BEST_WALLET_MIN_SCORE"), default=98),
+            best_wallet_min_score=_env_int(env.get("BEST_WALLET_MIN_SCORE"), default=92),
             solana_provider_health_enabled=_env_bool(
                 env.get("V2_SOLANA_PROVIDER_HEALTH_ENABLED"),
                 default=False,

@@ -227,6 +227,30 @@ class SocialsChecker:
         if profile.token_address in self._alerted_tokens:
             return False
         return profile.enhanced_score > 70
+
+    def is_alertable_socials(self, profile: SocialProfile) -> bool:
+        """Check if a social profile is strong enough to alert."""
+        if profile.token_address in self._alerted_tokens:
+            return False
+        return profile.enhanced_score > 70 or profile.social_score >= 75
+
+    def get_alertable_profiles(self, limit: int = 2) -> list[SocialProfile]:
+        """Return unalerted profiles ready for the Socials topic."""
+        if limit <= 0:
+            return []
+        profiles = [
+            profile
+            for profile in self._profiles.values()
+            if self.is_alertable_socials(profile)
+        ]
+        profiles.sort(
+            key=lambda profile: (
+                max(profile.enhanced_score, profile.social_score),
+                profile.checked_at,
+            ),
+            reverse=True,
+        )
+        return profiles[:limit]
     
     def _extract_username(self, url: str) -> Optional[str]:
         """Extract Twitter username from URL."""

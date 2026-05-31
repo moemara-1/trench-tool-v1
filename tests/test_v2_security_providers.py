@@ -1,6 +1,6 @@
 import pytest
 
-from trench_v2.core.models import Chain, RiskLevel
+from trench_v2.core.models import Chain, RiskLevel, RiskReport
 from trench_v2.providers.security import CompositeRiskProvider, GoPlusRiskProvider, HoneypotRiskProvider
 
 
@@ -147,3 +147,25 @@ async def test_composite_risk_provider_keeps_highest_risk_and_combines_reasons()
     assert report.sell_tax_bps == 800
     assert "contract source is not verified" in report.reasons
     assert "sell tax 8.00%" in report.reasons
+
+
+@pytest.mark.asyncio
+async def test_composite_risk_provider_ignores_provider_outage_when_another_provider_is_clean():
+    class StaticProvider:
+        def __init__(self, report: RiskReport):
+            self.report = report
+
+        async def fetch_risk(self, chain: Chain, address: str) -> RiskReport:
+            return self.report
+
+    provider = CompositeRiskProvider(
+        [
+            StaticProvider(RiskReport(level=RiskLevel.LOW, reasons=["GoPlus found no high-risk flags"])),
+            StaticProvider(RiskReport(level=RiskLevel.MEDIUM, reasons=["Honeypot.is unavailable: 404 Not Found"])),
+        ]
+    )
+
+    report = await provider.fetch_risk(Chain.BASE, "0xabc")
+
+    assert report.level is RiskLevel.LOW
+    assert report.reasons == ["GoPlus found no high-risk flags"]

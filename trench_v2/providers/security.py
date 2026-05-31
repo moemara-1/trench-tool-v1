@@ -205,6 +205,7 @@ def _combine_reports(reports: list[RiskReport]) -> RiskReport:
     if not reports:
         return RiskReport(level=RiskLevel.MEDIUM, reasons=["no risk provider configured"])
 
+    reports = _ignore_provider_outage_when_clean_signal_exists(reports)
     highest_level = max((report.level for report in reports), key=lambda level: _RISK_ORDER[level])
     buy_taxes = [report.buy_tax_bps for report in reports if report.buy_tax_bps is not None]
     sell_taxes = [report.sell_tax_bps for report in reports if report.sell_tax_bps is not None]
@@ -227,6 +228,43 @@ def _combine_reports(reports: list[RiskReport]) -> RiskReport:
         malicious_contract=any(report.malicious_contract for report in reports),
         liquidity_pull_risk=any(report.liquidity_pull_risk for report in reports),
         reasons=reasons,
+    )
+
+
+def _ignore_provider_outage_when_clean_signal_exists(reports: list[RiskReport]) -> list[RiskReport]:
+    clean_reports = [
+        report
+        for report in reports
+        if report.level is RiskLevel.LOW and not _provider_outage_report(report)
+    ]
+    if not clean_reports:
+        return reports
+
+    blocking_reports = [
+        report
+        for report in reports
+        if report.level in {RiskLevel.HIGH, RiskLevel.CRITICAL}
+        or (
+            report.level is RiskLevel.MEDIUM
+            and not _provider_outage_report(report)
+        )
+    ]
+    return [*clean_reports, *blocking_reports]
+
+
+def _provider_outage_report(report: RiskReport) -> bool:
+    if report.level is not RiskLevel.MEDIUM:
+        return False
+    joined = " ".join(reason.lower() for reason in report.reasons)
+    return any(
+        marker in joined
+        for marker in (
+            "rate limited",
+            "unavailable",
+            "unexpected payload",
+            "returned no token result",
+            "returned no matching token result",
+        )
     )
 
 

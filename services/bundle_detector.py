@@ -67,6 +67,7 @@ class BundleDetector:
         # Detection thresholds - Balanced for detecting real bundles
         self.min_wallets_for_bundle = 3  # Need 3+ wallets buying same block
         self.min_wallet_amount_sol = 0.3 # User request: 0.3 SOL not dust
+        self.min_bundle_volume_sol = 1.0
         self.time_window_seconds = 60    # Reduced for same-block focus
         self.coordination_threshold = 50  # Lowered to catch more bundles
         
@@ -173,6 +174,20 @@ class BundleDetector:
                     # Is this an opening bundle? (Simplified: if block_num is small or first seen)
                     # More accurately, we can check token age via fetcher later
                     return self._create_bundle_info(token_address, block_txs, "buy", block_num)
+
+            unique_buy_wallets = len(set(tx["wallet"] for tx in buys))
+            total_buy_volume = sum(tx["amount_sol"] for tx in buys)
+            coordination_score = self._calculate_coordination_score(buys)
+            if (
+                unique_buy_wallets >= self.min_wallets_for_bundle
+                and total_buy_volume >= self.min_bundle_volume_sol
+                and coordination_score >= self.coordination_threshold
+            ):
+                logger.info(
+                    f"📦 WINDOW Bundle BUY detected: {unique_buy_wallets} wallets, "
+                    f"{total_buy_volume:.2f} SOL, score={coordination_score:.0f} for {token_address[:8]}..."
+                )
+                return self._create_bundle_info(token_address, buys, "buy")
         
         # Check for bundle sells (potential rug)
         unique_sell_wallets = len(set(tx["wallet"] for tx in sells))

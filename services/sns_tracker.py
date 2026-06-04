@@ -16,6 +16,8 @@ from services.rpc_manager import get_rpc_manager
 
 logger = logging.getLogger(__name__)
 
+SNS_API_USER_DOMAINS_URL = "https://sns-api.bonfida.com/v2/user/domains/{wallet_address}"
+
 
 @dataclass
 class SNSWalletInfo:
@@ -36,7 +38,7 @@ class SNSTracker:
         self._alerts_sent = 0
 
     async def get_wallet_domain(self, wallet_address: str) -> Optional[str]:
-        """Look up SNS domain for a wallet using a DAS-capable Solana RPC."""
+        """Look up SNS domain for a wallet using SNS API, then DAS RPC fallback."""
         if wallet_address in self._domain_cache:
             cached = self._domain_cache[wallet_address]
             if cached:
@@ -47,6 +49,12 @@ class SNSTracker:
             rpc_manager = get_rpc_manager()
             max_attempts = max(1, rpc_manager.endpoint_count)
             async with httpx.AsyncClient(timeout=10.0) as client:
+                domain = await self._lookup_domain_with_sns_api(client, wallet_address)
+                if domain:
+                    self._domain_cache[wallet_address] = domain
+                    logger.info("Found SNS domain via SNS API: %s for wallet %s...", domain, wallet_address[:8])
+                    return domain
+
                 for _ in range(max_attempts):
                     rpc_url = rpc_manager.get_rpc_url()
                     response = await client.post(
@@ -103,6 +111,30 @@ class SNSTracker:
         except Exception as exc:
             logger.info("SNS lookup error for %s: %s", wallet_address[:8], exc)
             return None
+
+    async def _lookup_domain_with_sns_api(self, client: httpx.AsyncClient, wallet_address: str) -> Optional[str]:
+        """Return the first SNS domain from the public SNS user domains API."""
+        response = await client.get(SNS_API_USER_DOMAINS_URL.format(wallet_address=wallet_address))
+        if response.status_code in {429, 500, 502, 503, 504}:
+            logger.info("SNS API transient HTTP %s for %s, falling back to DAS", response.status_code, wallet_address[:8])
+            return None
+        if response.status_code != 200:
+            logger.info("SNS API lookup failed: HTTP %s for %s", response.status_code, wallet_address[:8])
+            return None
+
+        data = response.json()
+        if not isinstance(data, dict):
+            return None
+
+        raw_domains = data.get(wallet_address) or data.get(wallet_address.lower())
+        if not isinstance(raw_domains, list) or not raw_domains:
+            return None
+
+        for raw_domain in raw_domains:
+            domain = _normalize_sns_domain(raw_domain)
+            if domain:
+                return domain
+        return None
 
     async def format_sns_alert(
         self,
@@ -172,3 +204,14 @@ def get_sns_tracker() -> SNSTracker:
     if _sns_tracker is None:
         _sns_tracker = SNSTracker()
     return _sns_tracker
+
+
+def _normalize_sns_domain(value: object) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    domain = value.strip()
+    if not domain:
+        return None
+    if not domain.endswith(".sol"):
+        domain = f"{domain}.sol"
+    return domain

@@ -47,6 +47,7 @@ class StreamflowTracker:
     
     def __init__(self):
         self._locks: Dict[str, List[StreamflowLock]] = {}
+        self._alerted_tokens: set[str] = set()
         self._alerts_sent = 0
     
     def is_streamflow_lock(self, program_ids: list) -> bool:
@@ -149,12 +150,21 @@ MC: {market_cap_str} | CA: {coin_age_str}
     def increment_alerts(self):
         """Increment alert counter."""
         self._alerts_sent += 1
+
+    def should_alert_token(self, token_address: str) -> bool:
+        """Return true when this lock token has not already alerted."""
+        return token_address not in self._alerted_tokens
+
+    def mark_alerted(self, token_address: str):
+        """Mark a token as alerted to prevent repeat lock spam."""
+        self._alerted_tokens.add(token_address)
     
     def get_stats(self) -> dict:
         """Get tracker statistics."""
         return {
             "tokens_with_locks": len(self._locks),
             "total_locks": sum(len(locks) for locks in self._locks.values()),
+            "alerted_tokens": len(self._alerted_tokens),
             "alerts_sent": self._alerts_sent,
         }
 

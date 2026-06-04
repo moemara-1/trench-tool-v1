@@ -17,12 +17,17 @@ class FakeClient:
     def __init__(self, responses):
         self.responses = list(responses)
         self.urls = []
+        self.get_urls = []
 
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
         return None
+
+    async def get(self, url):
+        self.get_urls.append(url)
+        return self.responses.pop(0)
 
     async def post(self, url, json):
         self.urls.append(url)
@@ -48,6 +53,7 @@ async def test_sns_tracker_retries_next_rpc_endpoint_after_transient_failure(mon
     manager = FakeRpcManager()
     client = FakeClient(
         [
+            FakeResponse(200, {"wallet": []}),
             FakeResponse(503),
             FakeResponse(
                 200,
@@ -69,3 +75,21 @@ async def test_sns_tracker_retries_next_rpc_endpoint_after_transient_failure(mon
     assert domain == "wallet.sol"
     assert client.urls == ["https://bad.example", "https://good.example"]
     assert manager.errors == [("https://bad.example", False)]
+
+
+@pytest.mark.asyncio
+async def test_sns_tracker_uses_public_sns_api_before_das_rpc(monkeypatch):
+    manager = FakeRpcManager()
+    client = FakeClient(
+        [
+            FakeResponse(200, {"wallet": ["alpha", "beta.sol"]}),
+        ]
+    )
+    monkeypatch.setattr(sns_tracker, "get_rpc_manager", lambda: manager)
+    monkeypatch.setattr(sns_tracker.httpx, "AsyncClient", lambda timeout: client)
+
+    domain = await SNSTracker().get_wallet_domain("wallet")
+
+    assert domain == "alpha.sol"
+    assert client.get_urls == ["https://sns-api.bonfida.com/v2/user/domains/wallet"]
+    assert client.urls == []

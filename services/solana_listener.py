@@ -1075,6 +1075,7 @@ MC: {mc_str} | CA: {age_str}
             ("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", "pump.fun"),
             ("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", "Jupiter"),
             ("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo", "Meteora"),
+            ("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m", "Streamflow"),
         ]
         
         async def poll_dex(program_id: str, dex_name: str, stagger_delay: float):
@@ -1158,6 +1159,9 @@ MC: {mc_str} | CA: {age_str}
             wallet = account_keys[0]
             if isinstance(wallet, dict):
                 wallet = wallet.get("pubkey", "")
+
+            program_ids = self._extract_program_ids(tx_data)
+            await self._maybe_process_streamflow_lock(tx_data, program_ids=program_ids)
 
             post_tokens = meta.get("postTokenBalances", [])
             pre_tokens = meta.get("preTokenBalances", [])
@@ -1288,29 +1292,6 @@ MC: {mc_str} | CA: {age_str}
             if not token_mint or token_mint in EXCLUDED_TOKENS:
                 logger.info(f"🚫 No valid mint / Excluded: {token_mint}")
                 return
-            
-            # === EXTRACT PROGRAM IDS ===
-            # Get all program IDs from the transaction's account keys
-            program_ids = []
-            for key in account_keys:
-                if isinstance(key, dict):
-                    # Account key with metadata (e.g., {"pubkey": "...", "source": "program"})
-                    if key.get("source") == "program" or key.get("signer") == False:
-                        program_ids.append(key.get("pubkey", ""))
-                    else:
-                        # Also add as potential program ID for checking
-                        program_ids.append(key.get("pubkey", ""))
-                else:
-                    # Plain string account key
-                    program_ids.append(key)
-            
-            # Also extract from instructions if available
-            instructions = message.get("instructions", [])
-            for ix in instructions:
-                if isinstance(ix, dict):
-                    pid = ix.get("programId")
-                    if pid and pid not in program_ids:
-                        program_ids.append(pid)
             
             # === RAYDIUM CLMM FILTER ===
             # User request: remove Raydium CLMM launched coins (avoids spam/unwanted alerts)
@@ -1777,32 +1758,6 @@ MC: {mc_str} | CA: {age_str}
                         self._bundle_alerts_sent += 1
                         logger.info(f"📦 [Bundle] {bundle_info.wallet_count} wallets / {bundle_info.total_volume_sol:.2f} SOL on ${ticker}")
             
-            # === STREAMFLOW LOCK DETECTION ===
-            if self.streamflow_tracker.is_streamflow_lock(program_ids):
-                lock = self.streamflow_tracker.parse_lock_from_tx(tx_data, token_mint)
-                if lock:
-                    token_data = await self.token_fetcher.get_token_data(token_mint)
-                    ticker = token_data.symbol if token_data else "???"
-                    name = token_data.name if token_data else ""
-                    mc_str = token_data.mc_string if token_data else "?"
-                    age_str = token_data.age_string if token_data else "?"
-                    
-                    lock_msg = await self.streamflow_tracker.format_streamflow_alert(
-                        ticker=ticker,
-                        token_name=name,
-                        contract_address=token_mint,
-                        lock_amount=lock.lock_amount,
-                        market_cap_str=mc_str,
-                        coin_age_str=age_str,
-                    )
-                    
-                    topic = settings.telegram_streamflow_topic_id if settings.telegram_streamflow_topic_id > 0 else None
-                    msg_id = await self.telegram.send_alert(lock_msg, topic_id=topic)
-                    if msg_id:
-                        self._streamflow_alerts_sent += 1
-                        self.streamflow_tracker.increment_alerts()
-                        logger.info(f"🔒 [Streamflow] Lock detected for ${ticker}")
-            
             # === SOCIALS CHECK ===
             # Push to Redis queue for local processor (FrontrunPro requires browser)
             # Only check if Twitter exists to avoid spamming queue
@@ -1847,6 +1802,96 @@ MC: {mc_str} | CA: {age_str}
         except Exception as e:
             logger.error(f"Error processing transaction: {e}")
             self._errors += 1
+
+    def _extract_program_ids(self, tx_data: dict) -> list[str]:
+        """Extract program IDs referenced by a parsed Solana transaction."""
+        message = tx_data.get("transaction", {}).get("message", {})
+        program_ids: list[str] = []
+
+        for key in message.get("accountKeys", []):
+            if isinstance(key, dict):
+                pubkey = key.get("pubkey", "")
+                if pubkey and pubkey not in program_ids:
+                    program_ids.append(pubkey)
+            elif key and key not in program_ids:
+                program_ids.append(key)
+
+        for ix in message.get("instructions", []):
+            if not isinstance(ix, dict):
+                continue
+            pid = ix.get("programId")
+            if pid and pid not in program_ids:
+                program_ids.append(pid)
+
+        return program_ids
+
+    def _candidate_token_mints_from_balances(self, tx_data: dict) -> list[str]:
+        """Return non-native token mints touched by a transaction."""
+        meta = tx_data.get("meta", {})
+        mints: list[str] = []
+
+        for balance_key in ("postTokenBalances", "preTokenBalances"):
+            for balance in meta.get(balance_key, []):
+                mint = balance.get("mint")
+                if not mint or mint in EXCLUDED_TOKENS or mint in mints:
+                    continue
+                mints.append(mint)
+
+        return mints
+
+    async def _maybe_process_streamflow_lock(
+        self,
+        tx_data: dict,
+        program_ids: list[str] | None = None,
+    ) -> bool:
+        """Send a Streamflow alert for direct lock transactions."""
+        program_ids = program_ids or self._extract_program_ids(tx_data)
+        if not self.streamflow_tracker.is_streamflow_lock(program_ids):
+            return False
+
+        topic = settings.telegram_streamflow_topic_id if settings.telegram_streamflow_topic_id > 0 else None
+        if not topic:
+            logger.warning("Streamflow lock detected but streamflow topic is not configured")
+            return False
+
+        for token_mint in self._candidate_token_mints_from_balances(tx_data):
+            should_alert = getattr(self.streamflow_tracker, "should_alert_token", None)
+            if callable(should_alert) and not should_alert(token_mint):
+                continue
+
+            lock = self.streamflow_tracker.parse_lock_from_tx(tx_data, token_mint)
+            if not lock:
+                continue
+
+            token_data = await self.token_fetcher.get_token_data(token_mint)
+            if not token_data:
+                logger.info("Streamflow lock skipped: token metadata unavailable for %s", token_mint[:12])
+                continue
+
+            ticker = token_data.symbol if token_data else "???"
+            name = token_data.name if token_data else ""
+            mc_str = token_data.mc_string if token_data else "?"
+            age_str = token_data.age_string if token_data else "?"
+
+            lock_msg = await self.streamflow_tracker.format_streamflow_alert(
+                ticker=ticker,
+                token_name=name,
+                contract_address=token_mint,
+                lock_amount=lock.lock_amount,
+                market_cap_str=mc_str,
+                coin_age_str=age_str,
+            )
+            msg_id = await self.telegram.send_alert(lock_msg, topic_id=topic)
+            if msg_id:
+                self._streamflow_alerts_sent += 1
+                self.streamflow_tracker.increment_alerts()
+                mark_alerted = getattr(self.streamflow_tracker, "mark_alerted", None)
+                if callable(mark_alerted):
+                    mark_alerted(token_mint)
+                logger.info(f"🔒 [Streamflow] Direct lock detected for ${ticker}")
+                return True
+
+        return False
 
     def _should_backup_poll(self, now: datetime | None = None) -> bool:
         """Return true when WebSocket is disconnected or connected-but-stale."""

@@ -10,6 +10,7 @@ def test_reconcile_topic_plan_creates_restored_specialty_topics():
     assert WANTED_TOPICS["TELEGRAM_SNS_TOPIC_ID"].title == "SNS Tracker"
     assert WANTED_TOPICS["TELEGRAM_BUNDLES_TOPIC_ID"].title == "Bundles (SOL)"
     assert WANTED_TOPICS["TELEGRAM_STRONG_LAUNCH_TOPIC_ID"].title == "Strong launches"
+    assert "TELEGRAM_VANISH_TOPIC_ID" not in WANTED_TOPICS
 
 
 def test_reconcile_topic_plan_assigns_allowed_icon_colors_to_every_topic():

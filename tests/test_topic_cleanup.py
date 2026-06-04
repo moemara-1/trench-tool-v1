@@ -15,7 +15,6 @@ def test_cleanup_keeps_restored_topics_for_diagnostics_and_producer_repair():
         "TELEGRAM_SOL_WIZARD_TOPIC_ID": "19",
         "TELEGRAM_BUNDLES_TOPIC_ID": "6",
         "TELEGRAM_SNS_TOPIC_ID": "7",
-        "TELEGRAM_VANISH_TOPIC_ID": "8",
         "TELEGRAM_STREAMFLOW_TOPIC_ID": "9",
         "TELEGRAM_DEV_HELD_TOPIC_ID": "10",
         "TELEGRAM_GOOD_CREATOR_TOPIC_ID": "11",
@@ -29,3 +28,7 @@ def test_cleanup_keeps_restored_topics_for_diagnostics_and_producer_repair():
     }
 
     assert removable_topic_keys(env) == set()
+
+
+def test_cleanup_removes_vanish_topic_after_source_was_disabled():
+    assert removable_topic_keys({"TELEGRAM_VANISH_TOPIC_ID": "8"}) == {"TELEGRAM_VANISH_TOPIC_ID"}

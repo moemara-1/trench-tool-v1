@@ -66,7 +66,13 @@ class LiveSignal:
     buys_5m: int
     buys_1h: int
     buys_24h: int
+    sells_5m: int
+    sells_1h: int
+    sells_24h: int
     pair_age_minutes: int | None
+    price_change_5m: float | None
+    price_change_1h: float | None
+    price_change_24h: float | None
     url: str | None
     reasons: tuple[str, ...]
     quality_score: int
@@ -405,7 +411,13 @@ class LiveSignalWorker:
                 buys_5m=pair.buys_5m,
                 buys_1h=pair.buys_1h,
                 buys_24h=pair.buys_24h,
+                sells_5m=pair.sells_5m,
+                sells_1h=pair.sells_1h,
+                sells_24h=pair.sells_24h,
                 pair_age_minutes=age_minutes,
+                price_change_5m=pair.price_change_5m,
+                price_change_1h=pair.price_change_1h,
+                price_change_24h=pair.price_change_24h,
                 url=pair.url,
                 reasons=tuple(reasons),
                 quality_score=quality_score,
@@ -466,6 +478,20 @@ class LiveSignalWorker:
             score += 12
             reasons.append("confirmed buys")
 
+        if pair.buys_5m and pair.sells_5m <= pair.buys_5m * 0.5:
+            score += 4
+            reasons.append("clean 5m buy flow")
+        elif pair.sells_5m > pair.buys_5m:
+            score -= 12
+
+        if pair.buys_1h and pair.sells_1h <= pair.buys_1h * 0.65:
+            score += 4
+            reasons.append("clean 1h buy flow")
+        elif pair.sells_1h >= pair.buys_1h:
+            score -= 15
+        elif pair.sells_1h >= pair.buys_1h * 0.8:
+            score -= 8
+
         if volume >= max(liquidity * 2, 150_000):
             score += 15
             reasons.append("high volume versus liquidity")
@@ -488,7 +514,17 @@ class LiveSignalWorker:
         elif pair.buys_1h >= 60 or pair.buys_24h >= 300:
             reasons.append("older pair with current buy pressure")
 
-        return min(100, score), reasons
+        if pair.price_change_5m is not None and pair.price_change_5m <= -10:
+            score -= 10
+        if pair.price_change_1h is not None and pair.price_change_1h <= -18:
+            score -= 14
+        if pair.price_change_24h is not None and pair.price_change_24h <= -35:
+            score -= 18
+
+        if liquidity > 0 and volume / liquidity >= 6:
+            score -= 10
+
+        return max(0, min(100, score)), reasons
 
     def _age_minutes(self, pair: DexPair) -> int | None:
         if pair.pair_created_at is None:
@@ -526,9 +562,15 @@ class LiveSignalWorker:
                 risk_text=_risk_text(signal),
                 market_cap_usd=signal.market_cap_usd,
                 liquidity_usd=signal.liquidity_usd,
+                volume_24h_usd=signal.volume_24h_usd,
                 buys_5m=signal.buys_5m,
                 buys_1h=signal.buys_1h,
+                sells_5m=signal.sells_5m,
+                sells_1h=signal.sells_1h,
                 age_minutes=signal.pair_age_minutes,
+                price_change_5m=signal.price_change_5m,
+                price_change_1h=signal.price_change_1h,
+                price_change_24h=signal.price_change_24h,
                 url=signal.url,
             )
         )

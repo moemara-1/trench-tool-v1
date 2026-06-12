@@ -36,9 +36,15 @@ class BestSignalCandidate:
     risk_text: str | None = None
     market_cap_usd: float | None = None
     liquidity_usd: float | None = None
+    volume_24h_usd: float | None = None
     buys_5m: int | None = None
     buys_1h: int | None = None
+    sells_5m: int | None = None
+    sells_1h: int | None = None
     age_minutes: int | None = None
+    price_change_5m: float | None = None
+    price_change_1h: float | None = None
+    price_change_24h: float | None = None
     url: str | None = None
 
     @property
@@ -85,6 +91,8 @@ class BestSignalRouter:
     def queue(self, candidate: BestSignalCandidate, now: datetime | None = None) -> bool:
         now = _normalize_now(now)
         if candidate.score < self.min_score:
+            return False
+        if not _passes_elite_best_gate(candidate):
             return False
         self._expire_dedupe(now)
         if candidate.dedupe_key in self._sent_at_by_key:
@@ -191,8 +199,11 @@ def _sort_key(candidate: BestSignalCandidate) -> tuple:
         -candidate.score,
         _risk_rank(candidate.risk_text),
         -(candidate.liquidity_usd or 0),
+        -(candidate.volume_24h_usd or 0),
         -(candidate.buys_5m or 0),
         -(candidate.buys_1h or 0),
+        candidate.sells_5m or 0,
+        candidate.sells_1h or 0,
         candidate.age_minutes if candidate.age_minutes is not None else 10**9,
         candidate.token_address.lower(),
     )
@@ -211,6 +222,108 @@ def _risk_rank(risk_text: str | None) -> int:
     return 2
 
 
+def _passes_elite_best_gate(candidate: BestSignalCandidate) -> bool:
+    chain = candidate.chain.lower().strip()
+    family = candidate.signal_family.lower().strip()
+
+    if chain == "solana":
+        return _solana_candidate_allows_best(candidate)
+
+    if not _risk_text_allows_best(candidate.risk_text):
+        return False
+
+    if family.startswith("best_wallet_coin_"):
+        return _evm_metrics_allow_best(candidate, allow_older=True)
+
+    return _evm_metrics_allow_best(candidate, allow_older=False)
+
+
+def _solana_candidate_allows_best(candidate: BestSignalCandidate) -> bool:
+    family = candidate.signal_family.lower().strip()
+    if family == "strongfloor":
+        return candidate.score >= 98
+    if family in {"dormants", "big_dormants", "freshies_wizard", "strong_launch", "streamflow"}:
+        return candidate.score >= 99
+    return candidate.score >= 100
+
+
+def _risk_text_allows_best(risk_text: str | None) -> bool:
+    text = (risk_text or "").lower()
+    if "low" not in text and "passed" not in text:
+        return False
+    blocked_markers = (
+        "unknown",
+        "medium",
+        "high",
+        "critical",
+        "honeypot failed",
+        "honeypot detected",
+        "delayed honeypot",
+        "rate limited",
+        "unavailable",
+        "no risk provider",
+        "unexpected payload",
+        "liquidity is not locked",
+        "tax b/s: ?",
+        "/?",
+        "?/",
+    )
+    return not any(marker in text for marker in blocked_markers)
+
+
+def _evm_metrics_allow_best(candidate: BestSignalCandidate, *, allow_older: bool) -> bool:
+    market_cap = candidate.market_cap_usd or 0
+    liquidity = candidate.liquidity_usd or 0
+    buys_5m = candidate.buys_5m or 0
+    buys_1h = candidate.buys_1h or 0
+    sells_5m = candidate.sells_5m or 0
+    sells_1h = candidate.sells_1h or 0
+    age_minutes = candidate.age_minutes
+
+    if market_cap < 75_000 or market_cap > 25_000_000:
+        return False
+
+    min_liquidity = {
+        "ethereum": 100_000,
+        "bsc": 75_000,
+        "base": 60_000,
+    }.get(candidate.chain.lower().strip(), 75_000)
+    if liquidity < min_liquidity:
+        return False
+
+    if buys_5m < 20 and buys_1h < 120:
+        return False
+
+    if sells_5m and buys_5m and sells_5m > buys_5m * 0.75:
+        return False
+    if sells_1h and buys_1h and sells_1h > buys_1h * 0.85:
+        return False
+
+    if _has_bad_price_action(candidate):
+        return False
+
+    volume = candidate.volume_24h_usd or 0
+    if liquidity > 0 and volume / liquidity >= 6:
+        if age_minutes is None or age_minutes <= 6 * 60:
+            return False
+
+    if allow_older:
+        return True
+    if age_minutes is None:
+        return False
+    return age_minutes <= 24 * 60 or buys_1h >= 180
+
+
+def _has_bad_price_action(candidate: BestSignalCandidate) -> bool:
+    if candidate.price_change_5m is not None and candidate.price_change_5m <= -10:
+        return True
+    if candidate.price_change_1h is not None and candidate.price_change_1h <= -18:
+        return True
+    if candidate.price_change_24h is not None and candidate.price_change_24h <= -35:
+        return True
+    return False
+
+
 def _metrics_line(candidate: BestSignalCandidate) -> str:
     parts = []
     if candidate.market_cap_usd is not None:
@@ -219,6 +332,8 @@ def _metrics_line(candidate: BestSignalCandidate) -> str:
         parts.append(f"Liq: {_money(candidate.liquidity_usd)}")
     if candidate.buys_5m is not None or candidate.buys_1h is not None:
         parts.append(f"Buys: {candidate.buys_5m or 0}/5m | {candidate.buys_1h or 0}/1h")
+    if candidate.sells_5m is not None or candidate.sells_1h is not None:
+        parts.append(f"Sells: {candidate.sells_5m or 0}/5m | {candidate.sells_1h or 0}/1h")
     if candidate.age_minutes is not None:
         parts.append(f"Age: {_age(candidate.age_minutes)}")
     return " | ".join(parts)

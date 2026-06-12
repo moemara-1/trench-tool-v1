@@ -1375,7 +1375,7 @@ MC: {mc_str} | CA: {age_str}
             if detected_launchpad == "pump.fun":
                  # Only record if we haven't seen this token before
                 if token_mint not in self._seen_tokens:
-                    self.dev_held_tracker.record_dev_wallet(token_mint, wallet, 1_000_000_000.0)
+                    self.dev_held_tracker.record_dev_wallet(token_mint, wallet, token_bought)
             
             
             # === LATE BONDING DETECTION (Pump.fun -> Raydium Migration) ===

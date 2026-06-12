@@ -20,23 +20,31 @@ def _candidate(
     symbol: str = "BEST",
     family: str = "freshies",
     chain: str = "base",
+    **overrides,
 ) -> BestSignalCandidate:
+    values = {
+        "source_label": "V2 BASE Freshies",
+        "chain": chain,
+        "signal_family": family,
+        "token_address": address,
+        "symbol": symbol,
+        "name": f"{symbol} Token",
+        "score": score,
+        "reasons": ("deep liquidity", "strong buy pressure"),
+        "risk_text": "low | Tax B/S: 0.0%/0.0% | passed",
+        "market_cap_usd": 250_000,
+        "liquidity_usd": 120_000,
+        "volume_24h_usd": 260_000,
+        "buys_5m": 30,
+        "buys_1h": 180,
+        "sells_5m": 4,
+        "sells_1h": 60,
+        "age_minutes": 30,
+        "url": "https://dexscreener.com/base/test",
+    }
+    values.update(overrides)
     return BestSignalCandidate(
-        source_label="V2 BASE Freshies",
-        chain=chain,
-        signal_family=family,
-        token_address=address,
-        symbol=symbol,
-        name=f"{symbol} Token",
-        score=score,
-        reasons=("deep liquidity", "strong buy pressure"),
-        risk_text="low | Tax B/S: 0.0%/0.0% | passed",
-        market_cap_usd=250_000,
-        liquidity_usd=120_000,
-        buys_5m=30,
-        buys_1h=180,
-        age_minutes=30,
-        url="https://dexscreener.com/base/test",
+        **values,
     )
 
 
@@ -77,6 +85,47 @@ async def test_best_signal_router_rejects_candidates_below_elite_floor():
 
     assert router.queue(_candidate(94, "0xweak", "WEAK")) is False
 
+    assert await router.flush(sender.send) == 0
+    assert sender.messages == []
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_rejects_100_score_with_thin_liquidity_and_dump_flow():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    sender = RecordingBestSender()
+
+    weak_shape = _candidate(
+        100,
+        "0xrugshape",
+        "RUG",
+        chain="bsc",
+        liquidity_usd=46_822,
+        volume_24h_usd=484_353,
+        sells_5m=120,
+        sells_1h=530,
+        price_change_5m=-22,
+        price_change_1h=-99.9,
+        price_change_24h=-99.9,
+    )
+
+    assert router.queue(weak_shape) is False
+    assert await router.flush(sender.send) == 0
+    assert sender.messages == []
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_rejects_low_score_with_unknown_risk_details():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    sender = RecordingBestSender()
+
+    unknown_risk = _candidate(
+        100,
+        "0xunknownrisk",
+        "UNK",
+        risk_text="low | Tax B/S: ?/? | Honeypot.is unavailable",
+    )
+
+    assert router.queue(unknown_risk) is False
     assert await router.flush(sender.send) == 0
     assert sender.messages == []
 

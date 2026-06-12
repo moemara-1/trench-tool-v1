@@ -145,32 +145,41 @@ def test_wallet_performance_signal_converts_top_wallet_periods(period):
 
 
 @pytest.mark.asyncio
-async def test_wallet_performance_signals_can_flow_to_unlimited_best_feed():
+async def test_wallet_performance_signals_do_not_send_wallet_addresses_to_best_feed():
     router = BestSignalRouter(daily_cap=0, min_score=95)
     sent_messages: list[str] = []
 
     week_signal = best_signal_from_wallet_performance(_wallet_candidate(period="week"), min_score=95)
-    month_signal = best_signal_from_wallet_performance(
-        _wallet_candidate(
-            period="month",
-            roi_pct=610.0,
-            realized_pnl_usd=44_000.0,
-            win_rate=0.82,
-            trades=21,
+    coin_signal = best_signal_from_wallet_token_confluence(
+        chain="base",
+        token_address="0xtoken",
+        token_symbol="ALPHA",
+        token_name="Alpha Token",
+        period="week",
+        wallet_candidates=(
+            _wallet_candidate(roi_pct=900, realized_pnl_usd=80_000, win_rate=0.9, trades=24),
+            _wallet_candidate(roi_pct=760, realized_pnl_usd=70_000, win_rate=0.84, trades=20),
         ),
         min_score=95,
+        risk_text="low | Tax B/S: 0.0%/0.0% | Honeypot.is simulation passed",
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        buys_5m=30,
+        buys_1h=180,
+        age_minutes=30,
+        url="https://dexscreener.com/base/0xtoken",
     )
 
     assert week_signal is not None
-    assert month_signal is not None
-    assert router.queue(week_signal) is True
-    assert router.queue(month_signal) is True
+    assert coin_signal is not None
+    assert router.queue(week_signal) is False
+    assert router.queue(coin_signal) is True
 
     sent = await router.flush(lambda text: _record(sent_messages, text))
 
-    assert sent == 2
-    assert "Best Wallet Month" in sent_messages[0]
-    assert "Best Wallet Week" in sent_messages[1]
+    assert sent == 1
+    assert "Best Wallet Coin Week" in sent_messages[0]
+    assert "0x1111111111111111111111111111111111111111" not in sent_messages[0]
 
 
 async def _record(messages: list[str], text: str) -> bool:

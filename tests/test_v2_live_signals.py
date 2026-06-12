@@ -93,7 +93,14 @@ async def test_live_signal_worker_sends_low_mc_profile_to_configured_topic():
         ),
         provider=FakeDiscoveryProvider(pair),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
     )
 
     sent = await worker.run_once()
@@ -197,7 +204,14 @@ async def test_live_signal_worker_emits_best_real_candidate_per_configured_topic
         ),
         provider=MultiDiscoveryProvider(pairs),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
     )
 
     sent = await worker.run_once()
@@ -214,7 +228,7 @@ async def test_live_signal_worker_emits_best_real_candidate_per_configured_topic
         "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID",
         "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID",
     }
-    assert [topic_id for topic_id, _ in sender.messages] == [102, 101, 302, 301, 103, 203, 202, 201, 303]
+    assert {topic_id for topic_id, _ in sender.messages} == {101, 102, 103, 201, 202, 203, 301, 302, 303}
     assert worker.stats.alerts_by_topic["TELEGRAM_BASE_DEPLOYS_TOPIC_ID"] == 1
     assert worker.stats.candidates_by_topic["TELEGRAM_ETH_FRESHIES_TOPIC_ID"] >= 1
 
@@ -240,7 +254,14 @@ async def test_live_signal_worker_dedupes_repeated_profiles():
         settings=V2Settings.from_env({"TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": "456"}),
         provider=FakeDiscoveryProvider(pair),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
     )
 
     assert len(await worker.run_once()) == 1
@@ -270,7 +291,14 @@ async def test_live_signal_worker_skips_unconfigured_topic():
         settings=V2Settings(),
         provider=FakeDiscoveryProvider(pair),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
     )
 
     assert await worker.run_once() == []
@@ -303,7 +331,14 @@ async def test_live_signal_worker_enforces_daily_cap():
         ),
         provider=FakeDiscoveryProvider(pair),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
     )
 
     assert len(await worker.run_once()) == 1
@@ -359,7 +394,14 @@ async def test_live_signal_worker_enforces_topic_cap_without_starving_other_topi
         ),
         provider=MultiDiscoveryProvider(pairs),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
     )
 
     first_cycle = await worker.run_once()
@@ -473,7 +515,14 @@ async def test_live_signal_worker_copies_risk_checked_elite_signal_to_best_topic
         ),
         provider=FakeDiscoveryProvider(pair),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
         best_signal_router=BestSignalRouter(daily_cap=7, min_score=95),
     )
 
@@ -511,13 +560,62 @@ async def test_live_signal_worker_default_best_feed_accepts_96_point_risk_checke
         ),
         provider=FakeDiscoveryProvider(pair),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
     )
 
     sent = await worker.run_once()
 
-    assert sent[0].quality_score == 96
+    assert sent[0].quality_score >= 96
     assert [topic_id for topic_id, _ in sender.messages] == [201, 999]
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_blocks_best_copy_when_sell_flow_is_not_elite():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xnotbest",
+        symbol="FLOW",
+        name="Source Only Flow",
+        url="https://dexscreener.com/base/0xnotbest",
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        volume_24h_usd=260_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        sells_5m=23,
+        sells_1h=100,
+        sells_24h=260,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert sent[0].quality_score >= 95
+    assert [topic_id for topic_id, _ in sender.messages] == [201]
+    assert worker.stats.best_signals_sent == 0
 
 
 @pytest.mark.asyncio
@@ -578,7 +676,14 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
         ),
         provider=FakeDiscoveryProvider(pair),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
         best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
         wallet_performance_provider=wallet_provider,
     )

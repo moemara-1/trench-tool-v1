@@ -58,6 +58,10 @@ class DevHeldTracker:
         if token_address in self._holdings:
             logger.debug(f"[DevHeld] SKIP: Already tracking token={token_address[:12]}...")
             return  # Already tracking
+
+        if initial_supply <= 0:
+            logger.debug(f"[DevHeld] SKIP: token={token_address[:12]}... has no observed initial balance")
+            return
         
         self._holdings[token_address] = DevHolding(
             token_address=token_address,

@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 
 import pytest
@@ -69,6 +70,8 @@ def test_solana_listener_stats_expose_websocket_and_queue_liveness():
     assert stats["last_ws_connected_at"] == "2026-01-01T12:00:00"
     assert stats["last_tx_received_at"] == "2026-01-01T12:03:00"
     assert stats["queue_size"] == 7
+    assert stats["queue_max_size"] == 0
+    assert stats["transactions_dropped"] == 0
     assert stats["modules"]["sns"]["domains_cached"] == 1
     assert stats["modules"]["socials"]["tokens_checked"] == 5
     assert stats["modules"]["strongfloor"]["tokens_tracked"] == 7
@@ -83,6 +86,24 @@ def test_solana_listener_captures_first_seen_before_format_marks_token_seen():
     listener._seen_tokens.add("token")
 
     assert first_seen is True
+
+
+def test_solana_listener_drops_oldest_signature_when_queue_is_full():
+    listener = object.__new__(SolanaListener)
+    listener._max_tx_queue_size = 2
+    listener._tx_queue = asyncio.Queue(maxsize=2)
+    listener._tx_dropped = 0
+    listener._errors = 0
+
+    listener._enqueue_signature("old-a")
+    listener._enqueue_signature("old-b")
+    listener._enqueue_signature("new-c")
+
+    assert listener._tx_queue.qsize() == 2
+    assert listener._tx_dropped == 1
+    assert listener._errors == 0
+    assert listener._tx_queue.get_nowait() == "old-b"
+    assert listener._tx_queue.get_nowait() == "new-c"
 
 
 class _Stats:

@@ -311,7 +311,9 @@ class SolanaListener:
         
         # Rate limiting - max 5 concurrent RPC requests
         self._rpc_semaphore = asyncio.Semaphore(2)  # Reduced from 5 to stay under rate limits
-        self._tx_queue: asyncio.Queue = asyncio.Queue()  # Unbounded queue - drop nothing
+        self._max_tx_queue_size = 5000
+        self._tx_queue: asyncio.Queue = asyncio.Queue(maxsize=self._max_tx_queue_size)
+        self._tx_dropped = 0
     
     def detect_launchpad(self, program_ids: list) -> tuple:
         """Detect launchpad from program IDs."""
@@ -974,12 +976,7 @@ MC: {mc_str} | CA: {age_str}
                                     if len(self._processed_sigs) > 5000:
                                         self._processed_sigs = set(list(self._processed_sigs)[-2500:])
                                     
-                                    # Add to queue instead of spawning unlimited tasks
-                                    try:
-                                        self._tx_queue.put_nowait(signature)
-                                    except asyncio.QueueFull:
-                                        logger.warning(f"⚠️ Queue full, dropping TX: {signature[:16]}...")
-                                        self._errors += 1
+                                    self._enqueue_signature(signature)
                         
                         except json.JSONDecodeError:
                             continue
@@ -1017,7 +1014,33 @@ MC: {mc_str} | CA: {age_str}
             except Exception as e:
                 logger.error(f"TX worker error: {e}")
                 await asyncio.sleep(1)
-    
+
+    def _enqueue_signature(self, signature: str) -> None:
+        """Keep SOL alert processing fresh by dropping stale backlog first."""
+        try:
+            self._tx_queue.put_nowait(signature)
+            return
+        except asyncio.QueueFull:
+            pass
+
+        try:
+            self._tx_queue.get_nowait()
+            self._tx_queue.task_done()
+        except asyncio.QueueEmpty:
+            pass
+
+        try:
+            self._tx_queue.put_nowait(signature)
+            self._tx_dropped += 1
+            if self._tx_dropped == 1 or self._tx_dropped % 1000 == 0:
+                logger.warning(
+                    "SOL tx queue saturated; dropped stale signatures to keep alerts fresh "
+                    f"(dropped={self._tx_dropped}, max={self._max_tx_queue_size})"
+                )
+        except asyncio.QueueFull:
+            self._tx_dropped += 1
+            self._errors += 1
+     
     async def _fetch_and_process_tx(self, signature: str):
         """Fetch transaction details and process with rate limiting."""
         # Use semaphore to limit concurrent RPC requests
@@ -1933,6 +1956,8 @@ MC: {mc_str} | CA: {age_str}
             "last_ws_connected_at": _iso_or_none(getattr(self, "_last_ws_connected_at", None)),
             "last_tx_received_at": _iso_or_none(getattr(self, "_last_tx_received_at", None)),
             "queue_size": queue_size,
+            "queue_max_size": getattr(self, "_max_tx_queue_size", 0),
+            "transactions_dropped": getattr(self, "_tx_dropped", 0),
             "modules": {
                 "sns": self.sns_tracker.get_stats(),
                 "vanish": self.vanish_tracker.get_stats(),

@@ -71,6 +71,7 @@ def test_solana_listener_stats_expose_websocket_and_queue_liveness():
     assert stats["last_tx_received_at"] == "2026-01-01T12:03:00"
     assert stats["queue_size"] == 7
     assert stats["queue_max_size"] == 0
+    assert stats["queue_fresh_target_size"] == 0
     assert stats["transactions_dropped"] == 0
     assert stats["modules"]["sns"]["domains_cached"] == 1
     assert stats["modules"]["socials"]["tokens_checked"] == 5
@@ -91,6 +92,7 @@ def test_solana_listener_captures_first_seen_before_format_marks_token_seen():
 def test_solana_listener_drops_oldest_signature_when_queue_is_full():
     listener = object.__new__(SolanaListener)
     listener._max_tx_queue_size = 2
+    listener._fresh_tx_queue_target_size = 2
     listener._tx_queue = asyncio.Queue(maxsize=2)
     listener._tx_dropped = 0
     listener._errors = 0

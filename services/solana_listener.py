@@ -311,7 +311,8 @@ class SolanaListener:
         
         # Rate limiting - max 5 concurrent RPC requests
         self._rpc_semaphore = asyncio.Semaphore(2)  # Reduced from 5 to stay under rate limits
-        self._max_tx_queue_size = 5000
+        self._max_tx_queue_size = 500
+        self._fresh_tx_queue_target_size = 250
         self._tx_queue: asyncio.Queue = asyncio.Queue(maxsize=self._max_tx_queue_size)
         self._tx_dropped = 0
     
@@ -1023,22 +1024,25 @@ MC: {mc_str} | CA: {age_str}
         except asyncio.QueueFull:
             pass
 
-        try:
-            self._tx_queue.get_nowait()
-            self._tx_queue.task_done()
-        except asyncio.QueueEmpty:
-            pass
+        dropped_now = 0
+        while self._tx_queue.qsize() >= self._fresh_tx_queue_target_size:
+            try:
+                self._tx_queue.get_nowait()
+                self._tx_queue.task_done()
+                dropped_now += 1
+            except asyncio.QueueEmpty:
+                break
 
         try:
             self._tx_queue.put_nowait(signature)
-            self._tx_dropped += 1
-            if self._tx_dropped == 1 or self._tx_dropped % 1000 == 0:
+            self._tx_dropped += dropped_now
+            if self._tx_dropped and (self._tx_dropped == dropped_now or self._tx_dropped % 10000 < dropped_now):
                 logger.warning(
                     "SOL tx queue saturated; dropped stale signatures to keep alerts fresh "
                     f"(dropped={self._tx_dropped}, max={self._max_tx_queue_size})"
                 )
         except asyncio.QueueFull:
-            self._tx_dropped += 1
+            self._tx_dropped += dropped_now + 1
             self._errors += 1
      
     async def _fetch_and_process_tx(self, signature: str):
@@ -1957,6 +1961,7 @@ MC: {mc_str} | CA: {age_str}
             "last_tx_received_at": _iso_or_none(getattr(self, "_last_tx_received_at", None)),
             "queue_size": queue_size,
             "queue_max_size": getattr(self, "_max_tx_queue_size", 0),
+            "queue_fresh_target_size": getattr(self, "_fresh_tx_queue_target_size", 0),
             "transactions_dropped": getattr(self, "_tx_dropped", 0),
             "modules": {
                 "sns": self.sns_tracker.get_stats(),

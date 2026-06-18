@@ -2,7 +2,13 @@ from datetime import datetime, timezone
 
 import pytest
 
-from best_signals import BestSignalCandidate, BestSignalRouter, candidate_from_v1_message
+from best_signals import (
+    BestSignalCandidate,
+    BestSignalPerformance,
+    BestSignalRouter,
+    candidate_from_v1_message,
+    format_best_signal,
+)
 
 
 class RecordingBestSender:
@@ -40,6 +46,7 @@ def _candidate(
         "sells_5m": 4,
         "sells_1h": 60,
         "age_minutes": 30,
+        "backtest_text": None,
         "url": "https://dexscreener.com/base/test",
     }
     values.update(overrides)
@@ -79,6 +86,21 @@ async def test_best_signal_router_dedupes_by_chain_address_and_family():
 
 
 @pytest.mark.asyncio
+async def test_best_signal_router_dedupes_same_token_across_source_families():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    sender = RecordingBestSender()
+
+    assert router.queue(_candidate(97, "0xsamecoin", "LIVE", family="v2_live")) is True
+    assert router.queue(_candidate(100, "0xsamecoin", "WALLET", family="best_wallet_coin_week")) is True
+
+    sent = await router.flush(sender.send, now=datetime(2026, 5, 25, tzinfo=timezone.utc))
+
+    assert sent == 1
+    assert len(sender.messages) == 1
+    assert "$WALLET" in sender.messages[0]
+
+
+@pytest.mark.asyncio
 async def test_best_signal_router_rejects_candidates_below_elite_floor():
     router = BestSignalRouter(daily_cap=7, min_score=95)
     sender = RecordingBestSender()
@@ -87,6 +109,83 @@ async def test_best_signal_router_rejects_candidates_below_elite_floor():
 
     assert await router.flush(sender.send) == 0
     assert sender.messages == []
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_rejects_family_with_bad_backtest_profile():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=95,
+        performance_by_family={
+            "v2_live": BestSignalPerformance(
+                sample_size=50,
+                hit_2x_rate=0.08,
+                rug_rate=0.24,
+                median_max_multiple=1.05,
+                average_max_multiple=1.18,
+            )
+        },
+    )
+
+    assert router.queue(_candidate(100, "0xbadprofile", "BAD", family="v2_live")) is False
+    assert router.rejected_by_reason["backtest_hit_rate_too_low"] == 1
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_allows_family_with_strong_backtest_profile():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=95,
+        performance_by_family={
+            "v2_live": BestSignalPerformance(
+                sample_size=50,
+                hit_2x_rate=0.34,
+                rug_rate=0.06,
+                median_max_multiple=1.9,
+                average_max_multiple=2.8,
+            )
+        },
+    )
+    sender = RecordingBestSender()
+
+    assert router.queue(_candidate(98, "0xgoodprofile", "GOOD", family="v2_live")) is True
+    assert await router.flush(sender.send) == 1
+    assert "$GOOD" in sender.messages[0]
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_prints_loaded_backtest_profile_summary():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=95,
+        performance_by_family={
+            "v2_live": BestSignalPerformance(
+                sample_size=50,
+                hit_2x_rate=0.34,
+                rug_rate=0.06,
+                median_max_multiple=1.9,
+                average_max_multiple=2.8,
+            )
+        },
+    )
+    sender = RecordingBestSender()
+
+    assert router.queue(_candidate(98, "0xwithprofile", "PROFILE", family="v2_live")) is True
+    assert await router.flush(sender.send) == 1
+    assert "Replay: 34% hit 2x" in sender.messages[0]
+
+
+def test_best_signal_format_includes_backtest_summary_when_available():
+    message = format_best_signal(
+        _candidate(
+            98,
+            "0xwithreplay",
+            "REPLAY",
+            backtest_text="Replay: 34% hit 2x, 6% rug rate, 1.9x median max",
+        )
+    )
+
+    assert "Replay: 34% hit 2x" in message
 
 
 @pytest.mark.asyncio
@@ -131,6 +230,38 @@ async def test_best_signal_router_rejects_low_score_with_unknown_risk_details():
 
 
 @pytest.mark.asyncio
+async def test_best_signal_router_rejects_basic_v1_solana_freshies_without_reported_score():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    sender = RecordingBestSender()
+    candidate = candidate_from_v1_message(
+        """SOL Freshies
+$RANDOM 5 SOL ape | MC: $100k | CA: 10m
+<code>11111111111111111111111111111111</code>"""
+    )
+
+    assert candidate is not None
+    assert candidate.score == 94
+    assert router.queue(candidate) is False
+    assert router.rejected_by_reason["score_below_min"] == 1
+    assert await router.flush(sender.send) == 0
+    assert sender.messages == []
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_exposes_gate_rejection_reason_for_unknown_evm_risk():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    unknown_risk = _candidate(
+        100,
+        "0xunknownrisk",
+        "UNK",
+        risk_text="low | Tax B/S: ?/? | Honeypot.is unavailable",
+    )
+
+    assert router.queue(unknown_risk) is False
+    assert router.rejected_by_reason["risk_not_clean"] == 1
+
+
+@pytest.mark.asyncio
 async def test_best_signal_router_supports_unlimited_daily_cap_with_quality_floor():
     router = BestSignalRouter(daily_cap=0, min_score=95)
     sender = RecordingBestSender()
@@ -158,10 +289,14 @@ async def test_best_signal_router_caps_solana_without_blocking_other_chains():
     sender = RecordingBestSender()
     now = datetime(2026, 5, 25, tzinfo=timezone.utc)
 
-    assert router.queue(_candidate(100, "So11111111111111111111111111111111111111111", "SOL1", chain="solana")) is True
+    assert router.queue(
+        _candidate(100, "So11111111111111111111111111111111111111111", "SOL1", chain="solana", family="dormants")
+    ) is True
     assert await router.flush(sender.send, now=now) == 1
 
-    assert router.queue(_candidate(100, "So22222222222222222222222222222222222222222", "SOL2", chain="solana")) is True
+    assert router.queue(
+        _candidate(100, "So22222222222222222222222222222222222222222", "SOL2", chain="solana", family="dormants")
+    ) is True
     assert router.queue(_candidate(98, "0xbase", "BASE", chain="base")) is True
 
     assert await router.flush(sender.send, now=now) == 1
@@ -180,10 +315,14 @@ async def test_best_signal_router_applies_chain_cooldown():
     sender = RecordingBestSender()
     now = datetime(2026, 5, 25, 12, 0, tzinfo=timezone.utc)
 
-    assert router.queue(_candidate(100, "So11111111111111111111111111111111111111111", "SOL1", chain="solana")) is True
+    assert router.queue(
+        _candidate(100, "So11111111111111111111111111111111111111111", "SOL1", chain="solana", family="dormants")
+    ) is True
     assert await router.flush(sender.send, now=now) == 1
 
-    assert router.queue(_candidate(100, "So22222222222222222222222222222222222222222", "SOL2", chain="solana")) is True
+    assert router.queue(
+        _candidate(100, "So22222222222222222222222222222222222222222", "SOL2", chain="solana", family="dormants")
+    ) is True
     assert await router.flush(sender.send, now=now) == 0
     assert await router.flush(sender.send, now=datetime(2026, 5, 25, 13, 1, tzinfo=timezone.utc)) == 1
 
@@ -218,3 +357,35 @@ MC: 977.9k
 
     assert candidate is not None
     assert candidate.score == 48
+
+
+def test_v1_best_signal_candidate_caps_unstructured_solana_heuristic_score_below_best_floor():
+    message = """SOL Big Dormants
+$WHALE Whale Token 5.50 SOL $120.0k
+<code>9ttcxL8Ztz8nv3tQiS9Lu6KpjA2VofNrRXx7nw27z62C</code>
+LS: 120d | CA: 12m
+<a href="https://dexscreener.com/solana/token">XX</a>"""
+
+    candidate = candidate_from_v1_message(message)
+
+    assert candidate is not None
+    assert candidate.score == 94
+
+
+@pytest.mark.asyncio
+async def test_v1_solana_best_requires_reported_elite_score():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    sender = RecordingBestSender()
+    candidate = candidate_from_v1_message(
+        """SOL Strongfloor
+$VAULT Vault Token | Strength: 99/100
+Floor: $0.000816 | Bounces: 4 | Time: 9h
+MC: 977.9k
+<code>2SAt9qF6YjMBz9tb1U9jAYNBBVx5jqWQ7KRXDqD2pump</code>"""
+    )
+
+    assert candidate is not None
+    assert candidate.score == 99
+    assert router.queue(candidate) is True
+    assert await router.flush(sender.send) == 1
+    assert "$VAULT" in sender.messages[0]

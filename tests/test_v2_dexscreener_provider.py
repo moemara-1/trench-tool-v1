@@ -17,6 +17,7 @@ class FakeJsonClient:
                         "chainId": "bsc",
                         "url": "https://dexscreener.com/bsc/0xpair",
                         "baseToken": {"address": "0xbnb", "symbol": "BNB", "name": "BNB Token"},
+                        "priceUsd": "0.0042",
                         "marketCap": 120_000,
                         "liquidity": {"usd": 40_000},
                         "volume": {"h24": 200_000},
@@ -32,6 +33,7 @@ class FakeJsonClient:
                         "attributes": {
                             "name": "ETHREAL / WETH",
                             "address": "0xethpair",
+                            "base_token_price_usd": "0.0123",
                             "fdv_usd": "240000",
                             "reserve_in_usd": "60000",
                             "volume_usd": {"h24": "160000"},
@@ -85,7 +87,9 @@ async def test_latest_pairs_includes_search_and_geckoterminal_network_pools():
 
     by_chain = {pair.chain: pair for pair in pairs}
     assert by_chain[Chain.BSC].token_address == "0xbnb"
+    assert by_chain[Chain.BSC].price_usd == 0.0042
     assert by_chain[Chain.ETHEREUM].token_address == "0xeth"
+    assert by_chain[Chain.ETHEREUM].price_usd == 0.0123
     assert by_chain[Chain.ETHEREUM].liquidity_usd == 60_000
     assert by_chain[Chain.ETHEREUM].buys_1h == 45
     search_urls = [url for url in provider.client.urls if "/latest/dex/search" in url]

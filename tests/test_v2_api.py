@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from types import SimpleNamespace
+
 import httpx
 import pytest
 
@@ -15,6 +18,25 @@ async def test_v2_health_endpoint_reports_runtime_contract():
     payload = response.json()
     assert payload["ok"] is True
     assert payload["providers"][0]["name"] == "v2-null-provider"
+
+
+@pytest.mark.asyncio
+async def test_v2_health_endpoint_uses_live_signal_worker_ingestion_stats():
+    app = create_app(settings=V2Settings())
+    app.state.signal_worker = SimpleNamespace(
+        stats=SimpleNamespace(
+            last_run_at=datetime.now(timezone.utc),
+            candidates_seen=123,
+        )
+    )
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["processed_events"] == 123
 
 
 @pytest.mark.asyncio

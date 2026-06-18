@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import json
 
 import pytest
 
@@ -477,7 +478,14 @@ async def test_live_signal_worker_spends_daily_cap_on_highest_quality_candidates
         ),
         provider=MultiDiscoveryProvider(pairs),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
     )
 
     sent = await worker.run_once()
@@ -577,6 +585,66 @@ async def test_live_signal_worker_default_best_feed_accepts_96_point_risk_checke
 
 
 @pytest.mark.asyncio
+async def test_live_signal_worker_backtest_profile_blocks_best_copy_not_source_topic(tmp_path):
+    performance_path = tmp_path / "best-performance.json"
+    performance_path.write_text(
+        json.dumps(
+            {
+                "v2_live": {
+                    "sample_size": 50,
+                    "hit_2x_rate": 0.08,
+                    "rug_rate": 0.24,
+                    "median_max_multiple": 1.05,
+                    "average_max_multiple": 1.18,
+                }
+            }
+        )
+    )
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xprofileblocked",
+        symbol="PROFILE",
+        name="Profile Blocked",
+        url="https://dexscreener.com/base/0xprofileblocked",
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        volume_24h_usd=260_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+                "BEST_SIGNAL_PERFORMANCE_PATH": str(performance_path),
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert [topic_id for topic_id, _ in sender.messages] == [201]
+    assert worker.stats.best_signals_sent == 0
+    assert worker.stats.as_dict()["best_signal_rejected_by_reason"]["backtest_hit_rate_too_low"] == 1
+
+
+@pytest.mark.asyncio
 async def test_live_signal_worker_blocks_best_copy_when_sell_flow_is_not_elite():
     pair = DexPair(
         chain=Chain.BASE,
@@ -606,7 +674,14 @@ async def test_live_signal_worker_blocks_best_copy_when_sell_flow_is_not_elite()
         ),
         provider=FakeDiscoveryProvider(pair),
         sender=sender,
-        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["Honeypot.is simulation passed"])),
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
         best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
     )
 
@@ -616,6 +691,7 @@ async def test_live_signal_worker_blocks_best_copy_when_sell_flow_is_not_elite()
     assert sent[0].quality_score >= 95
     assert [topic_id for topic_id, _ in sender.messages] == [201]
     assert worker.stats.best_signals_sent == 0
+    assert worker.stats.as_dict()["best_signal_rejected_by_reason"]["sell_pressure_too_high"] == 1
 
 
 @pytest.mark.asyncio
@@ -692,12 +768,12 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
 
     assert len(sent) == 1
     assert wallet_provider.calls == [(Chain.BASE, "0xelite", "ELITE", ("week", "month", "year"))]
-    assert [topic_id for topic_id, _ in sender.messages] == [201, 901, 999, 999]
+    assert [topic_id for topic_id, _ in sender.messages] == [201, 901, 999]
     assert "Best Wallet Coin Week" in sender.messages[1][1]
     assert "0xelite" in sender.messages[1][1]
     assert "0x1111111111111111111111111111111111111111" not in sender.messages[1][1]
     assert "0x2222222222222222222222222222222222222222" not in sender.messages[1][1]
-    assert "Best Wallet Coin Week" in sender.messages[3][1]
+    assert "Best Wallet Coin Week" in sender.messages[2][1]
     assert worker.stats.best_wallet_signals_sent == 1
 
 
@@ -1107,3 +1183,57 @@ async def test_live_signal_worker_allows_ultra_strong_base_source_signal_with_un
     }
     assert {topic_id for topic_id, _ in sender.messages} == {201, 202, 203}
     assert worker.stats.best_signals_sent == 0
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_journals_successful_source_alert(tmp_path):
+    journal_path = tmp_path / "v2-signals.jsonl"
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xjournal",
+        symbol="JOURNAL",
+        name="Journal Token",
+        url="https://dexscreener.com/base/0xjournal",
+        price_usd=0.0025,
+        market_cap_usd=180_000,
+        liquidity_usd=90_000,
+        volume_24h_usd=240_000,
+        buys_5m=24,
+        buys_1h=160,
+        buys_24h=700,
+        sells_5m=4,
+        sells_1h=35,
+        sells_24h=220,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=35),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "202",
+                "V2_SIGNAL_JOURNAL_PATH": str(journal_path),
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=100,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    record = json.loads(journal_path.read_text(encoding="utf-8").splitlines()[0])
+    assert record["token_address"] == "0xjournal"
+    assert record["price_usd"] == 0.0025
+    assert record["quality_score"] == sent[0].quality_score
+    assert record["risk_text"] == "low | Tax B/S: 0.0%/1.0% | Honeypot.is simulation passed"
+    assert worker.stats.journal_records_written == 1
+    assert worker.stats.journal_last_error is None

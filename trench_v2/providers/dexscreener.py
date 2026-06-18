@@ -44,6 +44,7 @@ class DexPair:
     price_change_5m: float | None = None
     price_change_1h: float | None = None
     price_change_24h: float | None = None
+    price_usd: float | None = None
 
 
 class DexScreenerProvider:
@@ -177,6 +178,7 @@ class DexScreenerProvider:
             symbol=str(base_token.get("symbol") or "UNKNOWN"),
             name=str(base_token.get("name") or "Unknown Token"),
             url=_str_or_none(item.get("url")) or profile.url,
+            price_usd=_float_or_none(item.get("priceUsd")),
             market_cap_usd=_float_or_none(item.get("marketCap") or item.get("fdv")),
             liquidity_usd=_float_or_none((item.get("liquidity") or {}).get("usd")),
             volume_24h_usd=_float_or_none((item.get("volume") or {}).get("h24")),
@@ -228,6 +230,7 @@ class DexScreenerProvider:
             symbol=symbol,
             name=name,
             url=f"https://www.geckoterminal.com/{network}/pools/{pool_address}" if pool_address else None,
+            price_usd=_float_or_none(attributes.get("base_token_price_usd")),
             market_cap_usd=_float_or_none(attributes.get("market_cap_usd") or attributes.get("fdv_usd")),
             liquidity_usd=_float_or_none(attributes.get("reserve_in_usd")),
             volume_24h_usd=_float_or_none(volume.get("h24")),

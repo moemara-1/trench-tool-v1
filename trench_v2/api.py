@@ -55,13 +55,10 @@ def create_app(settings: V2Settings | None = None) -> FastAPI:
     async def health() -> dict:
         runtime_settings = app_settings or V2Settings.from_env(os.environ)
         providers = await ProviderHealthService(runtime_settings).check()
+        worker = getattr(app.state, "signal_worker", None)
         snapshot = HealthMonitor(
             providers=providers,
-            ingestion=IngestionState(
-                last_event_at=datetime.now(timezone.utc),
-                queue_depth=0,
-                processed_events=0,
-            ),
+            ingestion=_ingestion_state_from_worker(worker),
         ).snapshot()
         return {
             "ok": snapshot.ok,
@@ -189,6 +186,21 @@ def create_app(settings: V2Settings | None = None) -> FastAPI:
         }
 
     return app
+
+
+def _ingestion_state_from_worker(worker) -> IngestionState:
+    stats = getattr(worker, "stats", None)
+    if stats is None:
+        return IngestionState(
+            last_event_at=datetime.now(timezone.utc),
+            queue_depth=0,
+            processed_events=0,
+        )
+    return IngestionState(
+        last_event_at=getattr(stats, "last_run_at", None),
+        queue_depth=0,
+        processed_events=int(getattr(stats, "candidates_seen", 0) or 0),
+    )
 
 
 app = create_app()

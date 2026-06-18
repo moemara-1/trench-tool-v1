@@ -45,6 +45,20 @@ def test_signal_quality_default_prioritizes_actionable_alerts():
     assert settings.best_signals_min_score == 96
     assert settings.best_wallet_signals_enabled is True
     assert settings.best_wallet_min_score == 92
+    assert settings.best_signal_performance_path is None
+    assert settings.signal_journal_path is None
+
+
+def test_settings_reads_best_signal_performance_path():
+    settings = V2Settings.from_env({"BEST_SIGNAL_PERFORMANCE_PATH": "/data/best-performance.json"})
+
+    assert settings.best_signal_performance_path == "/data/best-performance.json"
+
+
+def test_settings_reads_signal_journal_path():
+    settings = V2Settings.from_env({"V2_SIGNAL_JOURNAL_PATH": "/data/v2-signals.jsonl"})
+
+    assert settings.signal_journal_path == "/data/v2-signals.jsonl"
 
 
 def test_signal_daily_cap_allows_zero_for_topic_fairness():

@@ -25,10 +25,11 @@ MC: 977.9k
 2SAt9qF6YjMBz9tb1U9jAYNBBVx5jqWQ7KRXDqD2pump"""
 
 
-ELITE_DORMANT_MESSAGE = """SOL Big Dormants
-$WHALE Whale Token 5.50 SOL $120.0k
+ELITE_STRONGFLOOR_MESSAGE = """SOL Strongfloor
+$WHALE Whale Token | Strength: 99/100
+Floor: $0.000816 | Bounces: 4 | Time: 9h
+MC: 977.9k
 <code>9ttcxL8Ztz8nv3tQiS9Lu6KpjA2VofNrRXx7nw27z62C</code>
-LS: 120d | CA: 12m
 <a href="https://dexscreener.com/solana/token">XX</a>"""
 
 
@@ -86,7 +87,7 @@ async def test_v1_send_alert_copies_elite_signal_to_best_signals_topic(monkeypat
     fake_api = FakeTelegramApi()
     bot._bot = fake_api
 
-    result = await bot.send_alert(ELITE_DORMANT_MESSAGE, topic_id=3)
+    result = await bot.send_alert(ELITE_STRONGFLOOR_MESSAGE, topic_id=3)
 
     assert result == 1
     assert [call["message_thread_id"] for call in fake_api.calls] == [3, 999]

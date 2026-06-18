@@ -43,6 +43,8 @@ class V2Settings:
     best_signals_min_score: int = 96
     best_wallet_signals_enabled: bool = True
     best_wallet_min_score: int = 92
+    best_signal_performance_path: str | None = None
+    signal_journal_path: str | None = None
     solana_provider_health_enabled: bool = False
     command_providers_enabled: bool = False
 
@@ -82,6 +84,8 @@ class V2Settings:
             best_signals_min_score=_env_int(env.get("BEST_SIGNALS_MIN_SCORE"), default=96),
             best_wallet_signals_enabled=_env_bool(env.get("BEST_WALLET_SIGNALS_ENABLED"), default=True),
             best_wallet_min_score=_env_int(env.get("BEST_WALLET_MIN_SCORE"), default=92),
+            best_signal_performance_path=_blank_to_none(env.get("BEST_SIGNAL_PERFORMANCE_PATH")),
+            signal_journal_path=_blank_to_none(env.get("V2_SIGNAL_JOURNAL_PATH")),
             solana_provider_health_enabled=_env_bool(
                 env.get("V2_SOLANA_PROVIDER_HEALTH_ENABLED"),
                 default=False,

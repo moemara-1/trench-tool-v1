@@ -12,6 +12,8 @@ from best_signals import BestSignalCandidate, BestSignalRouter, format_best_sign
 from quality_budget import PriorityDailyBudget
 from trench_v2.config import V2Settings
 from trench_v2.core.models import Chain, RiskLevel, RiskReport
+from trench_v2.engine.backtest import load_performance_profiles
+from trench_v2.engine.signal_journal import SignalJournal
 from trench_v2.providers.base import RiskProvider
 from trench_v2.providers.dexscreener import DexPair, DexScreenerProvider, DexTokenProfile
 from trench_v2.providers.factory import build_risk_provider
@@ -60,6 +62,7 @@ class LiveSignal:
     token_address: str
     symbol: str
     name: str
+    price_usd: float | None
     market_cap_usd: float | None
     liquidity_usd: float | None
     volume_24h_usd: float | None
@@ -107,6 +110,9 @@ class LiveSignalStats:
     best_wallet_signals_sent: int = 0
     best_wallet_signals_queued: int = 0
     best_wallet_last_error: str | None = None
+    journal_records_written: int = 0
+    journal_last_error: str | None = None
+    best_signal_rejected_by_reason: dict[str, int] = field(default_factory=dict)
     best_wallet_candidates_by_period: dict[str, int] = field(default_factory=dict)
     best_wallet_rejected_by_period: dict[str, int] = field(default_factory=dict)
     best_wallet_last_score_by_period: dict[str, int] = field(default_factory=dict)
@@ -139,6 +145,9 @@ class LiveSignalStats:
             "best_wallet_signals_sent": self.best_wallet_signals_sent,
             "best_wallet_signals_queued": self.best_wallet_signals_queued,
             "best_wallet_last_error": self.best_wallet_last_error,
+            "journal_records_written": self.journal_records_written,
+            "journal_last_error": self.journal_last_error,
+            "best_signal_rejected_by_reason": dict(sorted(self.best_signal_rejected_by_reason.items())),
             "best_wallet_candidates_by_period": dict(sorted(self.best_wallet_candidates_by_period.items())),
             "best_wallet_rejected_by_period": dict(sorted(self.best_wallet_rejected_by_period.items())),
             "best_wallet_last_score_by_period": dict(sorted(self.best_wallet_last_score_by_period.items())),
@@ -176,6 +185,7 @@ class LiveSignalWorker:
         self.risk_provider = risk_provider or build_risk_provider(settings)
         self.wallet_performance_provider = wallet_performance_provider or self._wallet_provider_from_settings(settings)
         self.stats = LiveSignalStats()
+        self.signal_journal = SignalJournal(settings.signal_journal_path) if settings.signal_journal_path else None
         self._daily_budget = (
             PriorityDailyBudget(
                 daily_cap=settings.signal_daily_cap,
@@ -188,6 +198,7 @@ class LiveSignalWorker:
         self._best_signal_router = best_signal_router or BestSignalRouter(
             daily_cap=settings.best_signals_daily_cap,
             min_score=settings.best_signals_min_score,
+            performance_by_family=self._load_best_signal_performance(settings),
         )
         self._risk_cache: dict[tuple[Chain, str], RiskReport] = {}
         self._sent_keys: set[str] = set()
@@ -278,6 +289,7 @@ class LiveSignalWorker:
                 self.stats.daily_sent = self._daily_sent_count(now=self.stats.last_run_at)
                 _increment(self.stats.alerts_by_topic, checked_signal.topic_env_key)
                 _increment(self.stats.alerts_by_quality_band, (global_decision or topic_decision).band)
+                self._record_signal_journal(checked_signal)
                 self._queue_best_signal(checked_signal)
                 await self._queue_best_wallet_signals(checked_signal)
                 self._remember(checked_signal)
@@ -405,6 +417,7 @@ class LiveSignalWorker:
                 token_address=pair.token_address,
                 symbol=pair.symbol,
                 name=pair.name,
+                price_usd=pair.price_usd,
                 market_cap_usd=market_cap,
                 liquidity_usd=liquidity,
                 volume_24h_usd=pair.volume_24h_usd,
@@ -540,6 +553,7 @@ class LiveSignalWorker:
                 "symbol": signal.symbol,
                 "address": signal.token_address,
                 "topic_env_key": signal.topic_env_key,
+                "price_usd": signal.price_usd,
                 "quality_score": signal.quality_score,
                 "sent_at": datetime.now(timezone.utc).isoformat(),
             }
@@ -574,6 +588,22 @@ class LiveSignalWorker:
                 url=signal.url,
             )
         )
+        self._sync_best_signal_router_stats()
+
+    def _record_signal_journal(self, signal: LiveSignal) -> None:
+        if not self.signal_journal:
+            return
+        try:
+            self.signal_journal.record(
+                signal,
+                sent_at=self.stats.last_run_at or datetime.now(timezone.utc),
+                risk_text=_risk_text(signal),
+            )
+        except Exception as exc:
+            self.stats.journal_last_error = type(exc).__name__
+            return
+        self.stats.journal_records_written += 1
+        self.stats.journal_last_error = None
 
     async def _queue_best_wallet_signals(self, signal: LiveSignal) -> None:
         if not self.wallet_performance_provider:
@@ -629,6 +659,7 @@ class LiveSignalWorker:
                 self.stats.best_wallet_signals_sent += 1
             if self._best_signal_router.queue(best_candidate):
                 self.stats.best_wallet_signals_queued += 1
+            self._sync_best_signal_router_stats()
 
     async def _send_best_wallet_signal(
         self,
@@ -662,6 +693,10 @@ class LiveSignalWorker:
             send_best,
             now=self.stats.last_run_at,
         )
+        self._sync_best_signal_router_stats()
+
+    def _sync_best_signal_router_stats(self) -> None:
+        self.stats.best_signal_rejected_by_reason = self._best_signal_router.rejected_by_reason
 
     def _reset_daily_counter_if_needed(self, now: datetime) -> None:
         day = now.date().isoformat()
@@ -717,6 +752,11 @@ class LiveSignalWorker:
         if not settings.moralis_api_key:
             return None
         return MoralisTopTradersProvider(settings.moralis_api_key)
+
+    def _load_best_signal_performance(self, settings: V2Settings):
+        if not settings.best_signal_performance_path:
+            return None
+        return load_performance_profiles(settings.best_signal_performance_path)
 
 
 def _money(value: float | None) -> str:

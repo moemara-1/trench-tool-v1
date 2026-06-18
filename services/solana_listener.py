@@ -710,6 +710,14 @@ MC: {mc_str} | CA: {age_str}
     def _capture_first_seen_for_enrichment(self, token_address: str) -> bool:
         """Snapshot first-seen state before format_alert mutates _seen_tokens."""
         return token_address not in self._seen_tokens
+
+    def _record_sns_alert_sent(self, token_address: str) -> None:
+        """Keep listener and SNS tracker alert counters in sync."""
+        self._sns_alerts_sent += 1
+        self.sns_tracker.track_sns_buy(token_address)
+        increment = getattr(self.sns_tracker, "increment_alerts_sent", None)
+        if callable(increment):
+            increment()
     
     async def start(self):
         """Start the listener with WebSocket + parallel polling."""
@@ -1662,8 +1670,7 @@ MC: {mc_str} | CA: {age_str}
                 msg_id = await self.telegram.send_alert(sns_msg, topic_id=sns_topic)
                 
                 if msg_id:
-                    self._sns_alerts_sent += 1
-                    self.sns_tracker.track_sns_buy(token_mint)
+                    self._record_sns_alert_sent(token_mint)
                     logger.info(f"🏷️ [SNS] {domain} bought {sol_spent:.2f} SOL of ${ticker}")
             
             # === VANISH PROTOCOL DETECTION ===
@@ -1823,6 +1830,7 @@ MC: {mc_str} | CA: {age_str}
                     msg_id = await self.telegram.send_alert(floor_msg, topic_id=topic)
                     if msg_id:
                         self._strongfloor_alerts_sent += 1
+                        self.strongfloor_tracker.mark_alerted(strongfloor)
                         self.strongfloor_tracker.increment_alerts()
                         logger.info(f"🧱 [Strongfloor] Floor detected for ${strongfloor.ticker}")
             
@@ -1892,11 +1900,10 @@ MC: {mc_str} | CA: {age_str}
 
             token_data = await self.token_fetcher.get_token_data(token_mint)
             if not token_data:
-                logger.info("Streamflow lock skipped: token metadata unavailable for %s", token_mint[:12])
-                continue
+                logger.info("Streamflow lock metadata unavailable; sending fallback alert for %s", token_mint[:12])
 
             ticker = token_data.symbol if token_data else "???"
-            name = token_data.name if token_data else ""
+            name = token_data.name if token_data else "Unknown"
             mc_str = token_data.mc_string if token_data else "?"
             age_str = token_data.age_string if token_data else "?"
 

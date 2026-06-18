@@ -3,7 +3,9 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from services.sns_tracker import SNSTracker
 from services.solana_listener import SolanaListener
+from services.strongfloor_tracker import StrongfloorTracker
 
 
 class _FakeQueue:
@@ -106,6 +108,55 @@ def test_solana_listener_drops_oldest_signature_when_queue_is_full():
     assert listener._errors == 0
     assert listener._tx_queue.get_nowait() == "old-b"
     assert listener._tx_queue.get_nowait() == "new-c"
+
+
+def test_solana_listener_records_sns_alert_in_listener_and_tracker_stats():
+    listener = object.__new__(SolanaListener)
+    listener._sns_alerts_sent = 0
+    listener.sns_tracker = SNSTracker()
+
+    listener._record_sns_alert_sent("TokenMint111111111111111111111111111111111111")
+
+    assert listener._sns_alerts_sent == 1
+    assert listener.sns_tracker.get_stats()["sns_buys_tracked"] == 1
+    assert listener.sns_tracker.get_stats()["alerts_sent"] == 1
+
+
+def test_strongfloor_does_not_cool_down_before_successful_send(tmp_path, monkeypatch):
+    state_file = tmp_path / "strongfloor_state.json"
+    monkeypatch.setattr(StrongfloorTracker, "STATE_FILE", str(state_file))
+    tracker = StrongfloorTracker()
+    old = datetime.utcnow() - timedelta(hours=5)
+    tracker._price_history["token"] = [
+        (1.00, old),
+        (1.08, old + timedelta(minutes=10)),
+        (1.01, old + timedelta(minutes=20)),
+        (1.12, old + timedelta(minutes=30)),
+        (1.02, old + timedelta(minutes=40)),
+        (1.15, old + timedelta(minutes=50)),
+        (1.03, old + timedelta(minutes=60)),
+        (1.10, old + timedelta(minutes=70)),
+        (1.04, old + timedelta(minutes=80)),
+        (1.16, old + timedelta(minutes=90)),
+    ]
+
+    candidate = tracker.analyze_floor(
+        token_address="token",
+        ticker="FLOOR",
+        token_name="Floor Token",
+        current_price=1.16,
+    )
+
+    assert candidate is not None
+    assert tracker.get_stats()["strongfloors_detected"] == 0
+    assert state_file.exists() is False
+    assert tracker.analyze_floor("token", "FLOOR", "Floor Token", 1.16) is not None
+
+    tracker.mark_alerted(candidate)
+
+    assert tracker.get_stats()["strongfloors_detected"] == 1
+    assert state_file.exists() is True
+    assert tracker.analyze_floor("token", "FLOOR", "Floor Token", 1.16) is None
 
 
 class _Stats:
@@ -230,7 +281,7 @@ async def test_solana_listener_sends_direct_streamflow_lock(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_solana_listener_skips_streamflow_lock_without_token_metadata(monkeypatch):
+async def test_solana_listener_sends_streamflow_lock_with_fallback_metadata(monkeypatch):
     listener = object.__new__(SolanaListener)
     listener.streamflow_tracker = _StreamflowTracker()
     listener.token_fetcher = _EmptyTokenFetcher()
@@ -241,9 +292,11 @@ async def test_solana_listener_skips_streamflow_lock_without_token_metadata(monk
 
     sent = await listener._maybe_process_streamflow_lock(_streamflow_tx())
 
-    assert sent is False
-    assert listener._streamflow_alerts_sent == 0
-    assert listener.telegram.messages == []
+    assert sent is True
+    assert listener._streamflow_alerts_sent == 1
+    assert listener.telegram.messages == [
+        ("streamflow:TokenMint111111111111111111111111111111111111:12345", 1234)
+    ]
 
 
 @pytest.mark.asyncio

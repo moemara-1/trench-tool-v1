@@ -21,6 +21,8 @@ services:
       ]
     ports:
       - "8001:8001"
+    volumes:
+      - ./data:/app/data
     healthcheck:
       test:
         [

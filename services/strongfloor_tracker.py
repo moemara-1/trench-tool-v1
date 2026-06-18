@@ -194,11 +194,9 @@ class StrongfloorTracker:
             bounces_from_floor=bounces,
             floor_strength_score=floor_strength,
             detected_at=datetime.utcnow(),
-            last_alert_time=datetime.utcnow(),  # Set alert time
+            last_alert_time=None,
         )
         
-        self._strongfloors[token_address] = strongfloor
-        self.save_state()  # Save state on new alert
         logger.info(f"🧱 [Strongfloor] FLOOR DETECTED: ${ticker} | strength={floor_strength}/100 | bounces={bounces} | hours={int(hours_tracked)}h | floor=${min_price:.8f}")
         return strongfloor
     
@@ -238,6 +236,23 @@ MC: {market_cap_str}
     def increment_alerts(self):
         """Increment alert counter."""
         self._alerts_sent += 1
+
+    def mark_alerted(self, token: StrongfloorToken):
+        """Persist alert cooldown after Telegram delivery succeeds."""
+        alerted = StrongfloorToken(
+            token_address=token.token_address,
+            ticker=token.ticker,
+            token_name=token.token_name,
+            floor_price=token.floor_price,
+            current_price=token.current_price,
+            time_above_floor_hours=token.time_above_floor_hours,
+            bounces_from_floor=token.bounces_from_floor,
+            floor_strength_score=token.floor_strength_score,
+            detected_at=token.detected_at,
+            last_alert_time=datetime.utcnow(),
+        )
+        self._strongfloors[token.token_address] = alerted
+        self.save_state()
     
     def get_stats(self) -> dict:
         """Get tracker statistics."""

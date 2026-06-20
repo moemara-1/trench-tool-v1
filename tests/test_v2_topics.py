@@ -27,11 +27,14 @@ def test_default_topic_plan_covers_live_signal_suites():
     assert (Chain.ETHEREUM, TopicFeature.LOW_MC_FRESHIES) in pairs
     assert (Chain.BSC, TopicFeature.BIG_FRESHIES) in pairs
     assert (Chain.BASE, TopicFeature.LOW_MC_FRESHIES) in pairs
-    assert (Chain.SOLANA, TopicFeature.BUNDLES) not in pairs
-    assert (Chain.SOLANA, TopicFeature.GOOD_CREATOR) not in pairs
-    assert (Chain.SOLANA, TopicFeature.SNS) not in pairs
-    assert (Chain.SOLANA, TopicFeature.STREAMFLOW) not in pairs
-    assert (Chain.SOLANA, TopicFeature.STRONG_LAUNCH) not in pairs
+    assert (Chain.SOLANA, TopicFeature.BUNDLES) in pairs
+    assert (Chain.SOLANA, TopicFeature.GOOD_CREATOR) in pairs
+    assert (Chain.SOLANA, TopicFeature.SNS) in pairs
+    assert (Chain.SOLANA, TopicFeature.STREAMFLOW) in pairs
+    assert (Chain.SOLANA, TopicFeature.STRONG_LAUNCH) in pairs
+    assert (Chain.SOLANA, TopicFeature.SOCIALS) in pairs
+    assert (Chain.SOLANA, TopicFeature.DEV_HELD) in pairs
+    assert (Chain.SOLANA, TopicFeature.STRONGFLOOR) in pairs
     assert (Chain.SOLANA, TopicFeature.SEMI_DORMANTS_SELLS) not in pairs
     assert (Chain.SOLANA, TopicFeature.LIQUIDITY_INFLOWS) not in pairs
     assert (Chain.SOLANA, TopicFeature.BELIEVEAPP_DEPLOYS) not in pairs

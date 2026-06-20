@@ -320,11 +320,18 @@ MC: {market_cap_str} | CA: {coin_age_str}
         self._alerts_sent += 1
     
     def get_stats(self) -> dict:
-        """Get checker statistics."""
-        strong_count = sum(1 for p in self._profiles.values() if self.is_strong_socials(p))
+        """Get checker statistics without mutating/logging profile state."""
+        basic_count = sum(
+            1
+            for profile in self._profiles.values()
+            if profile.token_address not in self._alerted_tokens and profile.social_score >= 50
+        )
+        alertable_count = sum(1 for profile in self._profiles.values() if self.is_alertable_socials(profile))
         return {
             "tokens_checked": len(self._profiles),
-            "strong_socials": strong_count,
+            "basic_socials": basic_count,
+            "alertable_socials": alertable_count,
+            "strong_socials": alertable_count,
             "alerts_sent": self._alerts_sent,
         }
 

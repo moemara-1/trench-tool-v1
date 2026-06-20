@@ -119,6 +119,29 @@ def test_socials_checker_excludes_already_alerted_profiles_from_background_flush
     assert checker.get_alertable_profiles(limit=1) == []
 
 
+
+def test_socials_stats_do_not_promote_partial_profiles_to_alertable_or_log_strong(caplog):
+    checker = SocialsChecker()
+    checker._profiles["partial"] = SocialProfile(
+        token_address="partial",
+        twitter_url="https://x.com/partial",
+        telegram_url="https://t.me/partial",
+        website_url=None,
+        twitter_followers=0,
+        has_verified_twitter=False,
+        has_active_telegram=True,
+        social_score=55,
+        enhanced_score=15,
+        checked_at=solana_listener.datetime.utcnow(),
+    )
+
+    with caplog.at_level("INFO"):
+        stats = checker.get_stats()
+
+    assert stats["basic_socials"] == 1
+    assert stats["alertable_socials"] == 0
+    assert stats["strong_socials"] == 0
+    assert "STRONG SOCIALS" not in caplog.text
 @pytest.mark.asyncio
 async def test_socials_queue_trims_after_push(monkeypatch):
     monkeypatch.setattr(solana_listener.settings, "socials_queue_max_length", 2, raising=False)

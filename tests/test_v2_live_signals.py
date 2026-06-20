@@ -830,6 +830,7 @@ async def test_live_signal_worker_counts_wallet_provider_empty_and_rejected_peri
     assert worker.stats.best_wallet_tokens_checked == 1
     assert worker.stats.best_wallet_candidates_by_period["week"] == 1
     assert worker.stats.best_wallet_rejected_by_period["week"] == 1
+    assert worker.stats.best_wallet_rejected_by_reason["week:not_enough_profitable_wallets"] == 1
     assert worker.stats.best_wallet_last_score_by_period["week"] == 0
     assert worker.stats.best_wallet_signals_sent == 0
 
@@ -1137,7 +1138,7 @@ async def test_live_signal_worker_blocks_unknown_risk_provider_state():
 
 
 @pytest.mark.asyncio
-async def test_live_signal_worker_allows_ultra_strong_base_source_signal_with_unlocked_liquidity_risk():
+async def test_live_signal_worker_blocks_elite_base_source_signal_with_unlocked_liquidity_risk():
     pair = DexPair(
         chain=Chain.BASE,
         token_address="0xbasewatch",
@@ -1176,12 +1177,9 @@ async def test_live_signal_worker_allows_ultra_strong_base_source_signal_with_un
 
     sent = await worker.run_once()
 
-    assert {signal.topic_env_key for signal in sent} == {
-        "TELEGRAM_BASE_FRESHIES_TOPIC_ID",
-        "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID",
-        "TELEGRAM_BASE_DEPLOYS_TOPIC_ID",
-    }
-    assert {topic_id for topic_id, _ in sender.messages} == {201, 202, 203}
+    assert sent == []
+    assert sender.messages == []
+    assert worker.stats.rejected_risk == 3
     assert worker.stats.best_signals_sent == 0
 
 

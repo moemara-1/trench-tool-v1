@@ -24,6 +24,7 @@ from wallet_performance import (
     WalletPerformanceCandidate,
     best_signal_from_wallet_token_confluence,
     score_wallet_token_confluence,
+    wallet_token_confluence_rejection_reason,
 )
 
 
@@ -115,6 +116,7 @@ class LiveSignalStats:
     best_signal_rejected_by_reason: dict[str, int] = field(default_factory=dict)
     best_wallet_candidates_by_period: dict[str, int] = field(default_factory=dict)
     best_wallet_rejected_by_period: dict[str, int] = field(default_factory=dict)
+    best_wallet_rejected_by_reason: dict[str, int] = field(default_factory=dict)
     best_wallet_last_score_by_period: dict[str, int] = field(default_factory=dict)
     candidates_by_topic: dict[str, int] = field(default_factory=dict)
     skipped_unconfigured_by_topic: dict[str, int] = field(default_factory=dict)
@@ -150,6 +152,7 @@ class LiveSignalStats:
             "best_signal_rejected_by_reason": dict(sorted(self.best_signal_rejected_by_reason.items())),
             "best_wallet_candidates_by_period": dict(sorted(self.best_wallet_candidates_by_period.items())),
             "best_wallet_rejected_by_period": dict(sorted(self.best_wallet_rejected_by_period.items())),
+            "best_wallet_rejected_by_reason": dict(sorted(self.best_wallet_rejected_by_reason.items())),
             "best_wallet_last_score_by_period": dict(sorted(self.best_wallet_last_score_by_period.items())),
             "candidates_by_topic": dict(sorted(self.candidates_by_topic.items())),
             "skipped_unconfigured_by_topic": dict(sorted(self.skipped_unconfigured_by_topic.items())),
@@ -654,6 +657,12 @@ class LiveSignalWorker:
             )
             if not best_candidate:
                 _increment(self.stats.best_wallet_rejected_by_period, period)
+                reason = wallet_token_confluence_rejection_reason(
+                    wallet_candidates=period_candidates,
+                    period=period,
+                    min_score=self.settings.best_wallet_min_score,
+                ) or "unknown"
+                _increment(self.stats.best_wallet_rejected_by_reason, f"{period}:{reason}")
                 continue
             if await self._send_best_wallet_signal(period, best_candidate):
                 self.stats.best_wallet_signals_sent += 1
@@ -799,32 +808,13 @@ def _risk_report_allows_alert(report: RiskReport, signal: LiveSignal | None = No
         return False
     if report.malicious_contract:
         return False
-    if report.liquidity_pull_risk and not _high_risk_base_source_alert_allowed(report, signal):
+    if report.liquidity_pull_risk:
         return False
     if max(report.buy_tax_bps or 0, report.sell_tax_bps or 0) >= 500:
         return False
-    if report.level is RiskLevel.CRITICAL:
+    if report.level in {RiskLevel.HIGH, RiskLevel.CRITICAL}:
         return False
-    if report.level is RiskLevel.HIGH:
-        return _high_risk_base_source_alert_allowed(report, signal)
     return _risk_reasons_are_actionable(report)
-
-
-def _high_risk_base_source_alert_allowed(report: RiskReport, signal: LiveSignal | None) -> bool:
-    if signal is None or signal.chain is not Chain.BASE:
-        return False
-    if signal.quality_score < 95:
-        return False
-    joined = " ".join(reason.lower() for reason in report.reasons)
-    if not joined:
-        return False
-    allowed_markers = (
-        "liquidity is not locked",
-        "simulation passed",
-        "honeypot.is unavailable",
-        "goplus unavailable",
-    )
-    return all(any(marker in reason.lower() for marker in allowed_markers) for reason in report.reasons)
 
 
 def _rug_like_market(pair: DexPair) -> bool:

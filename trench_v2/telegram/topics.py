@@ -112,6 +112,18 @@ def build_default_topic_plan() -> tuple[TopicTarget, ...]:
     ]:
         add(Chain.SOLANA, feature, title)
 
+    for feature, title, env_key in [
+        (TopicFeature.BUNDLES, "Bundles (SOL)", "TELEGRAM_BUNDLES_TOPIC_ID"),
+        (TopicFeature.SNS, "SNS Tracker", "TELEGRAM_SNS_TOPIC_ID"),
+        (TopicFeature.STREAMFLOW, "Streamflow locks", "TELEGRAM_STREAMFLOW_TOPIC_ID"),
+        (TopicFeature.DEV_HELD, "DEV Held", "TELEGRAM_DEV_HELD_TOPIC_ID"),
+        (TopicFeature.GOOD_CREATOR, "Good Token Creator", "TELEGRAM_GOOD_CREATOR_TOPIC_ID"),
+        (TopicFeature.SOCIALS, "Socials check", "TELEGRAM_SOCIALS_TOPIC_ID"),
+        (TopicFeature.STRONG_LAUNCH, "Strong launches", "TELEGRAM_STRONG_LAUNCH_TOPIC_ID"),
+        (TopicFeature.STRONGFLOOR, "Strong floor", "TELEGRAM_STRONGFLOOR_TOPIC_ID"),
+    ]:
+        add(Chain.SOLANA, feature, title, env_key=env_key)
+
     for feature, title in [
         (TopicFeature.FRESHIES, "ETH Freshies"),
         (TopicFeature.BIG_FRESHIES, "ETH Big Freshies"),

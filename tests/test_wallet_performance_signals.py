@@ -5,6 +5,7 @@ from wallet_performance import (
     WalletPerformanceCandidate,
     best_signal_from_wallet_performance,
     best_signal_from_wallet_token_confluence,
+    wallet_token_confluence_rejection_reason,
 )
 
 
@@ -132,6 +133,54 @@ def test_wallet_token_confluence_allows_new_token_two_trade_top_trader_rows_but_
     ) is None
 
 
+
+def test_wallet_token_confluence_explains_single_wallet_rejection():
+    reason = wallet_token_confluence_rejection_reason(
+        wallet_candidates=(
+            _wallet_candidate(roi_pct=900, realized_pnl_usd=80_000, win_rate=0.9, trades=24),
+        ),
+        period="week",
+        min_score=95,
+    )
+
+    assert reason == "not_enough_profitable_wallets"
+
+
+def test_wallet_token_confluence_explains_weak_wallet_evidence_rejection():
+    reason = wallet_token_confluence_rejection_reason(
+        wallet_candidates=(
+            _wallet_candidate(roi_pct=20, realized_pnl_usd=250, win_rate=0.5, trades=2),
+            _wallet_candidate(roi_pct=8, realized_pnl_usd=11, win_rate=0.5, trades=9),
+        ),
+        period="week",
+        min_score=95,
+    )
+
+    assert reason == "wallet_evidence_too_weak"
+
+
+def test_wallet_token_confluence_explains_score_below_min_rejection():
+    wallets = tuple(
+        WalletPerformanceCandidate(
+            chain="eth",
+            wallet_address=f"0x{i:040d}",
+            period="year",
+            realized_pnl_usd=200.0,
+            roi_pct=1500.0,
+            win_rate=1.0,
+            trades=2,
+            wins=2,
+            losses=0,
+            top_tokens=("COIN",),
+        )
+        for i in range(1, 6)
+    )
+
+    assert wallet_token_confluence_rejection_reason(
+        wallet_candidates=wallets,
+        period="year",
+        min_score=95,
+    ) == "wallet_score_below_min"
 @pytest.mark.parametrize("period", ["week", "month", "year"])
 def test_wallet_performance_signal_converts_top_wallet_periods(period):
     signal = best_signal_from_wallet_performance(_wallet_candidate(period=period), min_score=95)

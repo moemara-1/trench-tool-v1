@@ -71,6 +71,36 @@ def best_signal_from_wallet_performance(
     )
 
 
+def wallet_token_confluence_rejection_reason(
+    *,
+    wallet_candidates: tuple[WalletPerformanceCandidate, ...] | list[WalletPerformanceCandidate],
+    period: str,
+    min_score: int = 95,
+    min_wallets: int = 2,
+) -> str | None:
+    normalized_period = period.lower().strip()
+    if normalized_period not in _SUPPORTED_PERIODS:
+        return "unsupported_period"
+
+    period_candidates = tuple(
+        candidate
+        for candidate in wallet_candidates
+        if candidate.period.lower().strip() == normalized_period
+    )
+    eligible = tuple(
+        candidate
+        for candidate in period_candidates
+        if _has_enough_token_confluence_evidence(candidate)
+    )
+    if len(eligible) < min_wallets:
+        if len(period_candidates) >= min_wallets:
+            return "wallet_evidence_too_weak"
+        return "not_enough_profitable_wallets"
+
+    if score_wallet_token_confluence(eligible, period=normalized_period) < min_score:
+        return "wallet_score_below_min"
+    return None
+
 def best_signal_from_wallet_token_confluence(
     *,
     chain: str,

@@ -1097,6 +1097,11 @@ async def test_live_signal_worker_blocks_honeypot_before_sending():
     assert await worker.run_once() == []
     assert sender.messages == []
     assert worker.stats.rejected_risk == 3
+    assert worker.stats.rejected_risk_by_topic_reason == {
+        "TELEGRAM_BASE_DEPLOYS_TOPIC_ID:honeypot": 1,
+        "TELEGRAM_BASE_FRESHIES_TOPIC_ID:honeypot": 1,
+        "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID:honeypot": 1,
+    }
     assert risk_provider.calls == [(Chain.BASE, "0xtrap")]
 
 
@@ -1135,6 +1140,11 @@ async def test_live_signal_worker_blocks_unknown_risk_provider_state():
     assert await worker.run_once() == []
     assert sender.messages == []
     assert worker.stats.rejected_risk == 3
+    assert worker.stats.rejected_risk_by_topic_reason == {
+        "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID:provider_unavailable": 1,
+        "TELEGRAM_BNB_FRESHIES_TOPIC_ID:provider_unavailable": 1,
+        "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID:provider_unavailable": 1,
+    }
 
 
 @pytest.mark.asyncio
@@ -1180,6 +1190,11 @@ async def test_live_signal_worker_blocks_elite_base_source_signal_with_unlocked_
     assert sent == []
     assert sender.messages == []
     assert worker.stats.rejected_risk == 3
+    assert worker.stats.rejected_risk_by_topic_reason == {
+        "TELEGRAM_BASE_DEPLOYS_TOPIC_ID:liquidity_pull_risk": 1,
+        "TELEGRAM_BASE_FRESHIES_TOPIC_ID:liquidity_pull_risk": 1,
+        "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID:liquidity_pull_risk": 1,
+    }
     assert worker.stats.best_signals_sent == 0
 
 

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import httpx
 
 from config import settings
+from services.rpc_manager import get_rpc_manager
 
 logger = logging.getLogger(__name__)
 
@@ -184,11 +185,48 @@ class EnhancedTokenData:
 
 
 class HeliusClient:
-    """Helius enhanced API client."""
-    
-    def __init__(self, rpc_url: str = None):
-        self.rpc_url = rpc_url or settings.solana_rpc_url
-    
+    """Helius enhanced API client with shared RPC rotation."""
+
+    RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+    def __init__(self, rpc_url: str = None, rpc_manager=None):
+        self.rpc_url = rpc_url
+        self._rpc_manager = rpc_manager
+
+    def _manager(self):
+        if self._rpc_manager is None:
+            self._rpc_manager = get_rpc_manager()
+        return self._rpc_manager
+
+    def _attempt_count(self) -> int:
+        if self.rpc_url:
+            return 1
+        return max(1, getattr(self._manager(), "endpoint_count", 1))
+
+    async def _post_rpc(self, client: httpx.AsyncClient, payload: dict, timeout: float | None = None):
+        """Post a JSON-RPC request with endpoint rotation on provider failures."""
+        manager = None if self.rpc_url else self._manager()
+        last_response = None
+
+        for _ in range(self._attempt_count()):
+            rpc_url = self.rpc_url or manager.get_rpc_url()
+            if timeout is None:
+                response = await client.post(rpc_url, json=payload)
+            else:
+                response = await client.post(rpc_url, json=payload, timeout=timeout)
+
+            last_response = response
+            status_code = getattr(response, "status_code", 200)
+            if status_code == 429 and manager is not None:
+                manager.report_error(rpc_url, is_rate_limit=True)
+                continue
+            if status_code in self.RETRYABLE_STATUS_CODES and manager is not None:
+                manager.report_error(rpc_url, is_rate_limit=False)
+                continue
+            return response
+
+        return last_response
+
     async def get_wallet_funding(self, wallet_address: str) -> Optional[WalletFunding]:
         """
         Trace where a wallet's SOL came from.
@@ -196,74 +234,68 @@ class HeliusClient:
         """
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                # Get wallet's first transactions
                 payload = {
                     "jsonrpc": "2.0",
                     "id": 1,
                     "method": "getSignaturesForAddress",
-                    "params": [
-                        wallet_address,
-                        {"limit": 50}
-                    ]
+                    "params": [wallet_address, {"limit": 50}],
                 }
-                
-                response = await client.post(self.rpc_url, json=payload)
+
+                response = await self._post_rpc(client, payload)
+                if not response or getattr(response, "status_code", 200) != 200:
+                    return None
                 result = response.json()
                 signatures = result.get("result", [])
-                
+
                 if not signatures:
                     return None
-                
-                # Get the oldest/first transaction (last in list)
+
                 first_sig = signatures[-1]
                 first_tx_time = datetime.fromtimestamp(first_sig.get("blockTime", 0))
-                
-                # Get transaction details
+
                 tx_payload = {
                     "jsonrpc": "2.0",
                     "id": 1,
                     "method": "getTransaction",
                     "params": [
                         first_sig["signature"],
-                        {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}
-                    ]
+                        {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0},
+                    ],
                 }
-                
-                tx_response = await client.post(self.rpc_url, json=tx_payload)
+
+                tx_response = await self._post_rpc(client, tx_payload)
+                if not tx_response or getattr(tx_response, "status_code", 200) != 200:
+                    return None
                 tx_data = tx_response.json().get("result")
-                
+
                 if not tx_data:
                     return None
-                
-                # Find who sent SOL to this wallet
+
                 account_keys = tx_data.get("transaction", {}).get("message", {}).get("accountKeys", [])
                 pre_balances = tx_data.get("meta", {}).get("preBalances", [])
                 post_balances = tx_data.get("meta", {}).get("postBalances", [])
-                
-                # Find the wallet's index and who funded it
+
                 funding_source = "Unknown"
                 funding_amount = 0
                 is_cex = False
-                
+
                 for i, key in enumerate(account_keys):
+                    if i >= len(pre_balances) or i >= len(post_balances):
+                        continue
                     key_str = key.get("pubkey") if isinstance(key, dict) else key
-                    
+
                     if key_str == wallet_address:
-                        # Check if this wallet received SOL
                         if post_balances[i] > pre_balances[i]:
                             funding_amount = (post_balances[i] - pre_balances[i]) / 1e9
-                    else:
-                        # Check if this account sent SOL (source)
-                        if pre_balances[i] > post_balances[i]:
-                            sent_amount = (pre_balances[i] - post_balances[i]) / 1e9
-                            if sent_amount > 0.001:  # Ignore dust
-                                # Check if it's a known CEX
-                                if key_str in CEX_WALLETS:
-                                    funding_source = CEX_WALLETS[key_str]
-                                    is_cex = True
-                                else:
-                                    funding_source = f"{key_str[:4]}...{key_str[-4:]}"
-                
+                    elif pre_balances[i] > post_balances[i]:
+                        sent_amount = (pre_balances[i] - post_balances[i]) / 1e9
+                        if sent_amount > 0.001:
+                            if key_str in CEX_WALLETS:
+                                funding_source = CEX_WALLETS[key_str]
+                                is_cex = True
+                            else:
+                                funding_source = f"{key_str[:4]}...{key_str[-4:]}"
+
                 return WalletFunding(
                     wallet_address=wallet_address,
                     funding_source=funding_source,
@@ -272,67 +304,51 @@ class HeliusClient:
                     funding_tx=first_sig["signature"],
                     is_cex=is_cex,
                 )
-                
+
         except Exception as e:
             logger.error(f"Error getting wallet funding: {e}")
             return None
-    
+
     async def get_wallet_age_and_tx_count(self, wallet_address: str) -> tuple:
-        """Get wallet age in days and transaction count.
-        
-        Note: We use limit=100 instead of 1000 because:
-        - Freshie max is 50 txs, so 100 is enough to detect non-freshies
-        - The API was returning 1000 for any wallet with 1000+ txs (which is most active wallets)
-        - This was causing ALL wallets to fail the freshie check
-        """
+        """Get wallet age in days and transaction count."""
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 payload = {
                     "jsonrpc": "2.0",
                     "id": 1,
                     "method": "getSignaturesForAddress",
-                    "params": [
-                        wallet_address,
-                        {"limit": 100}  # Use 100, not 1000 - enough to detect non-freshies (max 50)
-                    ]
+                    "params": [wallet_address, {"limit": 100}],
                 }
-                
-                response = await client.post(self.rpc_url, json=payload)
+
+                response = await self._post_rpc(client, payload)
+                if not response or getattr(response, "status_code", 200) != 200:
+                    return 0, 0
                 result = response.json()
                 signatures = result.get("result", [])
-                
+
                 if not signatures:
-                    logger.debug(f"🔍 Wallet {wallet_address[:8]}... has 0 transactions")
+                    logger.debug(f"Wallet {wallet_address[:8]}... has 0 transactions")
                     return 0, 0
-                
+
                 tx_count = len(signatures)
-                
-                # Get oldest transaction time
                 oldest = signatures[-1]
                 first_tx_time = datetime.fromtimestamp(oldest.get("blockTime", 0))
                 age_days = (datetime.utcnow() - first_tx_time).days
-                
-                logger.debug(f"🔍 Wallet {wallet_address[:8]}... - Age: {age_days}d, TXs: {tx_count}")
-                
+
+                logger.debug(f"Wallet {wallet_address[:8]}... - Age: {age_days}d, TXs: {tx_count}")
                 return age_days, tx_count
-                
+
         except Exception as e:
             logger.error(f"Error getting wallet age: {e}")
             return 0, 0
-    
+
     async def is_fresh_wallet(self, wallet_address: str) -> bool:
         """Check if wallet qualifies as 'fresh'."""
         age_days, tx_count = await self.get_wallet_age_and_tx_count(wallet_address)
-
-        # Fresh = less than 7 days old and less than 50 transactions
         return age_days <= settings.fresh_wallet_max_age_days and tx_count <= 50
 
     async def get_wallet_token_balance(self, wallet_address: str, token_mint: str) -> float:
-        """Get a wallet's balance of a specific token.
-
-        Returns the token amount (UI amount, not raw).
-        Returns 0 if wallet doesn't hold the token or on error.
-        """
+        """Get a wallet's balance of a specific token."""
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 payload = {
@@ -342,18 +358,19 @@ class HeliusClient:
                     "params": [
                         wallet_address,
                         {"mint": token_mint},
-                        {"encoding": "jsonParsed"}
-                    ]
+                        {"encoding": "jsonParsed"},
+                    ],
                 }
 
-                response = await client.post(self.rpc_url, json=payload)
+                response = await self._post_rpc(client, payload)
+                if not response or getattr(response, "status_code", 200) != 200:
+                    return 0.0
                 result = response.json()
                 accounts = result.get("result", {}).get("value", [])
 
                 if not accounts:
                     return 0.0
 
-                # Sum up all token accounts for this mint
                 total_balance = 0.0
                 for account in accounts:
                     parsed = account.get("account", {}).get("data", {}).get("parsed", {})
@@ -367,7 +384,6 @@ class HeliusClient:
         except Exception as e:
             logger.debug(f"Error getting wallet token balance: {e}")
             return 0.0
-
 
 # ==================== COMBINED DATA FETCHER ====================
 
@@ -608,11 +624,9 @@ class TokenDataFetcher:
                 "params": {"id": token_address}
             }
             
-            response = await client.post(
-                settings.solana_rpc_url,
-                json=payload,
-                timeout=5.0
-            )
+            response = await self.helius._post_rpc(client, payload, timeout=5.0)
+            if not response or getattr(response, "status_code", 200) != 200:
+                return None
             
             result = response.json()
             asset = result.get("result")

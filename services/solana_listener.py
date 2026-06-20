@@ -1055,48 +1055,65 @@ MC: {mc_str} | CA: {age_str}
      
     async def _fetch_and_process_tx(self, signature: str):
         """Fetch transaction details and process with rate limiting."""
-        # Use semaphore to limit concurrent RPC requests
         async with self._rpc_semaphore:
             try:
-                # Larger delay to stay under rate limits (100ms = 10 req/s per worker)
                 await asyncio.sleep(0.25)
-                
+
                 tx_payload = {
                     "jsonrpc": "2.0",
                     "id": 1,
                     "method": "getTransaction",
                     "params": [signature, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}]
                 }
-                
-                rpc_url = self.rpc_manager.get_rpc_url()
-                tx_response = await self._http_client.post(rpc_url, json=tx_payload)
-                
-                # Handle rate limiting with retry
-                if tx_response.status_code == 429:
-                    self.rpc_manager.report_error(rpc_url, is_rate_limit=True)
-                    logger.warning(f"Rate limited on {rpc_url[-20:]}, rotating and retrying...")
-                    await asyncio.sleep(2.0)  # Wait longer before retry
-                    rpc_url = self.rpc_manager.get_rpc_url()  # Get next endpoint
+
+                max_attempts = max(1, getattr(self.rpc_manager, "endpoint_count", 1))
+                last_status = None
+
+                for attempt in range(max_attempts):
+                    rpc_url = self.rpc_manager.get_rpc_url()
                     tx_response = await self._http_client.post(rpc_url, json=tx_payload)
+                    last_status = tx_response.status_code
 
-                    # Check if retry also failed
                     if tx_response.status_code == 429:
-                        logger.error(f"❌ Retry also rate limited for TX {signature[:16]}, skipping")
-                        self._errors += 1
-                        return
-                    elif tx_response.status_code != 200:
-                        logger.error(f"❌ Retry failed with status {tx_response.status_code} for TX {signature[:16]}")
+                        self.rpc_manager.report_error(rpc_url, is_rate_limit=True)
+                        if attempt < max_attempts - 1:
+                            logger.warning(
+                                f"Rate limited on {rpc_url[-20:]}, rotating and retrying "
+                                f"({attempt + 1}/{max_attempts})..."
+                            )
+                            await asyncio.sleep(0.5)
+                            continue
+                        break
+
+                    if tx_response.status_code in {500, 502, 503, 504}:
+                        self.rpc_manager.report_error(rpc_url, is_rate_limit=False)
+                        if attempt < max_attempts - 1:
+                            logger.warning(
+                                f"RPC status {tx_response.status_code} on {rpc_url[-20:]}, rotating and retrying "
+                                f"({attempt + 1}/{max_attempts})..."
+                            )
+                            await asyncio.sleep(0.5)
+                            continue
+
+                    if tx_response.status_code != 200:
+                        logger.error(f"Retry failed with status {tx_response.status_code} for TX {signature[:16]}")
                         self._errors += 1
                         return
 
-                tx_result = tx_response.json().get("result")
-                
-                if tx_result:
-                    await self._process_transaction(tx_result, signature)
+                    tx_result = tx_response.json().get("result")
+                    if tx_result:
+                        await self._process_transaction(tx_result, signature)
+                    return
+
+                logger.error(
+                    f"All RPC endpoints failed for TX {signature[:16]} "
+                    f"after {max_attempts} attempts (last_status={last_status})"
+                )
+                self._errors += 1
             except Exception as e:
                 logger.error(f"Error fetching tx {signature[:16]}: {e}")
                 self._errors += 1
-    
+
     async def _parallel_poll_transactions(self):
         """Parallel polling fallback - only activates when WebSocket fails."""
         logger.info("🔄 Parallel polling on standby (WebSocket primary)...")

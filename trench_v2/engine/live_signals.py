@@ -123,6 +123,7 @@ class LiveSignalStats:
     alerts_by_topic: dict[str, int] = field(default_factory=dict)
     rejected_budget_by_topic: dict[str, int] = field(default_factory=dict)
     rejected_risk_by_topic: dict[str, int] = field(default_factory=dict)
+    rejected_risk_by_topic_reason: dict[str, int] = field(default_factory=dict)
     alerts_by_quality_band: dict[str, int] = field(default_factory=dict)
     last_signals: list[dict] = field(default_factory=list)
 
@@ -159,6 +160,7 @@ class LiveSignalStats:
             "alerts_by_topic": dict(sorted(self.alerts_by_topic.items())),
             "rejected_budget_by_topic": dict(sorted(self.rejected_budget_by_topic.items())),
             "rejected_risk_by_topic": dict(sorted(self.rejected_risk_by_topic.items())),
+            "rejected_risk_by_topic_reason": dict(sorted(self.rejected_risk_by_topic_reason.items())),
             "alerts_by_quality_band": dict(sorted(self.alerts_by_quality_band.items())),
             "last_signals": self.last_signals[-10:],
         }
@@ -338,6 +340,10 @@ class LiveSignalWorker:
         if not _risk_report_allows_alert(report, signal):
             self.stats.rejected_risk += 1
             _increment(self.stats.rejected_risk_by_topic, signal.topic_env_key)
+            _increment(
+                self.stats.rejected_risk_by_topic_reason,
+                f"{signal.topic_env_key}:{_risk_rejection_reason(report)}",
+            )
             return None
 
         return replace(
@@ -802,6 +808,25 @@ def _tax(value: int | None) -> str:
         return "?"
     return f"{value / 100:.1f}%"
 
+
+def _risk_rejection_reason(report: RiskReport) -> str:
+    if report.is_honeypot or report.delayed_honeypot:
+        return "honeypot"
+    if report.malicious_contract:
+        return "malicious_contract"
+    if report.liquidity_pull_risk:
+        return "liquidity_pull_risk"
+    if max(report.buy_tax_bps or 0, report.sell_tax_bps or 0) >= 500:
+        return "high_tax"
+    if report.level in {RiskLevel.HIGH, RiskLevel.CRITICAL}:
+        return f"{report.level.value}_risk"
+
+    joined = " ".join(reason.lower() for reason in report.reasons)
+    if any(marker in joined for marker in ("rate limited", "unavailable", "no risk provider", "unexpected payload")):
+        return "provider_unavailable"
+    if not _risk_reasons_are_actionable(report):
+        return "non_actionable_risk"
+    return "unknown"
 
 def _risk_report_allows_alert(report: RiskReport, signal: LiveSignal | None = None) -> bool:
     if report.is_honeypot or report.delayed_honeypot:

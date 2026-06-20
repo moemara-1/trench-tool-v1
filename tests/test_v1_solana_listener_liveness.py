@@ -316,3 +316,74 @@ async def test_solana_listener_skips_duplicate_streamflow_token(monkeypatch):
     assert sent is False
     assert listener._streamflow_alerts_sent == 0
     assert listener.telegram.messages == []
+
+class _RotatingRPCManager:
+    endpoint_count = 3
+
+    def __init__(self):
+        self.urls = ["https://limited-a.example/rpc", "https://limited-b.example/rpc", "https://healthy.example/rpc"]
+        self.calls = []
+        self.errors = []
+
+    def get_rpc_url(self):
+        url = self.urls[len(self.calls)]
+        self.calls.append(url)
+        return url
+
+    def report_error(self, rpc_url, is_rate_limit=False):
+        self.errors.append((rpc_url, is_rate_limit))
+
+
+class _RPCResponse:
+    def __init__(self, status_code, payload=None):
+        self.status_code = status_code
+        self._payload = payload or {}
+
+    def json(self):
+        return self._payload
+
+
+class _RotatingHTTPClient:
+    def __init__(self):
+        self.posts = []
+
+    async def post(self, url, json):
+        self.posts.append((url, json["method"]))
+        if "limited" in url:
+            return _RPCResponse(429, {"error": {"message": "rate limited"}})
+        return _RPCResponse(200, {"result": {"meta": {"err": None}, "transaction": {"message": {"accountKeys": []}}}})
+
+
+@pytest.mark.asyncio
+async def test_solana_listener_fetch_tries_full_rpc_pool_before_dropping_rate_limited_tx(monkeypatch):
+    from services import solana_listener as solana_listener_module
+
+    async def no_sleep(_seconds):
+        return None
+
+    listener = object.__new__(SolanaListener)
+    listener.rpc_manager = _RotatingRPCManager()
+    listener._http_client = _RotatingHTTPClient()
+    listener._rpc_semaphore = asyncio.Semaphore(1)
+    listener._errors = 0
+    processed = []
+
+    async def process(tx_result, signature):
+        processed.append((tx_result, signature))
+
+    listener._process_transaction = process
+    monkeypatch.setattr(solana_listener_module.asyncio, "sleep", no_sleep)
+
+    await listener._fetch_and_process_tx("sig-123")
+
+    assert processed == [({"meta": {"err": None}, "transaction": {"message": {"accountKeys": []}}}, "sig-123")]
+    assert listener._errors == 0
+    assert listener.rpc_manager.errors == [
+        ("https://limited-a.example/rpc", True),
+        ("https://limited-b.example/rpc", True),
+    ]
+    assert listener._http_client.posts == [
+        ("https://limited-a.example/rpc", "getTransaction"),
+        ("https://limited-b.example/rpc", "getTransaction"),
+        ("https://healthy.example/rpc", "getTransaction"),
+    ]

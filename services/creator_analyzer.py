@@ -255,9 +255,13 @@ Wallet: {wallet_value_str} | MC: {market_cap_str}
     def get_stats(self) -> dict:
         """Get analyzer statistics."""
         good_count = sum(1 for p in self._profiles.values() if p.is_good_creator)
+        rejected_count = len(self._profiles) - good_count
+        best_score = max((profile.score for profile in self._profiles.values()), default=0)
         return {
             "creators_analyzed": len(self._profiles),
             "good_creators": good_count,
+            "rejected_creators": rejected_count,
+            "best_creator_score": best_score,
             "alerts_sent": self._alerts_sent,
         }
 

@@ -93,3 +93,25 @@ async def test_sns_tracker_uses_public_sns_api_before_das_rpc(monkeypatch):
     assert domain == "alpha.sol"
     assert client.get_urls == ["https://sns-api.bonfida.com/v2/user/domains/wallet"]
     assert client.urls == []
+
+
+@pytest.mark.asyncio
+async def test_sns_tracker_stats_expose_provider_errors_and_negative_lookups(monkeypatch):
+    manager = FakeRpcManager()
+    client = FakeClient(
+        [
+            FakeResponse(503),
+            FakeResponse(200, {"result": {"items": []}}),
+        ]
+    )
+    monkeypatch.setattr(sns_tracker, "get_rpc_manager", lambda: manager)
+    monkeypatch.setattr(sns_tracker.httpx, "AsyncClient", lambda timeout: client)
+    tracker = SNSTracker()
+
+    domain = await tracker.get_wallet_domain("wallet")
+
+    stats = tracker.get_stats()
+    assert domain is None
+    assert stats["lookups_attempted"] == 1
+    assert stats["sns_api_transient_errors"] == 1
+    assert stats["negative_lookups"] == 1

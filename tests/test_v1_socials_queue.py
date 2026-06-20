@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -169,3 +170,23 @@ async def test_socials_queue_recovers_from_upstash_record_size_limit(monkeypatch
         ("lpush", "trench:socials:queue"),
         ("ltrim", "trench:socials:queue"),
     ]
+
+
+def test_socials_stats_explain_profiles_that_are_not_alertable():
+    checker = SocialsChecker()
+    checker._profiles["partial"] = SocialProfile(
+        token_address="partial",
+        twitter_url="https://x.com/project",
+        telegram_url=None,
+        website_url=None,
+        twitter_followers=0,
+        has_verified_twitter=False,
+        has_active_telegram=False,
+        social_score=30,
+        checked_at=datetime.utcnow(),
+    )
+
+    stats = checker.get_stats()
+
+    assert stats["rejected_socials"] == 1
+    assert stats["rejected_by_reason"] == {"partial_socials_below_threshold": 1}

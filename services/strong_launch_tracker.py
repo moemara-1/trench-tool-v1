@@ -5,6 +5,7 @@ Aggregates multiple signals to identify high-upside plays.
 """
 
 import logging
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional, Dict
 from dataclasses import dataclass
@@ -56,7 +57,8 @@ class StrongLaunchTracker:
     def __init__(self):
         self._launches: Dict[str, StrongLaunch] = {}
         self._alerts_sent = 0
-    
+        self._candidates_evaluated = 0
+        self._rejected_by_reason: Dict[str, int] = defaultdict(int)    
     def evaluate_launch(
         self,
         token_address: str,
@@ -74,10 +76,12 @@ class StrongLaunchTracker:
         Returns StrongLaunch if it meets criteria.
         """
         logger.debug(f"[StrongLaunch] EVALUATING: ${ticker} ({token_address[:12]}...) | creator={creator_score} | social={social_score} | tokenomics={tokenomics_score} | pressure={buy_pressure_score} | age={age_minutes}m")
+        self._candidates_evaluated += 1
         
         # Filter out old launches (must be < 1 hour old)
         if age_minutes > 60:
              logger.debug(f"[StrongLaunch] REJECTED: ${ticker} too old ({age_minutes}m > 60m)")
+             self._record_rejection("too_old")
              return None
 
         # Calculate total score (weighted average)
@@ -109,6 +113,7 @@ class StrongLaunchTracker:
             logger.info(f"🚀 [StrongLaunch] STRONG LAUNCH DETECTED: ${ticker} | score={int(total_score)}/100 | threshold={self.MIN_SCORE_THRESHOLD} | total_launches={len(self._launches)}")
         else:
             logger.debug(f"[StrongLaunch] NOT STRONG: ${ticker} | score={int(total_score)}/100 | threshold={self.MIN_SCORE_THRESHOLD}")
+            self._record_rejection("score_below_threshold")
         
         return launch if is_strong else None
     
@@ -149,12 +154,17 @@ MC: {market_cap_str} | CA: {coin_age_str}
     def increment_alerts(self):
         """Increment alert counter."""
         self._alerts_sent += 1
+
+    def _record_rejection(self, reason: str):
+        self._rejected_by_reason[reason] += 1
     
     def get_stats(self) -> dict:
         """Get tracker statistics."""
         return {
             "strong_launches": len(self._launches),
             "alerts_sent": self._alerts_sent,
+            "candidates_evaluated": self._candidates_evaluated,
+            "rejected_by_reason": dict(sorted(self._rejected_by_reason.items())),
         }
 
 

@@ -5,6 +5,7 @@ Slow movers unlikely to zero suddenly - opportunities often missed until Twitter
 """
 
 import logging
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 from dataclasses import dataclass
@@ -61,6 +62,8 @@ class StrongfloorTracker:
         self._price_history: Dict[str, List[tuple]] = {}  # (price, timestamp)
         self._strongfloors: Dict[str, StrongfloorToken] = {}
         self._alerts_sent = 0
+        self._analysis_attempts = 0
+        self._rejected_by_reason: Dict[str, int] = defaultdict(int)
         self.load_state()
     
     def load_state(self):
@@ -137,8 +140,9 @@ class StrongfloorTracker:
         Analyze if token has a strongfloor pattern.
         Returns StrongfloorToken if pattern detected AND not recently alerted.
         """
+        self._analysis_attempts += 1
         if token_address not in self._price_history:
-            return None
+            return self._reject("missing_history")
         
         # Check cooldown
         if token_address in self._strongfloors:
@@ -146,11 +150,11 @@ class StrongfloorTracker:
             if existing.last_alert_time:
                 hours_since = (datetime.utcnow() - existing.last_alert_time).total_seconds() / 3600
                 if hours_since < self.ALERT_COOLDOWN_HOURS:
-                    return None
+                    return self._reject("cooldown")
         
         history = self._price_history[token_address]
         if len(history) < 10:
-            return None
+            return self._reject("insufficient_history")
         
         prices = [p[0] for p in history]
         timestamps = [p[1] for p in history]
@@ -172,14 +176,14 @@ class StrongfloorTracker:
                 was_near_floor = False
         
         if bounces < self.MIN_BOUNCES:
-            return None
+            return self._reject("insufficient_bounces")
         
         # Calculate time above floor
         first_time = timestamps[0]
         hours_tracked = (datetime.utcnow() - first_time).total_seconds() / 3600
         
         if hours_tracked < self.MIN_FLOOR_HOURS:
-            return None
+            return self._reject("insufficient_age")
         
         # Calculate floor strength score
         floor_strength = min(100, bounces * 15 + int(hours_tracked * 2))
@@ -237,6 +241,10 @@ MC: {market_cap_str}
         """Increment alert counter."""
         self._alerts_sent += 1
 
+    def _reject(self, reason: str) -> None:
+        self._rejected_by_reason[reason] += 1
+        return None
+
     def mark_alerted(self, token: StrongfloorToken):
         """Persist alert cooldown after Telegram delivery succeeds."""
         alerted = StrongfloorToken(
@@ -259,6 +267,8 @@ MC: {market_cap_str}
         return {
             "tokens_tracked": len(self._price_history),
             "strongfloors_detected": len(self._strongfloors),
+            "analysis_attempts": self._analysis_attempts,
+            "rejected_by_reason": dict(sorted(self._rejected_by_reason.items())),
             "alerts_sent": self._alerts_sent,
         }
 

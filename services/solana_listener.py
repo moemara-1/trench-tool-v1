@@ -315,6 +315,7 @@ class SolanaListener:
         self._fresh_tx_queue_target_size = 250
         self._tx_queue: asyncio.Queue = asyncio.Queue(maxsize=self._max_tx_queue_size)
         self._tx_dropped = 0
+        self._tx_skipped_by_reason = defaultdict(int)
     
     def detect_launchpad(self, program_ids: list) -> tuple:
         """Detect launchpad from program IDs."""
@@ -1193,12 +1194,14 @@ MC: {mc_str} | CA: {age_str}
         try:
             meta = tx_data.get("meta", {})
             if meta.get("err"):
+                self._record_tx_skip("failed_transaction")
                 return  # Skip failed transactions
 
             pre_balances = meta.get("preBalances", [0])
             post_balances = meta.get("postBalances", [0])
             
             if not pre_balances or not post_balances:
+                self._record_tx_skip("missing_balance_data")
                 logger.debug("Missing balance data")
                 return
             
@@ -1206,6 +1209,7 @@ MC: {mc_str} | CA: {age_str}
             account_keys = message.get("accountKeys", [])
             
             if not account_keys:
+                self._record_tx_skip("missing_account_keys")
                 return
             
             wallet = account_keys[0]
@@ -1276,7 +1280,8 @@ MC: {mc_str} | CA: {age_str}
             pre_tokens = meta.get("preTokenBalances", [])
             
             if not post_tokens:
-                logger.info(f"🚫 No token transfer for {signature}")
+                self._record_tx_skip("no_token_transfer")
+                logger.info(f"?? No token transfer for {signature}")
                 return  # No token transfer (likely SOL-only tx)
             
             token_mint = None
@@ -1339,16 +1344,19 @@ MC: {mc_str} | CA: {age_str}
                         logger.error(f"Error processing sell: {e}")
                     
                     # We don't alert on sells in this loop (yet), so we return to avoid treating it as a buy
+                    self._record_tx_skip("sell_transaction")
                     return
             
             if not token_mint or token_mint in EXCLUDED_TOKENS:
-                logger.info(f"🚫 No valid mint / Excluded: {token_mint}")
+                self._record_tx_skip("no_valid_mint")
+                logger.info(f"?? No valid mint / Excluded: {token_mint}")
                 return
             
             # === RAYDIUM CLMM FILTER ===
             # User request: remove Raydium CLMM launched coins (avoids spam/unwanted alerts)
             if "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK" in program_ids:
-                logger.debug(f"🛑 [Filter] Skipping Raydium CLMM transaction for {token_mint[:8]}...")
+                self._record_tx_skip("raydium_clmm")
+                logger.debug(f"?? [Filter] Skipping Raydium CLMM transaction for {token_mint[:8]}...")
                 return
 
             # === LATE MIGRATION TRACKING ===
@@ -1410,7 +1418,8 @@ MC: {mc_str} | CA: {age_str}
             # FILTER: Skip if not a relevant transaction type
             # We allow: Launchpads, DEXes, Vanish, Streamflow
             if not detected_launchpad and not detected_dex and not is_vanish and not is_streamflow:
-                logger.info(f"❌ FILTER: No launchpad/DEX/Protocol for {token_mint[:8]}... | Programs: {program_ids[:3]}")
+                self._record_tx_skip("unsupported_program")
+                logger.info(f"? FILTER: No launchpad/DEX/Protocol for {token_mint[:8]}... | Programs: {program_ids[:3]}")
                 return  # Only skip if neither launchpad nor DEX
             
             # Log what we detected
@@ -1944,6 +1953,13 @@ MC: {mc_str} | CA: {age_str}
 
         return False
 
+    def _record_tx_skip(self, reason: str) -> None:
+        skipped = getattr(self, "_tx_skipped_by_reason", None)
+        if skipped is None:
+            skipped = defaultdict(int)
+            self._tx_skipped_by_reason = skipped
+        skipped[reason] = skipped.get(reason, 0) + 1
+
     def _should_backup_poll(self, now: datetime | None = None) -> bool:
         """Return true when WebSocket is disconnected or connected-but-stale."""
 
@@ -1987,6 +2003,7 @@ MC: {mc_str} | CA: {age_str}
             "queue_max_size": getattr(self, "_max_tx_queue_size", 0),
             "queue_fresh_target_size": getattr(self, "_fresh_tx_queue_target_size", 0),
             "transactions_dropped": getattr(self, "_tx_dropped", 0),
+            "transaction_skipped_by_reason": dict(sorted(getattr(self, "_tx_skipped_by_reason", {}).items())),
             "modules": {
                 "sns": self.sns_tracker.get_stats(),
                 "vanish": self.vanish_tracker.get_stats(),

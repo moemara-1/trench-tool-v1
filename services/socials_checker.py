@@ -327,13 +327,29 @@ MC: {market_cap_str} | CA: {coin_age_str}
             if profile.token_address not in self._alerted_tokens and profile.social_score >= 50
         )
         alertable_count = sum(1 for profile in self._profiles.values() if self.is_alertable_socials(profile))
+        rejected_by_reason: dict[str, int] = {}
+        for profile in self._profiles.values():
+            reason = self._social_rejection_reason(profile)
+            if reason:
+                rejected_by_reason[reason] = rejected_by_reason.get(reason, 0) + 1
         return {
             "tokens_checked": len(self._profiles),
             "basic_socials": basic_count,
             "alertable_socials": alertable_count,
             "strong_socials": alertable_count,
+            "rejected_socials": sum(rejected_by_reason.values()),
+            "rejected_by_reason": dict(sorted(rejected_by_reason.items())),
             "alerts_sent": self._alerts_sent,
         }
+
+    def _social_rejection_reason(self, profile: SocialProfile) -> Optional[str]:
+        if profile.token_address in self._alerted_tokens:
+            return "already_alerted"
+        if self.is_alertable_socials(profile):
+            return None
+        if not (profile.twitter_url or profile.telegram_url or profile.website_url):
+            return "no_socials"
+        return "partial_socials_below_threshold"
 
 
 # Singleton

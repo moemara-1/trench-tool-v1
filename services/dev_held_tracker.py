@@ -5,6 +5,7 @@ On Solana, devs typically dump instantly, so holding is unusual and worth tracki
 """
 
 import logging
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from dataclasses import dataclass
@@ -47,6 +48,7 @@ class DevHeldTracker:
         # Track dev holdings: token -> DevHolding
         self._holdings: Dict[str, DevHolding] = {}
         self._alerts_sent = 0
+        self._rejected_by_reason: Dict[str, int] = defaultdict(int)
     
     def record_dev_wallet(
         self,
@@ -61,6 +63,7 @@ class DevHeldTracker:
 
         if initial_supply <= 0:
             logger.debug(f"[DevHeld] SKIP: token={token_address[:12]}... has no observed initial balance")
+            self._record_rejection("missing_initial_supply")
             return
         
         self._holdings[token_address] = DevHolding(
@@ -97,7 +100,8 @@ class DevHeldTracker:
         supply_pct = (current_supply / holding.initial_supply * 100) if holding.initial_supply > 0 else 0
         if current_supply < holding.initial_supply * 0.9:  # >10% sold
             holding.has_sold = True
-            logger.info(f"💎 [DevHeld] DEV SOLD: token={token_address[:12]}... | supply_remaining={supply_pct:.1f}%")
+            self._record_rejection("sold_supply")
+            logger.info(f"?? [DevHeld] DEV SOLD: token={token_address[:12]}... | supply_remaining={supply_pct:.1f}%")
             return None
         
         # Calculate holding time
@@ -109,6 +113,7 @@ class DevHeldTracker:
             logger.info(f"💎 [DevHeld] HELD THRESHOLD MET: token={token_address[:12]}... | hours={holding.holding_hours}h | supply={supply_pct:.1f}%")
             return holding
         
+        self._record_rejection("pending_hold_threshold")
         logger.debug(f"[DevHeld] UPDATE: token={token_address[:12]}... | hours={holding.holding_hours}h | threshold={self.MIN_HOLD_HOURS}h | supply={supply_pct:.1f}%")
         return None
     
@@ -161,14 +166,26 @@ class DevHeldTracker:
     def increment_alerts(self):
         """Increment alert counter."""
         self._alerts_sent += 1
+
+    def _record_rejection(self, reason: str):
+        self._rejected_by_reason[reason] += 1
     
     def get_stats(self) -> dict:
         """Get tracker statistics."""
         holding_count = sum(1 for h in self._holdings.values() if not h.has_sold)
+        pending_count = sum(
+            1
+            for h in self._holdings.values()
+            if not h.has_sold and not h.is_alerted and h.holding_hours < self.MIN_HOLD_HOURS
+        )
+        sold_count = sum(1 for h in self._holdings.values() if h.has_sold)
         return {
             "tokens_tracked": len(self._holdings),
             "devs_holding": holding_count,
+            "pending_hold_threshold": pending_count,
+            "sold_or_reduced_supply": sold_count,
             "alerts_sent": self._alerts_sent,
+            "rejected_by_reason": dict(sorted(self._rejected_by_reason.items())),
         }
     
     def cleanup_sold(self):

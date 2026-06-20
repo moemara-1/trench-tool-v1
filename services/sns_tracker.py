@@ -36,6 +36,11 @@ class SNSTracker:
         self._domain_cache: Dict[str, Optional[str]] = {}
         self._sns_buys: Dict[str, int] = {}
         self._alerts_sent = 0
+        self._lookups_attempted = 0
+        self._sns_api_transient_errors = 0
+        self._rpc_transient_errors = 0
+        self._negative_lookups = 0
+        self._lookup_errors = 0
 
     async def get_wallet_domain(self, wallet_address: str) -> Optional[str]:
         """Look up SNS domain for a wallet using SNS API, then DAS RPC fallback."""
@@ -44,6 +49,8 @@ class SNSTracker:
             if cached:
                 logger.info("SNS cache hit: %s for %s...", cached, wallet_address[:8])
             return cached
+
+        self._lookups_attempted += 1
 
         try:
             rpc_manager = get_rpc_manager()
@@ -73,6 +80,7 @@ class SNSTracker:
                     )
 
                     if response.status_code in {429, 500, 502, 503, 504}:
+                        self._rpc_transient_errors += 1
                         rpc_manager.report_error(rpc_url, is_rate_limit=response.status_code == 429)
                         logger.info(
                             "SNS lookup transient HTTP %s for %s, retrying",
@@ -106,9 +114,11 @@ class SNSTracker:
                     break
 
             self._domain_cache[wallet_address] = None
+            self._negative_lookups += 1
             return None
 
         except Exception as exc:
+            self._lookup_errors += 1
             logger.info("SNS lookup error for %s: %s", wallet_address[:8], exc)
             return None
 
@@ -116,6 +126,7 @@ class SNSTracker:
         """Return the first SNS domain from the public SNS user domains API."""
         response = await client.get(SNS_API_USER_DOMAINS_URL.format(wallet_address=wallet_address))
         if response.status_code in {429, 500, 502, 503, 504}:
+            self._sns_api_transient_errors += 1
             logger.info("SNS API transient HTTP %s for %s, falling back to DAS", response.status_code, wallet_address[:8])
             return None
         if response.status_code != 200:
@@ -192,6 +203,11 @@ MC: {market_cap_str} | CA: {coin_age_str}
             "domains_found": sum(1 for domain in self._domain_cache.values() if domain),
             "sns_buys_tracked": sum(self._sns_buys.values()),
             "alerts_sent": self._alerts_sent,
+            "lookups_attempted": self._lookups_attempted,
+            "sns_api_transient_errors": self._sns_api_transient_errors,
+            "rpc_transient_errors": self._rpc_transient_errors,
+            "negative_lookups": self._negative_lookups,
+            "lookup_errors": self._lookup_errors,
         }
 
 

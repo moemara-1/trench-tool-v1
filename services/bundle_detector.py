@@ -81,7 +81,9 @@ class BundleDetector:
         # Opening block tracking
         self._first_block_seen: Dict[str, int] = {}
         self.min_supply_pct_for_opening = 0.5  # Adjust as needed
-    
+        self._transactions_seen = 0
+        self._rejected_by_reason: Dict[str, int] = defaultdict(int)
+        self._last_rejection_reason: Optional[str] = None    
     def add_transaction(
         self,
         token_address: str,
@@ -99,7 +101,7 @@ class BundleDetector:
         Returns BundleInfo if a bundle is detected.
         """
         timestamp = timestamp or datetime.utcnow()
-        
+        self._transactions_seen += 1        
         # Track opening block
         if block_number > 0 and token_address not in self._first_block_seen:
             self._first_block_seen[token_address] = block_number
@@ -141,8 +143,7 @@ class BundleDetector:
         recent = self._recent_txs[token_address]
         
         if len(recent) < self.min_wallets_for_bundle:
-            return None
-        
+            return self._reject("not_enough_transactions")        
         now = datetime.utcnow()
         window_start = now - timedelta(seconds=self.time_window_seconds)
         
@@ -154,12 +155,13 @@ class BundleDetector:
         logger.info(f"📦 Bundle check: {len(window_txs)} txs, {unique_wallets} unique wallets in {self.time_window_seconds}s for {token_address[:8]}...")
         
         if len(window_txs) < self.min_wallets_for_bundle:
-            return None
-        
+            return self._reject("not_enough_recent_transactions")        
         # Group by action (buy vs sell)
         buys = [tx for tx in window_txs if tx["action"] == "buy" and tx["amount_sol"] >= self.min_wallet_amount_sol]
         sells = [tx for tx in window_txs if tx["action"] in ("full_sell", "partial_sell")]
         
+        buy_candidates = [tx for tx in window_txs if tx["action"] == "buy"]
+
         # Check for bundle buys (Grouped by block)
         if buys:
             # Group by block number
@@ -189,12 +191,20 @@ class BundleDetector:
                 )
                 return self._create_bundle_info(token_address, buys, "buy")
         
+        elif buy_candidates:
+            return self._reject("below_min_wallet_amount")
+
         # Check for bundle sells (potential rug)
         unique_sell_wallets = len(set(tx["wallet"] for tx in sells))
         if unique_sell_wallets >= self.min_wallets_for_bundle:
             logger.info(f"📦 Bundle SELL detected: {unique_sell_wallets} wallets for {token_address[:8]}...")
             return self._create_bundle_info(token_address, sells, "sell")
         
+        return self._reject("no_bundle_pattern")
+
+    def _reject(self, reason: str) -> None:
+        self._rejected_by_reason[reason] += 1
+        self._last_rejection_reason = reason
         return None
     
     def _create_bundle_info(
@@ -411,6 +421,9 @@ MC: {market_cap_str} | CA: {coin_age_str} | TS: {info.supply_remaining:.2f}
             "tracked_tokens": len(self._recent_txs),
             "detected_bundles": len(self._detected_bundles),
             "wallet_clusters": len(self._funding_graph),
+            "transactions_seen": self._transactions_seen,
+            "rejected_by_reason": dict(sorted(self._rejected_by_reason.items())),
+            "last_rejection_reason": self._last_rejection_reason,
         }
 
 

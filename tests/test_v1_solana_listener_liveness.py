@@ -65,6 +65,7 @@ def test_solana_listener_stats_expose_websocket_and_queue_liveness():
     listener.strong_launch_tracker = _Stats({"strong_launches": 6})
     listener.strongfloor_tracker = _Stats({"tokens_tracked": 7})
     listener.rpc_manager = _Stats({"total_endpoints": 8})
+    listener._tx_skipped_by_reason = {"no_token_transfer": 2}
 
     stats = listener.get_stats()
 
@@ -75,6 +76,7 @@ def test_solana_listener_stats_expose_websocket_and_queue_liveness():
     assert stats["queue_max_size"] == 0
     assert stats["queue_fresh_target_size"] == 0
     assert stats["transactions_dropped"] == 0
+    assert stats["transaction_skipped_by_reason"] == {"no_token_transfer": 2}
     assert stats["modules"]["sns"]["domains_cached"] == 1
     assert stats["modules"]["socials"]["tokens_checked"] == 5
     assert stats["modules"]["strongfloor"]["tokens_tracked"] == 7
@@ -387,3 +389,51 @@ async def test_solana_listener_fetch_tries_full_rpc_pool_before_dropping_rate_li
         ("https://limited-b.example/rpc", "getTransaction"),
         ("https://healthy.example/rpc", "getTransaction"),
     ]
+
+
+def test_strongfloor_stats_explain_missing_floor_pattern(tmp_path, monkeypatch):
+    state_file = tmp_path / "strongfloor_state.json"
+    monkeypatch.setattr(StrongfloorTracker, "STATE_FILE", str(state_file))
+    tracker = StrongfloorTracker()
+    tracker.record_price("token", 1.0, "LOW", "Low History")
+
+    candidate = tracker.analyze_floor("token", "LOW", "Low History", 1.0)
+
+    stats = tracker.get_stats()
+    assert candidate is None
+    assert stats["analysis_attempts"] == 1
+    assert stats["rejected_by_reason"] == {"insufficient_history": 1}
+
+class _NoStreamflowTracker:
+    def is_streamflow_lock(self, program_ids):
+        return False
+
+
+@pytest.mark.asyncio
+async def test_solana_listener_records_no_token_transfer_skip_reason():
+    listener = object.__new__(SolanaListener)
+    listener._tx_skipped_by_reason = {}
+    listener._errors = 0
+    listener.streamflow_tracker = _NoStreamflowTracker()
+
+    await listener._process_transaction(
+        {
+            "meta": {
+                "err": None,
+                "preBalances": [2_000_000_000],
+                "postBalances": [1_900_000_000],
+                "preTokenBalances": [],
+                "postTokenBalances": [],
+            },
+            "transaction": {
+                "message": {
+                    "accountKeys": [{"pubkey": "wallet"}],
+                    "instructions": [],
+                }
+            },
+        },
+        "sig-no-token",
+    )
+
+    assert listener._tx_skipped_by_reason == {"no_token_transfer": 1}
+    assert listener._errors == 0

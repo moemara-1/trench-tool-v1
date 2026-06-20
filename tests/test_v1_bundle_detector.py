@@ -25,3 +25,26 @@ def test_bundle_detector_flags_adjacent_block_coordinated_buys():
     assert bundle.wallet_count == 3
     assert bundle.total_volume_sol == pytest.approx(2.1)
     assert bundle.action == "buy"
+
+
+def test_bundle_detector_stats_explain_why_topic_is_quiet():
+    detector = BundleDetector()
+    token = "TokenMint111111111111111111111111111111111111"
+
+    for index in range(3):
+        bundle = detector.add_transaction(
+            token_address=token,
+            wallet_address=f"wallet_{index}",
+            amount_sol=0.05,
+            token_amount=1000,
+            action=TradeAction.BUY,
+            timestamp=datetime.utcnow(),
+            block_number=200 + index,
+        )
+
+    stats = detector.get_stats()
+
+    assert bundle is None
+    assert stats["transactions_seen"] == 3
+    assert stats["rejected_by_reason"]["below_min_wallet_amount"] == 1
+    assert stats["last_rejection_reason"] == "below_min_wallet_amount"

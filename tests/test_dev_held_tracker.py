@@ -24,3 +24,17 @@ def test_dev_held_tracker_ignores_missing_initial_balance():
 
     assert tracker.get_holdings_to_check() == {}
     assert tracker.get_stats()["tokens_tracked"] == 0
+
+
+def test_dev_held_stats_explain_pending_and_sold_states():
+    tracker = DevHeldTracker()
+    tracker.record_dev_wallet("PendingToken111111111111111111111111111111111", "wallet", 100)
+    tracker.update_holding("PendingToken111111111111111111111111111111111", 100)
+    tracker.record_dev_wallet("SoldToken111111111111111111111111111111111111", "wallet", 100)
+    tracker.update_holding("SoldToken111111111111111111111111111111111111", 80)
+
+    stats = tracker.get_stats()
+
+    assert stats["pending_hold_threshold"] == 1
+    assert stats["sold_or_reduced_supply"] == 1
+    assert stats["rejected_by_reason"]["sold_supply"] == 1

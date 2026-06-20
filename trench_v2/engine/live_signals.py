@@ -98,6 +98,8 @@ class LiveSignalStats:
     profiles_seen: int = 0
     candidates_seen: int = 0
     rejected_low_quality: int = 0
+    rejected_low_quality_by_reason: dict[str, int] = field(default_factory=dict)
+    last_low_quality_rejections: list[dict] = field(default_factory=list)
     alerts_sent: int = 0
     deduped: int = 0
     daily_sent: int = 0
@@ -136,6 +138,8 @@ class LiveSignalStats:
             "profiles_seen": self.profiles_seen,
             "candidates_seen": self.candidates_seen,
             "rejected_low_quality": self.rejected_low_quality,
+            "rejected_low_quality_by_reason": dict(sorted(self.rejected_low_quality_by_reason.items())),
+            "last_low_quality_rejections": self.last_low_quality_rejections[-10:],
             "alerts_sent": self.alerts_sent,
             "deduped": self.deduped,
             "daily_sent": self.daily_sent,
@@ -394,27 +398,28 @@ class LiveSignalWorker:
         market_cap = pair.market_cap_usd
         liquidity = pair.liquidity_usd
         if market_cap is None or liquidity is None:
+            self._reject_low_quality(pair, "missing_market_or_liquidity")
             return []
         if liquidity < 20_000:
-            self.stats.rejected_low_quality += 1
+            self._reject_low_quality(pair, "liquidity_too_low")
             return []
         if _rug_like_market(pair):
-            self.stats.rejected_low_quality += 1
+            self._reject_low_quality(pair, "rug_like_market")
             return []
         if market_cap < 25_000 or market_cap > self._CHAIN_MAX_MC[pair.chain]:
-            self.stats.rejected_low_quality += 1
+            self._reject_low_quality(pair, "market_cap_out_of_range")
             return []
         if (pair.volume_24h_usd or 0) < 25_000:
-            self.stats.rejected_low_quality += 1
+            self._reject_low_quality(pair, "volume_too_low")
             return []
         if pair.buys_1h < 20 and pair.buys_24h < 75:
-            self.stats.rejected_low_quality += 1
+            self._reject_low_quality(pair, "buy_pressure_too_low")
             return []
 
         age_minutes = self._age_minutes(pair)
         quality_score, quality_reasons = self._quality_score(pair, age_minutes)
         if quality_score < self.settings.signal_min_quality:
-            self.stats.rejected_low_quality += 1
+            self._reject_low_quality(pair, "quality_score_below_min")
             return []
 
         feature_reasons: list[tuple[TopicFeature, list[str]]] = [
@@ -463,6 +468,19 @@ class LiveSignalWorker:
             )
             for feature, reasons in feature_reasons
         ]
+
+    def _reject_low_quality(self, pair: DexPair, reason: str) -> None:
+        self.stats.rejected_low_quality += 1
+        _increment(self.stats.rejected_low_quality_by_reason, reason)
+        self.stats.last_low_quality_rejections.append(
+            {
+                "chain": pair.chain.value,
+                "symbol": pair.symbol,
+                "address": pair.token_address,
+                "reason": reason,
+            }
+        )
+        self.stats.last_low_quality_rejections = self.stats.last_low_quality_rejections[-10:]
 
     def _ordered_signals(self, signals) -> list[LiveSignal]:
         return sorted(

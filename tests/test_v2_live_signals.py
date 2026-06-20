@@ -1027,6 +1027,13 @@ async def test_live_signal_worker_rejects_weak_latest_profile():
     assert await worker.run_once() == []
     assert sender.messages == []
     assert worker.stats.rejected_low_quality == 1
+    assert worker.stats.rejected_low_quality_by_reason["liquidity_too_low"] == 1
+    assert worker.stats.as_dict()["last_low_quality_rejections"][-1] == {
+        "chain": "base",
+        "symbol": "WEAK",
+        "address": "0xweak",
+        "reason": "liquidity_too_low",
+    }
 
 
 @pytest.mark.asyncio

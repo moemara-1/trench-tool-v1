@@ -234,3 +234,56 @@ async def test_wallet_performance_signals_do_not_send_wallet_addresses_to_best_f
 async def _record(messages: list[str], text: str) -> bool:
     messages.append(text)
     return True
+
+
+def test_wallet_token_confluence_reports_recent_buys_without_fake_win_rate():
+    wallet_a = WalletPerformanceCandidate(
+        chain="base",
+        wallet_address="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        period="week",
+        realized_pnl_usd=92_000,
+        roi_pct=460,
+        win_rate=None,
+        trades=44,
+        wins=0,
+        losses=0,
+        top_tokens=("ALPHA",),
+        current_buy_usd=2500,
+    )
+    wallet_b = WalletPerformanceCandidate(
+        chain="base",
+        wallet_address="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        period="week",
+        realized_pnl_usd=61_000,
+        roi_pct=380,
+        win_rate=None,
+        trades=31,
+        wins=0,
+        losses=0,
+        top_tokens=("ALPHA",),
+        current_buy_usd=1800,
+    )
+
+    signal = best_signal_from_wallet_token_confluence(
+        chain="base",
+        token_address="0xtoken",
+        token_symbol="ALPHA",
+        token_name="Alpha Token",
+        period="week",
+        wallet_candidates=(wallet_a, wallet_b),
+        min_score=92,
+        market_cap_usd=250_000,
+        liquidity_usd=120_000,
+        buys_5m=30,
+        buys_1h=180,
+        age_minutes=30,
+    )
+
+    assert signal is not None
+    assert signal.score >= 92
+    assert any("2 proven wallets bought $ALPHA recently" in reason for reason in signal.reasons)
+    assert any("$4,300 recent buy value" in reason for reason in signal.reasons)
+    assert not any("win rate" in reason.lower() for reason in signal.reasons)
+    rendered = " ".join((signal.source_label, signal.name, *signal.reasons))
+    assert "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" not in rendered
+    assert "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" not in rendered

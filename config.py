@@ -8,6 +8,10 @@ from pydantic import Field
 from functools import lru_cache
 
 
+def _split_csv(value: str) -> list[str]:
+    return [part.strip() for part in (value or "").split(',') if part.strip()]
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
@@ -21,20 +25,33 @@ class Settings(BaseSettings):
         description="Solana WebSocket endpoint"
     )
     
-    # Helius RPC Keys (comma-separated for multi-RPC rotation)
+    # Helius RPC Keys (comma-separated plus optional numbered keys for rotation)
     helius_api_keys_raw: str = Field(
         default="",
         alias="helius_api_keys",
         description="Comma-separated Helius API keys for RPC rotation"
     )
+    helius_api_key: str = Field(default="", alias="helius_api_key")
+    helius_api_key_1: str = Field(default="", alias="helius_api_key_1")
+    helius_api_key_2: str = Field(default="", alias="helius_api_key_2")
+    helius_api_key_3: str = Field(default="", alias="helius_api_key_3")
+    helius_api_key_4: str = Field(default="", alias="helius_api_key_4")
+    helius_api_key_5: str = Field(default="", alias="helius_api_key_5")
+    helius_api_key_6: str = Field(default="", alias="helius_api_key_6")
+    helius_api_key_7: str = Field(default="", alias="helius_api_key_7")
+    helius_api_key_8: str = Field(default="", alias="helius_api_key_8")
+    helius_api_key_9: str = Field(default="", alias="helius_api_key_9")
+    helius_api_key_10: str = Field(default="", alias="helius_api_key_10")
     
     @property
     def helius_api_keys(self) -> list:
-        """Parse comma-separated API keys into a list."""
-        if not self.helius_api_keys_raw:
-            return []
-        return [k.strip() for k in self.helius_api_keys_raw.split(',') if k.strip()]
-    
+        """Parse all configured Helius API keys into a deduped rotation list."""
+        keys = []
+        keys.extend(_split_csv(self.helius_api_keys_raw))
+        keys.extend(_split_csv(self.helius_api_key))
+        for index in range(1, 11):
+            keys.extend(_split_csv(getattr(self, f"helius_api_key_{index}", "")))
+        return list(dict.fromkeys(keys))
     # Telegram Bot
     telegram_bot_token: str = Field(
         default="",

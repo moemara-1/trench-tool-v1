@@ -113,3 +113,16 @@ def test_settings_builds_solana_rpc_pool_from_helius_keys():
         "https://mainnet.helius-rpc.com/?api-key=helius-a",
         "https://mainnet.helius-rpc.com/?api-key=helius-b",
     )
+
+
+def test_settings_combines_comma_single_and_numbered_helius_keys():
+    settings = V2Settings.from_env(
+        {
+            "HELIUS_API_KEYS": "helius-a,helius-b",
+            "HELIUS_API_KEY": "helius-single",
+            "HELIUS_API_KEY_3": "helius-c",
+            "HELIUS_API_KEY_10": "helius-j",
+        }
+    )
+
+    assert settings.helius_api_keys == ("helius-a", "helius-b", "helius-single", "helius-c", "helius-j")

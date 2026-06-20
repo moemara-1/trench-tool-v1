@@ -58,7 +58,7 @@ class V2Settings:
             etherscan_api_key=_blank_to_none(env.get("ETHERSCAN_API_KEY")),
             moralis_api_key=_blank_to_none(env.get("MORALIS_API_KEY")),
             bitquery_api_key=_blank_to_none(env.get("BITQUERY_API_KEY")),
-            helius_api_keys=_split_keys(env.get("HELIUS_API_KEYS") or env.get("HELIUS_API_KEY")),
+            helius_api_keys=_helius_keys_from_env(env),
             solana_rpc_url=_blank_to_none(env.get("SOLANA_RPC_URL")),
             solana_ws_url=_blank_to_none(env.get("SOLANA_WS_URL")),
             eth_rpc_url=_blank_to_none(env.get("ETH_RPC_URL") or env.get("ALCHEMY_ETH_RPC_URL")),
@@ -134,6 +134,23 @@ def _blank_to_none(value: str | None) -> str | None:
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def _helius_keys_from_env(env: Mapping[str, str]) -> tuple[str, ...]:
+    values: list[str] = []
+    values.extend(_split_keys(env.get("HELIUS_API_KEYS")))
+    values.extend(_split_keys(env.get("HELIUS_API_KEY")))
+    numbered: list[tuple[int, str]] = []
+    for key, value in env.items():
+        upper_key = key.upper()
+        if not upper_key.startswith("HELIUS_API_KEY_"):
+            continue
+        suffix = upper_key.removeprefix("HELIUS_API_KEY_")
+        if suffix.isdigit():
+            numbered.append((int(suffix), value))
+    for _, value in sorted(numbered):
+        values.extend(_split_keys(value))
+    return tuple(dict.fromkeys(values))
 
 
 def _split_keys(value: str | None) -> tuple[str, ...]:

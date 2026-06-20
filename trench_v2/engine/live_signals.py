@@ -124,6 +124,7 @@ class LiveSignalStats:
     rejected_budget_by_topic: dict[str, int] = field(default_factory=dict)
     rejected_risk_by_topic: dict[str, int] = field(default_factory=dict)
     rejected_risk_by_topic_reason: dict[str, int] = field(default_factory=dict)
+    last_risk_rejections: list[dict] = field(default_factory=list)
     alerts_by_quality_band: dict[str, int] = field(default_factory=dict)
     last_signals: list[dict] = field(default_factory=list)
 
@@ -161,6 +162,7 @@ class LiveSignalStats:
             "rejected_budget_by_topic": dict(sorted(self.rejected_budget_by_topic.items())),
             "rejected_risk_by_topic": dict(sorted(self.rejected_risk_by_topic.items())),
             "rejected_risk_by_topic_reason": dict(sorted(self.rejected_risk_by_topic_reason.items())),
+            "last_risk_rejections": self.last_risk_rejections[-10:],
             "alerts_by_quality_band": dict(sorted(self.alerts_by_quality_band.items())),
             "last_signals": self.last_signals[-10:],
         }
@@ -339,11 +341,13 @@ class LiveSignalWorker:
 
         if not _risk_report_allows_alert(report, signal):
             self.stats.rejected_risk += 1
+            reason = _risk_rejection_reason(report)
             _increment(self.stats.rejected_risk_by_topic, signal.topic_env_key)
             _increment(
                 self.stats.rejected_risk_by_topic_reason,
-                f"{signal.topic_env_key}:{_risk_rejection_reason(report)}",
+                f"{signal.topic_env_key}:{reason}",
             )
+            self._remember_risk_rejection(signal, report, reason)
             return None
 
         return replace(
@@ -354,6 +358,19 @@ class LiveSignalWorker:
             risk_reasons=tuple(report.reasons),
         )
 
+    def _remember_risk_rejection(self, signal: LiveSignal, report: RiskReport, reason: str) -> None:
+        self.stats.last_risk_rejections.append(
+            {
+                "chain": signal.chain.value,
+                "topic_env_key": signal.topic_env_key,
+                "symbol": signal.symbol,
+                "address": signal.token_address,
+                "reason": reason,
+                "risk_level": report.level.value,
+                "risk_reasons": list(report.reasons),
+            }
+        )
+        self.stats.last_risk_rejections = self.stats.last_risk_rejections[-10:]
     async def _run_loop(self) -> None:
         while not self._stop_event.is_set():
             try:
@@ -839,8 +856,32 @@ def _risk_report_allows_alert(report: RiskReport, signal: LiveSignal | None = No
         return False
     if report.level in {RiskLevel.HIGH, RiskLevel.CRITICAL}:
         return False
+    if _provider_gap_allows_source_alert(report, signal):
+        return True
     return _risk_reasons_are_actionable(report)
 
+
+def _provider_gap_allows_source_alert(report: RiskReport, signal: LiveSignal | None = None) -> bool:
+    if signal is None or signal.quality_score < 90:
+        return False
+    if report.level is not RiskLevel.MEDIUM:
+        return False
+    if max(report.buy_tax_bps or 0, report.sell_tax_bps or 0) > 0:
+        return False
+    joined = " ".join(reason.lower() for reason in report.reasons)
+    if "rate limited" in joined or "unexpected payload" in joined:
+        return False
+    if "holder data missing or zero holders reported" not in joined:
+        return False
+    provider_gap = any(
+        marker in joined
+        for marker in (
+            "404 not found",
+            "returned no token result",
+            "returned no matching token result",
+        )
+    )
+    return provider_gap
 
 def _rug_like_market(pair: DexPair) -> bool:
     price_changes = [

@@ -951,6 +951,56 @@ async def test_live_signal_worker_sends_unindexed_medium_risk_to_source_topic_on
 
 
 @pytest.mark.asyncio
+async def test_live_signal_worker_sends_elite_provider_gap_to_source_topic_only():
+    pair = DexPair(
+        chain=Chain.BSC,
+        token_address="0xprovidergap",
+        symbol="GAP",
+        name="Provider Gap",
+        url=None,
+        market_cap_usd=450_000,
+        liquidity_usd=150_000,
+        volume_24h_usd=420_000,
+        buys_5m=45,
+        buys_1h=240,
+        buys_24h=900,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=20),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BNB_FRESHIES_TOPIC_ID": "301",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.MEDIUM,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=[
+                    "holder data missing or zero holders reported",
+                    "Honeypot.is unavailable: Client error '404 Not Found'",
+                ],
+            )
+        ),
+        best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert sent[0].topic_env_key == "TELEGRAM_BNB_FRESHIES_TOPIC_ID"
+    assert sent[0].risk_level is RiskLevel.MEDIUM
+    assert [topic_id for topic_id, _ in sender.messages] == [301]
+    assert worker.stats.best_signals_sent == 0
+
+
+@pytest.mark.asyncio
 async def test_live_signal_worker_rejects_weak_latest_profile():
     pair = DexPair(
         chain=Chain.BASE,
@@ -1145,6 +1195,23 @@ async def test_live_signal_worker_blocks_unknown_risk_provider_state():
         "TELEGRAM_BNB_FRESHIES_TOPIC_ID:provider_unavailable": 1,
         "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID:provider_unavailable": 1,
     }
+    stats = worker.stats.as_dict()
+    assert {
+        sample["topic_env_key"] for sample in stats["last_risk_rejections"]
+    } == {
+        "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID",
+        "TELEGRAM_BNB_FRESHIES_TOPIC_ID",
+        "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID",
+    }
+    assert all(
+        sample["chain"] == "bsc"
+        and sample["symbol"] == "UNK"
+        and sample["address"] == "0xunknown"
+        and sample["reason"] == "provider_unavailable"
+        and sample["risk_level"] == "medium"
+        and sample["risk_reasons"] == ["Honeypot.is rate limited"]
+        for sample in stats["last_risk_rejections"]
+    )
 
 
 @pytest.mark.asyncio

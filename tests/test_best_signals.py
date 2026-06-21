@@ -230,6 +230,19 @@ async def test_best_signal_router_rejects_low_score_with_unknown_risk_details():
 
 
 @pytest.mark.asyncio
+async def test_best_signal_router_allows_clean_goplus_no_high_risk_text():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    candidate = _candidate(
+        98,
+        "0xcleanrisk",
+        "CLEAN",
+        risk_text="low | Tax B/S: 0.0%/0.0% | GoPlus found no high-risk flags",
+    )
+
+    assert router.queue(candidate) is True
+
+
+@pytest.mark.asyncio
 async def test_best_signal_router_rejects_basic_v1_solana_freshies_without_reported_score():
     router = BestSignalRouter(daily_cap=0, min_score=95)
     sender = RecordingBestSender()

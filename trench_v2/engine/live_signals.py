@@ -34,6 +34,10 @@ _BEST_WALLET_TOPIC_ENV_BY_PERIOD = {
     "year": "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID",
 }
 
+_MAX_PENDING_BEST_RECHECKS = 100
+_MAX_BEST_RECHECK_ATTEMPTS = 12
+_BEST_RECHECKS_PER_RUN = 25
+
 
 class DiscoveryProvider(Protocol):
     async def latest_profiles(self) -> list[DexTokenProfile]:
@@ -107,6 +111,9 @@ class LiveSignalStats:
     risk_checked: int = 0
     rejected_risk: int = 0
     best_signals_sent: int = 0
+    best_signal_candidates_seen: int = 0
+    best_signal_skipped_by_reason: dict[str, int] = field(default_factory=dict)
+    pending_best_signal_rechecks: int = 0
     best_wallet_tokens_checked: int = 0
     best_wallet_provider_empty: int = 0
     best_wallet_candidates_seen: int = 0
@@ -147,6 +154,9 @@ class LiveSignalStats:
             "risk_checked": self.risk_checked,
             "rejected_risk": self.rejected_risk,
             "best_signals_sent": self.best_signals_sent,
+            "best_signal_candidates_seen": self.best_signal_candidates_seen,
+            "best_signal_skipped_by_reason": dict(sorted(self.best_signal_skipped_by_reason.items())),
+            "pending_best_signal_rechecks": self.pending_best_signal_rechecks,
             "best_wallet_tokens_checked": self.best_wallet_tokens_checked,
             "best_wallet_provider_empty": self.best_wallet_provider_empty,
             "best_wallet_candidates_seen": self.best_wallet_candidates_seen,
@@ -212,6 +222,7 @@ class LiveSignalWorker:
             performance_by_family=self._load_best_signal_performance(settings),
         )
         self._risk_cache: dict[tuple[Chain, str], RiskReport] = {}
+        self._pending_best_rechecks: dict[str, tuple[LiveSignal, int]] = {}
         self._sent_keys: set[str] = set()
         self._sent_wallet_signal_keys: set[str] = set()
         self._sent_day: str | None = None
@@ -243,6 +254,8 @@ class LiveSignalWorker:
         self.stats.last_run_at = datetime.now(timezone.utc)
         self._reset_daily_counter_if_needed(self.stats.last_run_at)
         if self._global_daily_cap_reached(self.stats.last_run_at):
+            await self._recheck_pending_best_signals()
+            await self._flush_best_signals()
             return []
 
         profiles = await self.provider.latest_profiles()
@@ -310,6 +323,7 @@ class LiveSignalWorker:
                 if self._daily_budget is not None:
                     self._daily_budget.release(checked_signal.quality_score, now=self.stats.last_run_at)
 
+        await self._recheck_pending_best_signals()
         await self._flush_best_signals()
         self.stats.last_error = None
         return sent
@@ -605,34 +619,87 @@ class LiveSignalWorker:
         self.stats.last_signals = self.stats.last_signals[-10:]
 
     def _queue_best_signal(self, signal: LiveSignal) -> None:
+        self.stats.best_signal_candidates_seen += 1
         if signal.risk_level is not RiskLevel.LOW:
+            _increment(self.stats.best_signal_skipped_by_reason, "risk_not_low")
+            self._remember_pending_best_recheck(signal)
             return
-        self._best_signal_router.queue(
-            BestSignalCandidate(
-                source_label=f"V2 {signal.chain.label} {signal.feature.value.replace('_', ' ').title()}",
-                chain=signal.chain.value,
-                signal_family="v2_live",
-                token_address=signal.token_address,
-                symbol=signal.symbol,
-                name=signal.name,
-                score=signal.quality_score,
-                reasons=signal.reasons,
-                risk_text=_risk_text(signal),
-                market_cap_usd=signal.market_cap_usd,
-                liquidity_usd=signal.liquidity_usd,
-                volume_24h_usd=signal.volume_24h_usd,
-                buys_5m=signal.buys_5m,
-                buys_1h=signal.buys_1h,
-                sells_5m=signal.sells_5m,
-                sells_1h=signal.sells_1h,
-                age_minutes=signal.pair_age_minutes,
-                price_change_5m=signal.price_change_5m,
-                price_change_1h=signal.price_change_1h,
-                price_change_24h=signal.price_change_24h,
-                url=signal.url,
-            )
-        )
+        if not self._best_signal_router.queue(self._best_candidate_from_signal(signal)):
+            _increment(self.stats.best_signal_skipped_by_reason, "router_rejected")
         self._sync_best_signal_router_stats()
+
+    def _remember_pending_best_recheck(self, signal: LiveSignal) -> None:
+        if signal.risk_level is not RiskLevel.MEDIUM:
+            return
+        if signal.quality_score < self.settings.best_signals_min_score:
+            return
+        if len(self._pending_best_rechecks) >= _MAX_PENDING_BEST_RECHECKS:
+            _increment(self.stats.best_signal_skipped_by_reason, "pending_recheck_full")
+            return
+        key = f"{signal.chain.value}:{signal.token_address.lower()}"
+        existing = self._pending_best_rechecks.get(key)
+        if existing is None or signal.quality_score > existing[0].quality_score:
+            self._pending_best_rechecks[key] = (signal, 0)
+            self.stats.pending_best_signal_rechecks = len(self._pending_best_rechecks)
+
+    async def _recheck_pending_best_signals(self) -> None:
+        if not self._pending_best_rechecks:
+            self.stats.pending_best_signal_rechecks = 0
+            return
+        for key, (signal, attempts) in list(self._pending_best_rechecks.items())[:_BEST_RECHECKS_PER_RUN]:
+            report = await self.risk_provider.fetch_risk(signal.chain, signal.token_address)
+            self._risk_cache[(signal.chain, signal.token_address.lower())] = report
+            self.stats.risk_checked += 1
+
+            if report.level is RiskLevel.LOW and _risk_report_allows_alert(report, signal):
+                clean_signal = replace(
+                    signal,
+                    risk_level=report.level,
+                    buy_tax_bps=report.buy_tax_bps,
+                    sell_tax_bps=report.sell_tax_bps,
+                    risk_reasons=tuple(report.reasons),
+                )
+                self._queue_best_signal(clean_signal)
+                self._pending_best_rechecks.pop(key, None)
+                continue
+
+            if not _risk_report_allows_alert(report, signal):
+                _increment(self.stats.best_signal_skipped_by_reason, "recheck_risk_rejected")
+                self._pending_best_rechecks.pop(key, None)
+                continue
+
+            attempts += 1
+            if attempts >= _MAX_BEST_RECHECK_ATTEMPTS:
+                _increment(self.stats.best_signal_skipped_by_reason, "recheck_expired")
+                self._pending_best_rechecks.pop(key, None)
+                continue
+            self._pending_best_rechecks[key] = (signal, attempts)
+        self.stats.pending_best_signal_rechecks = len(self._pending_best_rechecks)
+
+    def _best_candidate_from_signal(self, signal: LiveSignal) -> BestSignalCandidate:
+        return BestSignalCandidate(
+            source_label=f"V2 {signal.chain.label} {signal.feature.value.replace('_', ' ').title()}",
+            chain=signal.chain.value,
+            signal_family="v2_live",
+            token_address=signal.token_address,
+            symbol=signal.symbol,
+            name=signal.name,
+            score=signal.quality_score,
+            reasons=signal.reasons,
+            risk_text=_risk_text(signal),
+            market_cap_usd=signal.market_cap_usd,
+            liquidity_usd=signal.liquidity_usd,
+            volume_24h_usd=signal.volume_24h_usd,
+            buys_5m=signal.buys_5m,
+            buys_1h=signal.buys_1h,
+            sells_5m=signal.sells_5m,
+            sells_1h=signal.sells_1h,
+            age_minutes=signal.pair_age_minutes,
+            price_change_5m=signal.price_change_5m,
+            price_change_1h=signal.price_change_1h,
+            price_change_24h=signal.price_change_24h,
+            url=signal.url,
+        )
 
     def _record_signal_journal(self, signal: LiveSignal) -> None:
         if not self.signal_journal:

@@ -334,11 +334,10 @@ def _risk_text_allows_best(risk_text: str | None) -> bool:
     text = (risk_text or "").lower()
     if "low" not in text and "passed" not in text:
         return False
+    risk_prefix = text.split("|", 1)[0].strip()
+    if risk_prefix in {"unknown", "medium", "high", "critical"}:
+        return False
     blocked_markers = (
-        "unknown",
-        "medium",
-        "high",
-        "critical",
         "honeypot failed",
         "honeypot detected",
         "delayed honeypot",

@@ -57,6 +57,18 @@ class FakeRiskProvider:
         return self.report
 
 
+class SequenceRiskProvider:
+    def __init__(self, reports):
+        self.reports = list(reports)
+        self.calls = []
+
+    async def fetch_risk(self, chain: Chain, address: str) -> RiskReport:
+        self.calls.append((chain, address))
+        if len(self.reports) > 1:
+            return self.reports.pop(0)
+        return self.reports[0]
+
+
 class FakeWalletPerformanceProvider:
     def __init__(self, candidates):
         self.candidates = candidates
@@ -998,6 +1010,79 @@ async def test_live_signal_worker_sends_elite_provider_gap_to_source_topic_only(
     assert sent[0].risk_level is RiskLevel.MEDIUM
     assert [topic_id for topic_id, _ in sender.messages] == [301]
     assert worker.stats.best_signals_sent == 0
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_rechecks_provider_gap_for_delayed_best_signal():
+    pair = DexPair(
+        chain=Chain.BSC,
+        token_address="0xdelayedbest",
+        symbol="DELAY",
+        name="Delayed Best",
+        url="https://dexscreener.com/bsc/0xdelayedbest",
+        market_cap_usd=450_000,
+        liquidity_usd=150_000,
+        volume_24h_usd=420_000,
+        buys_5m=45,
+        buys_1h=240,
+        buys_24h=900,
+        sells_5m=10,
+        sells_1h=40,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=20),
+    )
+    sender = FakeSender()
+    risk_provider = SequenceRiskProvider(
+        [
+            RiskReport(
+                level=RiskLevel.MEDIUM,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=[
+                    "holder data missing or zero holders reported",
+                    "Honeypot.is unavailable: Client error '404 Not Found'",
+                ],
+            ),
+            RiskReport(
+                level=RiskLevel.MEDIUM,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=[
+                    "holder data missing or zero holders reported",
+                    "Honeypot.is unavailable: Client error '404 Not Found'",
+                ],
+            ),
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["GoPlus found no high-risk flags"],
+            ),
+        ]
+    )
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BNB_FRESHIES_TOPIC_ID": "301",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=risk_provider,
+        best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
+    )
+
+    first_sent = await worker.run_once()
+    second_sent = await worker.run_once()
+
+    assert len(first_sent) == 1
+    assert second_sent == []
+    assert [topic_id for topic_id, _ in sender.messages] == [301, 999]
+    assert "Best Signal" in sender.messages[1][1]
+    assert worker.stats.best_signals_sent == 1
+    assert worker.stats.as_dict()["best_signal_skipped_by_reason"]["risk_not_low"] == 1
+    assert worker.stats.as_dict()["pending_best_signal_rechecks"] == 0
 
 
 @pytest.mark.asyncio

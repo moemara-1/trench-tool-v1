@@ -61,6 +61,12 @@ class DexScreenerProvider:
         "bsc": Chain.BSC,
         "base": Chain.BASE,
     }
+    _DEXSCREENER_CHAIN_IDS = {
+        Chain.ETHEREUM: "ethereum",
+        Chain.BSC: "bsc",
+        Chain.BASE: "base",
+        Chain.SOLANA: "solana",
+    }
 
     _CHAIN_IDS = {
         "solana": Chain.SOLANA,
@@ -69,8 +75,14 @@ class DexScreenerProvider:
         "bsc": Chain.BSC,
     }
 
-    def __init__(self, client: JsonClient | None = None, gecko_client: JsonClient | None = None):
+    def __init__(
+        self,
+        client: JsonClient | None = None,
+        gecko_client: JsonClient | None = None,
+        include_geckoterminal: bool = False,
+    ):
         self.client = client or AsyncJsonClient("dexscreener")
+        self.include_geckoterminal = include_geckoterminal
         self.gecko_client = gecko_client or client or AsyncJsonClient(
             "geckoterminal",
             headers={
@@ -150,19 +162,20 @@ class DexScreenerProvider:
                 if pair:
                     _append_unique_pair(pairs, seen, pair)
 
-        for network, chain in self._GECKO_NETWORKS.items():
-            url = f"https://api.geckoterminal.com/api/v2/networks/{network}/new_pools"
-            try:
-                data = await self.gecko_client.get_json(url)
-            except Exception:
-                continue
-            rows = data.get("data") if isinstance(data, dict) else None
-            if not isinstance(rows, list):
-                continue
-            for row in rows:
-                pair = self._gecko_pair_from_json(chain, network, row)
-                if pair:
-                    _append_unique_pair(pairs, seen, pair)
+        if self.include_geckoterminal:
+            for network, chain in self._GECKO_NETWORKS.items():
+                url = f"https://api.geckoterminal.com/api/v2/networks/{network}/new_pools"
+                try:
+                    data = await self.gecko_client.get_json(url)
+                except Exception:
+                    continue
+                rows = data.get("data") if isinstance(data, dict) else None
+                if not isinstance(rows, list):
+                    continue
+                for row in rows:
+                    pair = self._gecko_pair_from_json(chain, network, row)
+                    if pair:
+                        _append_unique_pair(pairs, seen, pair)
 
         return pairs
 
@@ -229,7 +242,7 @@ class DexScreenerProvider:
             token_address=token_address,
             symbol=symbol,
             name=name,
-            url=f"https://www.geckoterminal.com/{network}/pools/{pool_address}" if pool_address else None,
+            url=f"https://dexscreener.com/{self._DEXSCREENER_CHAIN_IDS.get(chain, network)}/{token_address}",
             price_usd=_float_or_none(attributes.get("base_token_price_usd")),
             market_cap_usd=_float_or_none(attributes.get("market_cap_usd") or attributes.get("fdv_usd")),
             liquidity_usd=_float_or_none(attributes.get("reserve_in_usd")),

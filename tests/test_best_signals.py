@@ -319,6 +319,34 @@ async def test_best_signal_router_caps_solana_without_blocking_other_chains():
 
 
 @pytest.mark.asyncio
+async def test_best_signal_router_caps_source_family_without_blocking_other_families():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=95,
+        family_daily_caps={"strongfloor": 1},
+    )
+    sender = RecordingBestSender()
+    now = datetime(2026, 5, 25, tzinfo=timezone.utc)
+
+    assert router.queue(
+        _candidate(100, "So11111111111111111111111111111111111111111", "FLOOR1", chain="solana", family="strongfloor")
+    ) is True
+    assert await router.flush(sender.send, now=now) == 1
+
+    assert router.queue(
+        _candidate(100, "So22222222222222222222222222222222222222222", "FLOOR2", chain="solana", family="strongfloor")
+    ) is True
+    assert router.queue(
+        _candidate(100, "So33333333333333333333333333333333333333333", "DORM", chain="solana", family="dormants")
+    ) is True
+
+    assert await router.flush(sender.send, now=now) == 1
+    assert len(sender.messages) == 2
+    assert "$DORM" in sender.messages[1]
+    assert "$FLOOR2" not in sender.messages[1]
+
+
+@pytest.mark.asyncio
 async def test_best_signal_router_applies_chain_cooldown():
     router = BestSignalRouter(
         daily_cap=0,

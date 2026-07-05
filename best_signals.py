@@ -80,6 +80,8 @@ class BestSignalRouter:
         dedupe_hours: int = 24,
         chain_daily_caps: dict[str, int] | None = None,
         chain_cooldown_minutes: dict[str, int] | None = None,
+        family_daily_caps: dict[str, int] | None = None,
+        family_cooldown_minutes: dict[str, int] | None = None,
         performance_by_family: dict[str, BestSignalPerformance] | None = None,
     ):
         if min_score >= 100:
@@ -102,10 +104,17 @@ class BestSignalRouter:
             chain: timedelta(minutes=minutes)
             for chain, minutes in _normalize_int_map(chain_cooldown_minutes).items()
         }
+        self._family_daily_caps = _normalize_int_map(family_daily_caps)
+        self._family_cooldowns = {
+            family: timedelta(minutes=minutes)
+            for family, minutes in _normalize_int_map(family_cooldown_minutes).items()
+        }
         self._buffer: dict[str, BestSignalCandidate] = {}
         self._sent_at_by_key: dict[str, datetime] = {}
         self._sent_count_by_day_and_chain: dict[tuple[str, str], int] = {}
         self._sent_at_by_chain: dict[str, datetime] = {}
+        self._sent_count_by_day_and_family: dict[tuple[str, str], int] = {}
+        self._sent_at_by_family: dict[str, datetime] = {}
         self._rejected_by_reason: dict[str, int] = {}
         self._performance_by_family = {
             key.lower().strip(): value
@@ -150,6 +159,8 @@ class BestSignalRouter:
         for candidate in sorted(self._buffer.values(), key=_sort_key):
             if not self._chain_allows(candidate, now):
                 continue
+            if not self._family_allows(candidate, now):
+                continue
             if self._budget:
                 decision = self._budget.reserve(candidate.score, now=now)
                 if not decision.allowed:
@@ -158,6 +169,7 @@ class BestSignalRouter:
             if await send(format_best_signal(candidate_to_send)):
                 self._sent_at_by_key[candidate.dedupe_key] = now
                 self._record_chain_sent(candidate, now)
+                self._record_family_sent(candidate, now)
                 self._buffer.pop(candidate.dedupe_key, None)
                 sent += 1
             else:
@@ -194,6 +206,27 @@ class BestSignalRouter:
         chain_key = (_day_key(now), chain)
         self._sent_count_by_day_and_chain[chain_key] = self._sent_count_by_day_and_chain.get(chain_key, 0) + 1
         self._sent_at_by_chain[chain] = now
+
+    def _family_allows(self, candidate: BestSignalCandidate, now: datetime) -> bool:
+        family = candidate.signal_family.lower().strip()
+        daily_cap = self._family_daily_caps.get(family)
+        if daily_cap is not None:
+            family_key = (_day_key(now), family)
+            if self._sent_count_by_day_and_family.get(family_key, 0) >= daily_cap:
+                return False
+
+        cooldown = self._family_cooldowns.get(family)
+        if cooldown is not None:
+            sent_at = self._sent_at_by_family.get(family)
+            if sent_at and now - sent_at < cooldown:
+                return False
+        return True
+
+    def _record_family_sent(self, candidate: BestSignalCandidate, now: datetime) -> None:
+        family = candidate.signal_family.lower().strip()
+        family_key = (_day_key(now), family)
+        self._sent_count_by_day_and_family[family_key] = self._sent_count_by_day_and_family.get(family_key, 0) + 1
+        self._sent_at_by_family[family] = now
 
     def _candidate_with_performance_summary(self, candidate: BestSignalCandidate) -> BestSignalCandidate:
         if candidate.backtest_text:

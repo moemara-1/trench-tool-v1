@@ -237,6 +237,14 @@ class Settings(BaseSettings):
         default=60,
         description="Minimum minutes between SOL copies to Best Signals"
     )
+    best_signals_strongfloor_daily_cap: int = Field(
+        default=1,
+        description="Maximum Strongfloor copies to Best Signals per day (0 = unlimited)"
+    )
+    best_signals_strongfloor_cooldown_minutes: int = Field(
+        default=360,
+        description="Minimum minutes between Strongfloor copies to Best Signals (0 = disabled)"
+    )
     
     # Token Verification Settings
     min_liquidity_usd: float = Field(

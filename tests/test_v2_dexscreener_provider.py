@@ -80,7 +80,7 @@ async def test_latest_profiles_includes_boosted_real_candidates_and_dedupes():
 
 
 @pytest.mark.asyncio
-async def test_latest_pairs_includes_search_and_geckoterminal_network_pools():
+async def test_latest_pairs_uses_dexscreener_search_by_default_without_geckoterminal():
     provider = DexScreenerProvider(client=FakeJsonClient())
 
     pairs = await provider.latest_pairs()
@@ -88,11 +88,23 @@ async def test_latest_pairs_includes_search_and_geckoterminal_network_pools():
     by_chain = {pair.chain: pair for pair in pairs}
     assert by_chain[Chain.BSC].token_address == "0xbnb"
     assert by_chain[Chain.BSC].price_usd == 0.0042
-    assert by_chain[Chain.ETHEREUM].token_address == "0xeth"
-    assert by_chain[Chain.ETHEREUM].price_usd == 0.0123
-    assert by_chain[Chain.ETHEREUM].liquidity_usd == 60_000
-    assert by_chain[Chain.ETHEREUM].buys_1h == 45
+    assert Chain.ETHEREUM not in by_chain
+    assert not any("api.geckoterminal.com" in url for url in provider.client.urls)
     search_urls = [url for url in provider.client.urls if "/latest/dex/search" in url]
     assert any("q=base" in url for url in search_urls)
     assert any("q=aerodrome" in url for url in search_urls)
     assert any("q=baseswap" in url for url in search_urls)
+
+
+@pytest.mark.asyncio
+async def test_latest_pairs_can_opt_into_geckoterminal_fallback_with_dexscreener_links():
+    provider = DexScreenerProvider(client=FakeJsonClient(), include_geckoterminal=True)
+
+    pairs = await provider.latest_pairs()
+
+    by_chain = {pair.chain: pair for pair in pairs}
+    assert by_chain[Chain.ETHEREUM].token_address == "0xeth"
+    assert by_chain[Chain.ETHEREUM].price_usd == 0.0123
+    assert by_chain[Chain.ETHEREUM].liquidity_usd == 60_000
+    assert by_chain[Chain.ETHEREUM].buys_1h == 45
+    assert by_chain[Chain.ETHEREUM].url == "https://dexscreener.com/ethereum/0xeth"

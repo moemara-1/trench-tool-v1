@@ -28,6 +28,7 @@ class V2Settings:
     base_rpc_url: str | None = None
     bsc_rpc_url: str | None = None
     bsc_ws_url: str | None = None
+    robinhood_rpc_url: str | None = None
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
     telegram_topic_ids: dict[str, int] | None = None
@@ -41,6 +42,9 @@ class V2Settings:
     signal_min_quality: int = 82
     best_signals_daily_cap: int = 0
     best_signals_min_score: int = 96
+    best_signals_min_confluence_sources: int = 2
+    best_signals_confluence_window_minutes: int = 45
+    best_signals_min_confluence_component_score: int = 90
     best_wallet_signals_enabled: bool = True
     best_wallet_min_score: int = 92
     best_signal_performance_path: str | None = None
@@ -69,6 +73,11 @@ class V2Settings:
                 or env.get("ALCHEMY_BSC_RPC_URL")
             ),
             bsc_ws_url=_blank_to_none(env.get("BSC_WS_URL") or env.get("BSC_BSC_WS_URL")),
+            robinhood_rpc_url=_blank_to_none(
+                env.get("ROBINHOOD_RPC_URL")
+                or env.get("RH_RPC_URL")
+                or env.get("ALCHEMY_ROBINHOOD_RPC_URL")
+            ),
             telegram_bot_token=_blank_to_none(env.get("TELEGRAM_BOT_TOKEN")),
             telegram_chat_id=_blank_to_none(env.get("TELEGRAM_CHAT_ID")),
             telegram_topic_ids=_topic_ids_from_env(env),
@@ -82,6 +91,18 @@ class V2Settings:
             signal_min_quality=_env_int(env.get("V2_SIGNAL_MIN_QUALITY"), default=82),
             best_signals_daily_cap=_env_nonnegative_int(env.get("BEST_SIGNALS_DAILY_CAP"), default=0),
             best_signals_min_score=_env_int(env.get("BEST_SIGNALS_MIN_SCORE"), default=96),
+            best_signals_min_confluence_sources=_env_int(
+                env.get("BEST_SIGNALS_MIN_CONFLUENCE_SOURCES"),
+                default=2,
+            ),
+            best_signals_confluence_window_minutes=_env_int(
+                env.get("BEST_SIGNALS_CONFLUENCE_WINDOW_MINUTES"),
+                default=45,
+            ),
+            best_signals_min_confluence_component_score=_env_int(
+                env.get("BEST_SIGNALS_MIN_CONFLUENCE_COMPONENT_SCORE"),
+                default=90,
+            ),
             best_wallet_signals_enabled=_env_bool(env.get("BEST_WALLET_SIGNALS_ENABLED"), default=True),
             best_wallet_min_score=_env_int(env.get("BEST_WALLET_MIN_SCORE"), default=92),
             best_signal_performance_path=_blank_to_none(env.get("BEST_SIGNAL_PERFORMANCE_PATH")),
@@ -106,6 +127,8 @@ class V2Settings:
             return self.base_rpc_url or self._alchemy_url("base-mainnet")
         if chain is Chain.BSC:
             return self.bsc_rpc_url or self._alchemy_url("bnb-mainnet")
+        if chain is Chain.ROBINHOOD:
+            return self.robinhood_rpc_url or self._alchemy_url("robinhood-mainnet")
         return None
 
     def rpc_urls_for(self, chain: Chain) -> tuple[str, ...]:

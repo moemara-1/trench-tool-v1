@@ -134,3 +134,14 @@ async def test_command_router_formats_actionable_risk_metadata():
     assert "Sell tax: 22.00%" in response.text
     assert "Liquidity locked: no" in response.text
     assert "Malicious contract: yes" in response.text
+
+@pytest.mark.asyncio
+async def test_command_router_accepts_robinhood_chain_hint():
+    router = CommandRouter(scanner=FakeScanner(), watchlist=FakeWatchlist())
+
+    response = await router.handle(
+        "/scan rh 0x1111111111111111111111111111111111111111"
+    )
+
+    assert response.ok is True
+    assert "RH" in response.text

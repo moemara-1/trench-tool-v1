@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 from trench_v2.config import V2Settings
+from trench_v2.core.models import Chain
 from trench_v2.engine.scanner import TokenScanner
 from trench_v2.providers.base import NullHolderDataProvider, NullMarketDataProvider, NullRiskProvider, RiskProvider
 from trench_v2.providers.holders import MoralisHolderClusterProvider, MoralisTokenOwnersProvider
 from trench_v2.providers.market import DexScreenerMarketDataProvider
-from trench_v2.providers.security import CompositeRiskProvider, GoPlusRiskProvider, HoneypotRiskProvider
+from trench_v2.providers.security import (
+    CompositeRiskProvider,
+    GoPlusRiskProvider,
+    HoneypotRiskProvider,
+    RobinhoodRiskProvider,
+)
 
 
 def build_scanner(settings: V2Settings) -> TokenScanner:
@@ -41,7 +47,14 @@ def build_risk_provider(settings: V2Settings) -> RiskProvider:
     # Honeypot.is supports public checks in many deployments and also accepts an
     # API key when available, so keep it as the default free EVM risk source.
     providers.append(HoneypotRiskProvider(api_key=settings.honeypot_api_key))
-    return CompositeRiskProvider(providers)
+    return CompositeRiskProvider(
+        providers,
+        chain_overrides={
+            Chain.ROBINHOOD: RobinhoodRiskProvider(
+                rpc_url=settings.rpc_url_for(Chain.ROBINHOOD),
+            )
+        },
+    )
 
 
 def build_holder_provider(settings: V2Settings):

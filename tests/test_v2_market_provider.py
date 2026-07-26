@@ -77,3 +77,67 @@ async def test_dexscreener_market_provider_returns_unknown_when_no_pair_matches_
     assert scan.symbol == "UNKNOWN"
     assert "no DexScreener pair found" in scan.risk.reasons
 
+@pytest.mark.asyncio
+async def test_market_provider_recognizes_robinhood_chain_id():
+    client = FakeDexClient(
+        {
+            "pairs": [
+                {
+                    "chainId": "robinhood",
+                    "url": "https://dexscreener.com/robinhood/0xpair",
+                    "dexId": "uniswap",
+                    "labels": ["v3"],
+                    "baseToken": {
+                        "address": "0x1111111111111111111111111111111111111111",
+                        "symbol": "RH",
+                        "name": "Robinhood Token",
+                    },
+                    "marketCap": 250000,
+                    "liquidity": {"usd": 90000},
+                }
+            ]
+        }
+    )
+
+    scan = await DexScreenerMarketDataProvider(client=client).fetch_token(
+        Chain.ROBINHOOD,
+        "0x1111111111111111111111111111111111111111",
+    )
+
+    assert scan.chain is Chain.ROBINHOOD
+    assert scan.symbol == "RH"
+    assert scan.source_urls == ["https://dexscreener.com/robinhood/0xpair"]
+
+@pytest.mark.asyncio
+async def test_market_provider_never_attaches_quote_token_risk_to_pair_base():
+    requested = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"
+    client = FakeDexClient(
+        {
+            "pairs": [
+                {
+                    "chainId": "robinhood",
+                    "baseToken": {
+                        "address": "0x1111111111111111111111111111111111111111",
+                        "symbol": "CASHCAT",
+                        "name": "Cash Cat",
+                    },
+                    "quoteToken": {
+                        "address": requested,
+                        "symbol": "WETH",
+                        "name": "Wrapped Ether",
+                    },
+                    "marketCap": 250000,
+                    "liquidity": {"usd": 90000},
+                }
+            ]
+        }
+    )
+
+    scan = await DexScreenerMarketDataProvider(client=client).fetch_token(
+        Chain.ROBINHOOD,
+        requested,
+    )
+
+    assert scan.address == requested
+    assert scan.symbol == "UNKNOWN"
+    assert "base-token pair" in " ".join(scan.risk.reasons)

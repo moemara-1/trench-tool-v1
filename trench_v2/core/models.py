@@ -19,6 +19,7 @@ class Chain(str, Enum):
     ETHEREUM = "eth"
     BSC = "bsc"
     BASE = "base"
+    ROBINHOOD = "robinhood"
 
     @property
     def label(self) -> str:
@@ -27,6 +28,7 @@ class Chain(str, Enum):
             Chain.ETHEREUM: "ETH",
             Chain.BSC: "BSC",
             Chain.BASE: "BASE",
+            Chain.ROBINHOOD: "RH",
         }
         return labels[self]
 
@@ -41,6 +43,9 @@ class Chain(str, Enum):
             "bnb": cls.BSC,
             "bsc": cls.BSC,
             "base": cls.BASE,
+            "rh": cls.ROBINHOOD,
+            "robinhood": cls.ROBINHOOD,
+            "robinhoodchain": cls.ROBINHOOD,
         }
         if normalized not in aliases:
             raise ValueError(f"Unsupported chain: {value}")

@@ -68,3 +68,20 @@ def test_decode_approval_log_extracts_owner_spender_and_amount():
 def _topic_address(address: str) -> str:
     return "0x" + "0" * 24 + address[2:].lower()
 
+def test_log_query_planner_uses_live_robinhood_uniswap_factories():
+    from trench_v2.engine.evm_signals import (
+        ROBINHOOD_UNISWAP_V2_FACTORY,
+        ROBINHOOD_UNISWAP_V3_FACTORY,
+    )
+
+    queries = EvmLogQueryPlanner().queries_for(
+        Chain.ROBINHOOD,
+        from_block=7_800_000,
+        to_block=7_900_000,
+    )
+    launch_queries = [query for query in queries if query.feature == "launches_tracker"]
+
+    assert {(query.address, query.topic0) for query in launch_queries} == {
+        (ROBINHOOD_UNISWAP_V2_FACTORY, PAIR_CREATED_TOPIC),
+        (ROBINHOOD_UNISWAP_V3_FACTORY, POOL_CREATED_TOPIC),
+    }

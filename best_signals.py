@@ -34,6 +34,7 @@ class BestSignalCandidate:
     score: int
     reasons: tuple[str, ...]
     risk_text: str | None = None
+    price_usd: float | None = None
     market_cap_usd: float | None = None
     liquidity_usd: float | None = None
     volume_24h_usd: float | None = None
@@ -47,10 +48,20 @@ class BestSignalCandidate:
     price_change_24h: float | None = None
     backtest_text: str | None = None
     url: str | None = None
+    provenance: str = "structured"
+    confluence_source: str | None = None
+    confluence_sources: tuple[str, ...] = ()
 
     @property
     def dedupe_key(self) -> str:
         return f"{self.chain.lower()}:{self.token_address.lower()}"
+
+    @property
+    def effective_confluence_sources(self) -> tuple[str, ...]:
+        return _normalize_confluence_sources(
+            self.confluence_sources,
+            fallback=self.confluence_source or self.signal_family,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,9 +94,20 @@ class BestSignalRouter:
         family_daily_caps: dict[str, int] | None = None,
         family_cooldown_minutes: dict[str, int] | None = None,
         performance_by_family: dict[str, BestSignalPerformance] | None = None,
+        min_confluence_sources: int = 1,
+        confluence_window_minutes: int = 30,
+        min_confluence_component_score: int | None = None,
     ):
         if min_score >= 100:
             raise ValueError("min_score must be below 100 so elite routing can reserve priority bands")
+        if min_confluence_sources < 1:
+            raise ValueError("min_confluence_sources must be at least 1")
+        if confluence_window_minutes < 1:
+            raise ValueError("confluence_window_minutes must be at least 1")
+        if min_confluence_component_score is not None and min_confluence_component_score < 1:
+            raise ValueError("min_confluence_component_score must be at least 1")
+        if min_confluence_component_score is not None and min_confluence_component_score > min_score:
+            raise ValueError("min_confluence_component_score cannot exceed min_score")
         self.daily_cap = daily_cap
         self.min_score = min_score
         self._budget = (
@@ -109,7 +131,13 @@ class BestSignalRouter:
             family: timedelta(minutes=minutes)
             for family, minutes in _normalize_int_map(family_cooldown_minutes).items()
         }
+        self._min_confluence_sources = min_confluence_sources
+        self._min_confluence_component_score = (
+            min_score if min_confluence_component_score is None else min_confluence_component_score
+        )
+        self._confluence_window = timedelta(minutes=confluence_window_minutes)
         self._buffer: dict[str, BestSignalCandidate] = {}
+        self._buffered_at_by_key: dict[str, datetime] = {}
         self._sent_at_by_key: dict[str, datetime] = {}
         self._sent_count_by_day_and_chain: dict[tuple[str, str], int] = {}
         self._sent_at_by_chain: dict[str, datetime] = {}
@@ -125,10 +153,28 @@ class BestSignalRouter:
     def rejected_by_reason(self) -> dict[str, int]:
         return dict(self._rejected_by_reason)
 
+    @property
+    def pending_confluence_count(self) -> int:
+        return sum(
+            1
+            for candidate in self._buffer.values()
+            if len(candidate.effective_confluence_sources) < self._min_confluence_sources
+        )
+
     def queue(self, candidate: BestSignalCandidate, now: datetime | None = None) -> bool:
         now = _normalize_now(now)
-        if candidate.score < self.min_score:
-            self._record_reject("score_below_min")
+        self._expire_pending_confluence(now)
+        component_floor = (
+            self._min_confluence_component_score
+            if self._min_confluence_sources > 1
+            else self.min_score
+        )
+        if candidate.score < component_floor and _high_conviction_setup(candidate) is None:
+            self._record_reject(
+                "confluence_component_score_below_min"
+                if component_floor < self.min_score
+                else "score_below_min"
+            )
             return False
         gate_rejection = _best_gate_rejection_reason(candidate)
         if gate_rejection:
@@ -146,23 +192,40 @@ class BestSignalRouter:
             return False
 
         existing = self._buffer.get(candidate.dedupe_key)
-        if existing is None or _sort_key(candidate) < _sort_key(existing):
-            self._buffer[candidate.dedupe_key] = candidate
+        if existing is None:
+            selected = candidate
+            sources = candidate.effective_confluence_sources
+            self._buffered_at_by_key[candidate.dedupe_key] = now
+        else:
+            selected = candidate if _sort_key(candidate) < _sort_key(existing) else existing
+            sources = _merge_confluence_sources(existing, candidate)
+        self._buffer[candidate.dedupe_key] = replace(selected, confluence_sources=sources)
         return True
 
     def _record_reject(self, reason: str) -> None:
         self._rejected_by_reason[reason] = self._rejected_by_reason.get(reason, 0) + 1
 
-    async def flush(self, send: SendBestSignal, now: datetime | None = None) -> int:
+    async def flush(
+        self,
+        send: SendBestSignal,
+        now: datetime | None = None,
+        *,
+        on_sent: Callable[[BestSignalCandidate, datetime], None] | None = None,
+    ) -> int:
         now = _normalize_now(now)
+        self._expire_pending_confluence(now)
         sent = 0
         for candidate in sorted(self._buffer.values(), key=_sort_key):
+            if len(candidate.effective_confluence_sources) < self._min_confluence_sources:
+                continue
+            if _effective_best_score(candidate) < self.min_score:
+                continue
             if not self._chain_allows(candidate, now):
                 continue
             if not self._family_allows(candidate, now):
                 continue
             if self._budget:
-                decision = self._budget.reserve(candidate.score, now=now)
+                decision = self._budget.reserve(_effective_best_score(candidate), now=now)
                 if not decision.allowed:
                     continue
             candidate_to_send = self._candidate_with_performance_summary(candidate)
@@ -171,6 +234,9 @@ class BestSignalRouter:
                 self._record_chain_sent(candidate, now)
                 self._record_family_sent(candidate, now)
                 self._buffer.pop(candidate.dedupe_key, None)
+                self._buffered_at_by_key.pop(candidate.dedupe_key, None)
+                if on_sent:
+                    on_sent(candidate_to_send, now)
                 sent += 1
             else:
                 if self._budget:
@@ -185,6 +251,19 @@ class BestSignalRouter:
         ]
         for key in expired:
             self._sent_at_by_key.pop(key, None)
+
+    def _expire_pending_confluence(self, now: datetime) -> None:
+        if self._min_confluence_sources <= 1:
+            return
+        expired = [
+            key
+            for key, buffered_at in self._buffered_at_by_key.items()
+            if now - buffered_at >= self._confluence_window
+        ]
+        for key in expired:
+            self._buffer.pop(key, None)
+            self._buffered_at_by_key.pop(key, None)
+            self._record_reject("confluence_window_expired")
 
     def _chain_allows(self, candidate: BestSignalCandidate, now: datetime) -> bool:
         chain = candidate.chain.lower()
@@ -255,6 +334,7 @@ def candidate_from_v1_message(message: str, source_label: str = "V1 SOL") -> Bes
         reasons=(_short_reason(message),),
         risk_text="V1 signal; use links for manual risk check",
         url=_extract_url(message),
+        provenance="legacy_v1",
     )
 
 
@@ -264,6 +344,12 @@ def format_best_signal(candidate: BestSignalCandidate) -> str:
         f"{html.escape(candidate.source_label)} | Score: {candidate.score}/100",
         f"${html.escape(candidate.symbol)} {html.escape(candidate.name)}",
     ]
+    confluence = _confluence_text(candidate)
+    if confluence:
+        lines.append(f"Confluence: {html.escape(confluence)}")
+    setup = _high_conviction_setup(candidate)
+    if setup:
+        lines.append(f"Setup: {html.escape(setup)}")
     metrics = _metrics_line(candidate)
     if metrics:
         lines.append(metrics)
@@ -277,6 +363,46 @@ def format_best_signal(candidate: BestSignalCandidate) -> str:
     if candidate.url:
         lines.append(f'<a href="{html.escape(candidate.url, quote=True)}">Open</a>')
     return "\n".join(lines)
+
+
+_CONFLUENCE_SOURCE_LABELS = {
+    "market_structure": "Market structure",
+    "wallet_confluence": "Best-wallet buys",
+    "verified_onchain": "Verified on-chain activity",
+}
+
+
+def _normalize_confluence_sources(
+    sources: tuple[str, ...],
+    *,
+    fallback: str,
+) -> tuple[str, ...]:
+    normalized: list[str] = []
+    for source in sources or (fallback,):
+        value = re.sub(r"[^a-z0-9]+", "_", source.lower().strip()).strip("_")
+        if value and value not in normalized:
+            normalized.append(value)
+    return tuple(normalized)
+
+
+def _merge_confluence_sources(
+    first: BestSignalCandidate,
+    second: BestSignalCandidate,
+) -> tuple[str, ...]:
+    return _normalize_confluence_sources(
+        first.effective_confluence_sources + second.effective_confluence_sources,
+        fallback=first.signal_family,
+    )
+
+
+def _confluence_text(candidate: BestSignalCandidate) -> str | None:
+    sources = candidate.effective_confluence_sources
+    if len(sources) < 2:
+        return None
+    return " + ".join(
+        _CONFLUENCE_SOURCE_LABELS.get(source, source.replace("_", " ").title())
+        for source in sources
+    )
 
 
 def _sort_key(candidate: BestSignalCandidate) -> tuple:
@@ -296,9 +422,50 @@ def _sort_key(candidate: BestSignalCandidate) -> tuple:
 
 def _effective_best_score(candidate: BestSignalCandidate) -> int:
     score = candidate.score
+    if _high_conviction_setup(candidate):
+        score = max(score, 98)
     if candidate.signal_family.lower().startswith("best_wallet_coin_"):
         score += 3
     return min(103, score)
+
+
+def _high_conviction_setup(candidate: BestSignalCandidate) -> str | None:
+    if candidate.provenance != "v2_risk_checked":
+        return None
+    if candidate.chain.lower().strip() not in {"ethereum", "bsc", "base"}:
+        return None
+    if candidate.score < 82 or not _risk_text_allows_best(candidate.risk_text):
+        return None
+
+    market_cap = candidate.market_cap_usd or 0
+    liquidity = candidate.liquidity_usd or 0
+    volume = candidate.volume_24h_usd or 0
+    buys_5m = candidate.buys_5m or 0
+    buys_1h = candidate.buys_1h or 0
+    sells_5m = candidate.sells_5m or 0
+    sells_1h = candidate.sells_1h or 0
+    age_minutes = candidate.age_minutes
+    price_5m = candidate.price_change_5m
+    price_1h = candidate.price_change_1h
+    price_24h = candidate.price_change_24h
+
+    if not 1_000_000 <= market_cap <= 25_000_000:
+        return None
+    if liquidity < 150_000 or not 2 <= volume / liquidity < 6:
+        return None
+    if buys_5m < 20 or buys_1h < 250:
+        return None
+    if sells_5m > buys_5m * 0.5 or sells_1h > buys_1h * 0.65:
+        return None
+    if age_minutes is None or not 2 * 24 * 60 <= age_minutes <= 30 * 24 * 60:
+        return None
+    if price_5m is None or not -5 < price_5m <= 5:
+        return None
+    if price_1h is None or not -15 < price_1h <= 5:
+        return None
+    if price_24h is None or not -35 < price_24h <= 10:
+        return None
+    return "Deep accumulation reversal"
 
 
 def _risk_rank(risk_text: str | None) -> int:
@@ -333,6 +500,9 @@ def _passes_elite_best_gate(candidate: BestSignalCandidate) -> bool:
 
 
 def _best_gate_rejection_reason(candidate: BestSignalCandidate) -> str | None:
+    if candidate.provenance == "legacy_v1":
+        return "legacy_v1_unverified"
+
     chain = candidate.chain.lower().strip()
     family = candidate.signal_family.lower().strip()
 
@@ -353,6 +523,9 @@ def _solana_candidate_allows_best(candidate: BestSignalCandidate) -> bool:
 
 
 def _solana_best_rejection_reason(candidate: BestSignalCandidate) -> str | None:
+    if not _risk_text_allows_best(candidate.risk_text):
+        return "solana_unverified_source"
+
     family = candidate.signal_family.lower().strip()
     if family in {"freshies", "sol_signal"}:
         return "solana_basic_source_not_best"
@@ -361,7 +534,6 @@ def _solana_best_rejection_reason(candidate: BestSignalCandidate) -> str | None:
     if family in {"dormants", "big_dormants", "freshies_wizard", "strong_launch", "streamflow"}:
         return None if candidate.score >= 99 else "score_below_solana_family_floor"
     return None if candidate.score >= 100 else "score_below_solana_family_floor"
-
 
 def _risk_text_allows_best(risk_text: str | None) -> bool:
     text = (risk_text or "").lower()

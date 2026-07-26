@@ -131,3 +131,22 @@ async def test_provider_health_service_can_enable_solana_probe():
 
     assert {provider.name for provider in providers} == {"sol-rpc"}
     assert providers[0].ok is True
+
+@pytest.mark.asyncio
+async def test_provider_health_service_checks_explicit_robinhood_rpc():
+    settings = V2Settings.from_env(
+        {"ROBINHOOD_RPC_URL": "https://rpc.mainnet.chain.robinhood.com"}
+    )
+    client = FakeRpcClient(
+        {"https://rpc.mainnet.chain.robinhood.com": {"result": "0x1237"}}
+    )
+    service = ProviderHealthService(
+        settings=settings,
+        checker=JsonRpcHealthChecker(client),
+    )
+
+    providers = await service.check()
+
+    assert {provider.name for provider in providers} == {"robinhood-rpc"}
+    assert providers[0].ok is True
+    assert client.calls[0][1]["method"] == "eth_chainId"

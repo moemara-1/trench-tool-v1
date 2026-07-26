@@ -64,3 +64,12 @@ def test_feature_catalog_covers_bbb_supported_chain_suites():
     }.issubset(feature_ids)
     assert "base_curated_deploys" in feature_ids
     assert {"bnb_big_dormants", "bnb_migrations_tracker", "bnb_bundles"}.issubset(feature_ids)
+
+def test_feature_catalog_covers_live_robinhood_screeners():
+    catalog = FeatureCatalog.default()
+
+    assert catalog.get("rh_freshies").chain is Chain.ROBINHOOD
+    assert catalog.get("rh_big_freshies").topic_feature is TopicFeature.BIG_FRESHIES
+    assert catalog.get("rh_low_mc_freshies").max_market_cap_usd == 500_000
+    assert catalog.get("rh_deploys").kind is FeatureKind.DEPLOY_MONITOR
+    assert catalog.topic_env_key("rh_deploys") == "TELEGRAM_RH_DEPLOYS_TOPIC_ID"

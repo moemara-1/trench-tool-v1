@@ -51,6 +51,11 @@ def create_app(settings: V2Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
 
+    @app.get("/live")
+    async def live() -> dict:
+        """Dependency-free liveness check for the container runtime."""
+        return {"ok": True}
+
     @app.get("/health")
     async def health() -> dict:
         runtime_settings = app_settings or V2Settings.from_env(os.environ)

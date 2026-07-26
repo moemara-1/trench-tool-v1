@@ -119,6 +119,7 @@ class ProviderHealthService:
         Chain.ETHEREUM: "0x1",
         Chain.BASE: "0x2105",
         Chain.BSC: "0x38",
+        Chain.ROBINHOOD: "0x1237",
     }
 
     def __init__(
@@ -137,6 +138,8 @@ class ProviderHealthService:
             tasks.append(self.checker.check_solana_pool(solana_urls))
 
         for chain, expected_chain_id in self._EVM_CHAIN_IDS.items():
+            if chain is Chain.ROBINHOOD and not self.settings.robinhood_rpc_url:
+                continue
             rpc_url = self.settings.rpc_url_for(chain)
             if rpc_url:
                 tasks.append(self.checker.check_evm(chain, rpc_url, expected_chain_id))

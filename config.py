@@ -24,6 +24,22 @@ class Settings(BaseSettings):
         default="wss://api.mainnet-beta.solana.com",
         description="Solana WebSocket endpoint"
     )
+    solana_fallback_ws_supports_log_subscriptions: bool = Field(
+        default=False,
+        description="Whether the configured Solana fallback WebSocket supports logsSubscribe"
+    )
+    solana_prefer_fallback_rpc: bool = Field(
+        default=False,
+        description="Whether the configured Solana fallback should be used before Helius RPC endpoints"
+    )
+    solana_rpc_concurrency: int = Field(
+        default=1,
+        description="Maximum concurrent Solana RPC transaction fetches"
+    )
+    solana_tx_fetch_delay_seconds: float = Field(
+        default=3.0,
+        description="Async delay before each Solana transaction fetch"
+    )
     
     # Helius RPC Keys (comma-separated plus optional numbered keys for rotation)
     helius_api_keys_raw: str = Field(
@@ -108,6 +124,26 @@ class Settings(BaseSettings):
     solana_ws_stale_seconds: int = Field(
         default=300,
         description="Seconds without Solana websocket transaction activity before backup polling activates"
+    )
+    solana_monitor_generic_dexes: bool = Field(
+        default=False,
+        description="Subscribe to generic Solana DEX programs in addition to launchpads (high-volume, disabled by default)"
+    )
+    pumpportal_enabled: bool = Field(
+        default=True,
+        description="Use PumpPortal's free creation and migration websocket stream"
+    )
+    pumpportal_ws_url: str = Field(
+        default="wss://pumpportal.fun/api/data",
+        description="PumpPortal websocket URL for low-volume Pump.fun events"
+    )
+    pumpportal_api_key: str = Field(
+        default="",
+        description="Optional PumpPortal key; free creation and migration streams work without it"
+    )
+    pumpportal_min_initial_buy_sol: float = Field(
+        default=1.0,
+        description="Minimum creator initial buy before creator-history checks run"
     )
     max_market_cap: float = Field(
         default=100000000,
@@ -206,7 +242,7 @@ class Settings(BaseSettings):
         description="Topic ID for Socials Check alerts"
     )
     telegram_strong_launch_topic_id: int = Field(
-        default=1332,
+        default=0,
         description="Topic ID for Strong Launch alerts"
     )
     telegram_strongfloor_topic_id: int = Field(
@@ -228,6 +264,18 @@ class Settings(BaseSettings):
     best_signals_min_score: int = Field(
         default=98,
         description="Minimum quality score for Best Signals"
+    )
+    best_signals_min_confluence_sources: int = Field(
+        default=2,
+        description="Independent source classes required before a Best Signals copy"
+    )
+    best_signals_confluence_window_minutes: int = Field(
+        default=45,
+        description="Minutes allowed for independent Best Signals corroboration"
+    )
+    best_signals_min_confluence_component_score: int = Field(
+        default=90,
+        description="Minimum clean source score allowed to corroborate a Best Signal"
     )
     best_signals_solana_daily_cap: int = Field(
         default=3,

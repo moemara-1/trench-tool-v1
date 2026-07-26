@@ -22,6 +22,7 @@ class DexScreenerMarketDataProvider:
         "ethereum": Chain.ETHEREUM,
         "base": Chain.BASE,
         "bsc": Chain.BSC,
+        "robinhood": Chain.ROBINHOOD,
     }
 
     def __init__(self, client: DexJsonClient | None = None):
@@ -47,10 +48,18 @@ class DexScreenerMarketDataProvider:
         matching_pairs = [
             pair
             for pair in pairs
-            if isinstance(pair, dict) and self._chain_from_pair(pair) is chain
+            if (
+                isinstance(pair, dict)
+                and self._chain_from_pair(pair) is chain
+                and self._base_token_matches(pair, chain, address)
+            )
         ]
         if not matching_pairs:
-            return self._unknown(chain, address, "no DexScreener pair found for requested chain")
+            return self._unknown(
+                chain,
+                address,
+                "no DexScreener base-token pair found for requested chain",
+            )
 
         pair = max(matching_pairs, key=lambda item: _float_or_none((item.get("liquidity") or {}).get("usd")) or 0)
         base_token = pair.get("baseToken") if isinstance(pair.get("baseToken"), dict) else {}
@@ -70,6 +79,13 @@ class DexScreenerMarketDataProvider:
 
     def _chain_from_pair(self, pair: dict) -> Chain | None:
         return self._CHAIN_IDS.get(str(pair.get("chainId", "")).lower())
+
+    def _base_token_matches(self, pair: dict, chain: Chain, address: str) -> bool:
+        base_token = pair.get("baseToken") if isinstance(pair.get("baseToken"), dict) else {}
+        candidate = str(base_token.get("address") or "").strip()
+        if chain is Chain.SOLANA:
+            return candidate == address
+        return candidate.lower() == address.lower()
 
     def _unknown(self, chain: Chain, address: str, reason: str) -> TokenScan:
         return TokenScan(

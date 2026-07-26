@@ -43,6 +43,9 @@ def test_signal_quality_default_prioritizes_actionable_alerts():
     assert settings.signal_topic_daily_cap == 5
     assert settings.best_signals_daily_cap == 0
     assert settings.best_signals_min_score == 96
+    assert settings.best_signals_min_confluence_sources == 2
+    assert settings.best_signals_confluence_window_minutes == 45
+    assert settings.best_signals_min_confluence_component_score == 90
     assert settings.best_wallet_signals_enabled is True
     assert settings.best_wallet_min_score == 92
     assert settings.best_signal_performance_path is None
@@ -126,3 +129,13 @@ def test_settings_combines_comma_single_and_numbered_helius_keys():
     )
 
     assert settings.helius_api_keys == ("helius-a", "helius-b", "helius-single", "helius-c", "helius-j")
+
+def test_settings_builds_robinhood_mainnet_urls():
+    settings = V2Settings.from_env({"ALCHEMY_API_KEY": "test-key"})
+
+    assert settings.rpc_url_for(Chain.ROBINHOOD) == "https://robinhood-mainnet.g.alchemy.com/v2/test-key"
+
+    explicit = V2Settings.from_env(
+        {"ROBINHOOD_RPC_URL": "https://rpc.mainnet.chain.robinhood.com"}
+    )
+    assert explicit.rpc_url_for(Chain.ROBINHOOD) == "https://rpc.mainnet.chain.robinhood.com"

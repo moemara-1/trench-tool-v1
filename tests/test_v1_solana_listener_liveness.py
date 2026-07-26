@@ -1,10 +1,14 @@
 import asyncio
+from collections import defaultdict
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
 from services.sns_tracker import SNSTracker
-from services.solana_listener import SolanaListener
+from services import solana_listener as solana_listener_module
+from services.solana_listener import DEXES, TRUE_LAUNCHPADS, SolanaListener
+from services.streamflow_tracker import STREAMFLOW_PROGRAM
 from services.strongfloor_tracker import StrongfloorTracker
 
 
@@ -77,6 +81,10 @@ def test_solana_listener_stats_expose_websocket_and_queue_liveness():
     assert stats["queue_fresh_target_size"] == 0
     assert stats["transactions_dropped"] == 0
     assert stats["transaction_skipped_by_reason"] == {"no_token_transfer": 2}
+    assert stats["transactions_dropped_by_source"] == {}
+    assert stats["websocket_notifications_by_source"] == {}
+    assert stats["websocket_failed_notifications"] == 0
+    assert "websocket_notifications_by_source" not in stats["modules"]
     assert stats["modules"]["sns"]["domains_cached"] == 1
     assert stats["modules"]["socials"]["tokens_checked"] == 5
     assert stats["modules"]["strongfloor"]["tokens_tracked"] == 7
@@ -98,18 +106,111 @@ def test_solana_listener_drops_oldest_signature_when_queue_is_full():
     listener._max_tx_queue_size = 2
     listener._fresh_tx_queue_target_size = 2
     listener._tx_queue = asyncio.Queue(maxsize=2)
+    listener._queued_signature_sources = {}
+    listener._tx_dropped_by_source = defaultdict(int)
     listener._tx_dropped = 0
     listener._errors = 0
 
-    listener._enqueue_signature("old-a")
-    listener._enqueue_signature("old-b")
-    listener._enqueue_signature("new-c")
+    listener._enqueue_signature("old-a", "pump.fun")
+    listener._enqueue_signature("old-b", "pump.fun")
+    listener._enqueue_signature("new-c", "streamflow")
 
     assert listener._tx_queue.qsize() == 2
     assert listener._tx_dropped == 1
+    assert listener._tx_dropped_by_source == {"pump.fun": 1}
     assert listener._errors == 0
     assert listener._tx_queue.get_nowait() == "old-b"
     assert listener._tx_queue.get_nowait() == "new-c"
+
+
+def test_solana_listener_defaults_to_launchpad_and_streamflow_subscriptions(monkeypatch):
+    listener = object.__new__(SolanaListener)
+    monkeypatch.setattr(solana_listener_module.settings, "solana_monitor_generic_dexes", False, raising=False)
+
+    programs = listener._websocket_program_ids()
+
+    assert set(TRUE_LAUNCHPADS).issubset(programs)
+    assert STREAMFLOW_PROGRAM in programs
+    assert not set(DEXES).intersection(programs)
+
+
+def test_solana_listener_backup_poll_excludes_generic_dexes_by_default(monkeypatch):
+    listener = object.__new__(SolanaListener)
+    monkeypatch.setattr(solana_listener_module.settings, "solana_monitor_generic_dexes", False, raising=False)
+
+    programs = {program_id for program_id, _ in listener._backup_poll_programs()}
+
+    assert not set(DEXES).intersection(programs)
+    assert "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P" in programs
+    assert "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo" in programs
+    assert STREAMFLOW_PROGRAM in programs
+
+
+def test_solana_listener_can_opt_in_to_generic_dex_subscriptions(monkeypatch):
+    listener = object.__new__(SolanaListener)
+    monkeypatch.setattr(solana_listener_module.settings, "solana_monitor_generic_dexes", True, raising=False)
+
+    programs = listener._websocket_program_ids()
+
+    assert set(TRUE_LAUNCHPADS).issubset(programs)
+    assert set(DEXES).issubset(programs)
+    assert STREAMFLOW_PROGRAM in programs
+
+
+def test_solana_listener_records_websocket_subscription_acknowledgements_and_errors():
+    listener = object.__new__(SolanaListener)
+    listener._ws_subscription_confirmations_by_source = defaultdict(int)
+    listener._ws_subscription_errors_by_source = defaultdict(int)
+    subscription_programs = {}
+    request_programs = {
+        1: "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+        2: STREAMFLOW_PROGRAM,
+    }
+
+    listener._handle_websocket_subscription_response(
+        {"id": 1, "result": 101},
+        request_programs,
+        subscription_programs,
+    )
+    listener._handle_websocket_subscription_response(
+        {"id": 2, "error": {"code": -32005, "message": "subscription limit"}},
+        request_programs,
+        subscription_programs,
+    )
+
+    assert subscription_programs == {101: "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"}
+    assert listener._ws_subscription_confirmations_by_source == {"pump.fun": 1}
+    assert listener._ws_subscription_errors_by_source == {"streamflow": 1}
+
+
+def test_solana_listener_skips_failed_log_notifications_before_queueing():
+    listener = object.__new__(SolanaListener)
+    listener._websocket_notifications_by_source = defaultdict(int)
+    listener._ws_failed_notifications = 0
+    listener._processed_sigs = set()
+    listener._tx_received = 0
+    listener._last_tx_received_at = None
+    listener._max_tx_queue_size = 2
+    listener._fresh_tx_queue_target_size = 2
+    listener._tx_queue = asyncio.Queue(maxsize=2)
+    listener._queued_signature_sources = {}
+    listener._tx_dropped_by_source = defaultdict(int)
+    listener._tx_dropped = 0
+    listener._errors = 0
+
+    listener._handle_websocket_notification(
+        {"signature": "failed", "err": {"InstructionError": [0, "Custom"]}},
+        "pump.fun",
+    )
+    listener._handle_websocket_notification(
+        {"signature": "accepted", "err": None},
+        "pump.fun",
+    )
+
+    assert listener._ws_failed_notifications == 1
+    assert listener._tx_received == 1
+    assert listener._tx_queue.get_nowait() == "accepted"
+    assert listener._queued_signature_sources == {"accepted": "pump.fun"}
 
 
 def test_solana_listener_records_sns_alert_in_listener_and_tracker_stats():
@@ -357,7 +458,7 @@ class _RotatingHTTPClient:
 
 
 @pytest.mark.asyncio
-async def test_solana_listener_fetch_tries_full_rpc_pool_before_dropping_rate_limited_tx(monkeypatch):
+async def test_solana_listener_does_not_fan_out_after_rpc_rate_limit(monkeypatch):
     from services import solana_listener as solana_listener_module
 
     async def no_sleep(_seconds):
@@ -368,6 +469,7 @@ async def test_solana_listener_fetch_tries_full_rpc_pool_before_dropping_rate_li
     listener._http_client = _RotatingHTTPClient()
     listener._rpc_semaphore = asyncio.Semaphore(1)
     listener._errors = 0
+    listener._rpc_rate_limited_skips = 0
     processed = []
 
     async def process(tx_result, signature):
@@ -378,19 +480,48 @@ async def test_solana_listener_fetch_tries_full_rpc_pool_before_dropping_rate_li
 
     await listener._fetch_and_process_tx("sig-123")
 
-    assert processed == [({"meta": {"err": None}, "transaction": {"message": {"accountKeys": []}}}, "sig-123")]
+    assert processed == []
     assert listener._errors == 0
-    assert listener.rpc_manager.errors == [
-        ("https://limited-a.example/rpc", True),
-        ("https://limited-b.example/rpc", True),
-    ]
-    assert listener._http_client.posts == [
-        ("https://limited-a.example/rpc", "getTransaction"),
-        ("https://limited-b.example/rpc", "getTransaction"),
-        ("https://healthy.example/rpc", "getTransaction"),
-    ]
+    assert listener._rpc_rate_limited_skips == 1
+    assert listener.rpc_manager.errors == [("https://limited-a.example/rpc", True)]
+    assert listener._http_client.posts == [("https://limited-a.example/rpc", "getTransaction")]
 
 
+
+@pytest.mark.asyncio
+async def test_solana_listener_uses_configured_tx_fetch_delay(monkeypatch):
+    from services import solana_listener as solana_listener_module
+
+    class _SingleRPCManager:
+        endpoint_count = 1
+
+        def get_rpc_url(self):
+            return "https://healthy.example/rpc"
+
+        def report_error(self, rpc_url, is_rate_limit=False):
+            raise AssertionError("healthy endpoint should not report an error")
+
+    observed_delays = []
+
+    async def record_sleep(seconds):
+        observed_delays.append(seconds)
+
+    listener = object.__new__(SolanaListener)
+    listener.rpc_manager = _SingleRPCManager()
+    listener._http_client = _RotatingHTTPClient()
+    listener._rpc_semaphore = asyncio.Semaphore(1)
+    listener._errors = 0
+
+    async def process(_tx_result, _signature):
+        return None
+
+    listener._process_transaction = process
+    monkeypatch.setattr(solana_listener_module, "settings", SimpleNamespace(solana_tx_fetch_delay_seconds=1.5))
+    monkeypatch.setattr(solana_listener_module.asyncio, "sleep", record_sleep)
+
+    await listener._fetch_and_process_tx("sig-delay")
+
+    assert observed_delays[0] == 1.5
 def test_strongfloor_stats_explain_missing_floor_pattern(tmp_path, monkeypatch):
     state_file = tmp_path / "strongfloor_state.json"
     monkeypatch.setattr(StrongfloorTracker, "STATE_FILE", str(state_file))
@@ -437,3 +568,89 @@ async def test_solana_listener_records_no_token_transfer_skip_reason():
 
     assert listener._tx_skipped_by_reason == {"no_token_transfer": 1}
     assert listener._errors == 0
+
+class _CreatorBalanceClient:
+    async def get_wallet_token_balance(self, wallet_address, token_mint):
+        assert wallet_address == "ActualCreator111111111111111111111111111111"
+        assert token_mint == "TokenMint111111111111111111111111111111111111"
+        return 250_000
+
+
+class _RecordingDevHeldTracker:
+    def __init__(self):
+        self.records = []
+
+    def record_dev_wallet(self, token_address, dev_wallet, initial_supply):
+        self.records.append((token_address, dev_wallet, initial_supply))
+
+
+@pytest.mark.asyncio
+async def test_solana_listener_tracks_resolved_creator_balance_not_the_first_buyer(monkeypatch):
+    from services import solana_listener as solana_listener_module
+
+    listener = object.__new__(SolanaListener)
+    listener.dev_held_tracker = _RecordingDevHeldTracker()
+    monkeypatch.setattr(solana_listener_module, "get_helius_client", lambda: _CreatorBalanceClient())
+
+    recorded = await listener._record_actual_pump_dev_holding(
+        "TokenMint111111111111111111111111111111111111",
+        "ActualCreator111111111111111111111111111111",
+    )
+
+    assert recorded is True
+    assert listener.dev_held_tracker.records == [
+        (
+            "TokenMint111111111111111111111111111111111111",
+            "ActualCreator111111111111111111111111111111",
+            250_000,
+        )
+    ]
+
+class _DevHeldDeliveryTracker:
+    def __init__(self):
+        self.marked = []
+        self.alerts = 0
+
+    def mark_alerted(self, token_address: str) -> None:
+        self.marked.append(token_address)
+
+    def increment_alerts(self) -> None:
+        self.alerts += 1
+
+
+def test_solana_listener_marks_dev_held_only_after_confirmed_delivery():
+    listener = object.__new__(SolanaListener)
+    listener.dev_held_tracker = _DevHeldDeliveryTracker()
+    listener._dev_held_alerts_sent = 0
+
+    assert listener._record_dev_held_delivery("token", None) is False
+    assert listener.dev_held_tracker.marked == []
+    assert listener.dev_held_tracker.alerts == 0
+    assert listener._dev_held_alerts_sent == 0
+
+    assert listener._record_dev_held_delivery("token", 42) is True
+    assert listener.dev_held_tracker.marked == ["token"]
+    assert listener.dev_held_tracker.alerts == 1
+    assert listener._dev_held_alerts_sent == 1
+
+
+class _StrongLaunchDeliveryTracker:
+    def __init__(self):
+        self.alerts = 0
+
+    def increment_alerts(self):
+        self.alerts += 1
+
+
+def test_solana_listener_counts_strong_launch_only_after_confirmed_delivery():
+    listener = object.__new__(SolanaListener)
+    listener.strong_launch_tracker = _StrongLaunchDeliveryTracker()
+    listener._strong_launch_alerts_sent = 0
+
+    assert listener._record_strong_launch_delivery(None) is False
+    assert listener.strong_launch_tracker.alerts == 0
+    assert listener._strong_launch_alerts_sent == 0
+
+    assert listener._record_strong_launch_delivery(42) is True
+    assert listener.strong_launch_tracker.alerts == 1
+    assert listener._strong_launch_alerts_sent == 1

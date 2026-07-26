@@ -25,6 +25,7 @@ def test_cleanup_keeps_restored_topics_for_diagnostics_and_producer_repair():
         "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": "21",
         "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID": "22",
         "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID": "23",
+        "TELEGRAM_FEEDBACK_TOPIC_ID": "24",
     }
 
     assert removable_topic_keys(env) == set()

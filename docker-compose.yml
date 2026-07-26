@@ -62,6 +62,46 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  v2-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trench-v2-backend
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    command:
+      [
+        "python",
+        "-m",
+        "uvicorn",
+        "main_v2:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8001",
+      ]
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import httpx; httpx.get('http://localhost:8001/live').raise_for_status()",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 volumes:
   postgres_data:
   redis_data:

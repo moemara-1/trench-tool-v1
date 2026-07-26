@@ -5,6 +5,14 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .git/
+github-sync-*/
+.deploy-stage-*/
+.deploy-staging-*/
+.venv*/
+zip-check/
+*.tar
+*.tar.gz
+*.zip
 .browser_data/
 .browser_data_test/
 strongfloor_state.json

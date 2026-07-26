@@ -28,6 +28,7 @@ ALIASES = {
 
 SHARED_TOPIC_KEYS = {
     "TELEGRAM_BEST_SIGNALS_TOPIC_ID",
+    "TELEGRAM_FEEDBACK_TOPIC_ID",
     "TELEGRAM_BUNDLES_TOPIC_ID",
     "TELEGRAM_SNS_TOPIC_ID",
     "TELEGRAM_STREAMFLOW_TOPIC_ID",
@@ -55,9 +56,11 @@ class TopicSpec:
 
 WANTED_TOPICS = {
     "TELEGRAM_BEST_SIGNALS_TOPIC_ID": TopicSpec("Best Signals", TELEGRAM_TOPIC_COLORS["red"]),
+    "TELEGRAM_FEEDBACK_TOPIC_ID": TopicSpec("Feedback", TELEGRAM_TOPIC_COLORS["blue"]),
     "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": TopicSpec("Best Wallets Week", TELEGRAM_TOPIC_COLORS["green"]),
     "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID": TopicSpec("Best Wallets Month", TELEGRAM_TOPIC_COLORS["violet"]),
     "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID": TopicSpec("Best Wallets Year", TELEGRAM_TOPIC_COLORS["yellow"]),
+    "TELEGRAM_BEST_WALLET_CONFLUENCE_TOPIC_ID": TopicSpec("Best Wallet Confluence", TELEGRAM_TOPIC_COLORS["green"]),
     "TELEGRAM_BUNDLES_TOPIC_ID": TopicSpec("Bundles (SOL)", TELEGRAM_TOPIC_COLORS["blue"]),
     "TELEGRAM_SNS_TOPIC_ID": TopicSpec("SNS Tracker", TELEGRAM_TOPIC_COLORS["blue"]),
     "TELEGRAM_STREAMFLOW_TOPIC_ID": TopicSpec("Streamflow locks", TELEGRAM_TOPIC_COLORS["blue"]),
@@ -74,6 +77,10 @@ WANTED_TOPICS = {
     "TELEGRAM_BNB_FRESHIES_TOPIC_ID": TopicSpec("BNB Freshies", TELEGRAM_TOPIC_COLORS["yellow"]),
     "TELEGRAM_BNB_BIG_FRESHIES_TOPIC_ID": TopicSpec("BNB Big Freshies", TELEGRAM_TOPIC_COLORS["yellow"]),
     "TELEGRAM_BNB_LOW_MC_FRESHIES_TOPIC_ID": TopicSpec("BNB Low MC Freshies", TELEGRAM_TOPIC_COLORS["yellow"]),
+    "TELEGRAM_RH_FRESHIES_TOPIC_ID": TopicSpec("RH Freshies", TELEGRAM_TOPIC_COLORS["rose"]),
+    "TELEGRAM_RH_BIG_FRESHIES_TOPIC_ID": TopicSpec("RH Big Freshies", TELEGRAM_TOPIC_COLORS["rose"]),
+    "TELEGRAM_RH_LOW_MC_FRESHIES_TOPIC_ID": TopicSpec("RH Low MC Freshies", TELEGRAM_TOPIC_COLORS["rose"]),
+    "TELEGRAM_RH_DEPLOYS_TOPIC_ID": TopicSpec("RH Deploys", TELEGRAM_TOPIC_COLORS["rose"]),
 }
 
 
@@ -136,6 +143,50 @@ def active_topic_id(env: dict[str, str], updates: dict[str, str], key: str) -> s
     value = value.strip()
     return value if value and value != "0" else None
 
+def _verify_topic(telegram: TelegramClient, chat_id: str, thread_id: str) -> None:
+    message = telegram.request(
+        "sendMessage",
+        {
+            "chat_id": chat_id,
+            "message_thread_id": thread_id,
+            "text": "V2 topic wiring check",
+            "disable_notification": "true",
+        },
+    )
+    telegram.request("deleteMessage", {"chat_id": chat_id, "message_id": message["message_id"]})
+
+
+def _is_missing_thread_error(error: RuntimeError) -> bool:
+    return "message thread not found" in str(error).lower()
+
+
+def ensure_topic(
+    *,
+    telegram: TelegramClient,
+    chat_id: str,
+    env: dict[str, str],
+    updates: dict[str, str],
+    key: str,
+    spec: TopicSpec,
+) -> tuple[bool, bool]:
+    """Verify a configured thread or replace it only when Telegram confirms deletion."""
+    thread_id = active_topic_id(env, updates, key)
+    if thread_id:
+        try:
+            _verify_topic(telegram, chat_id, thread_id)
+            return False, True
+        except RuntimeError as error:
+            if not _is_missing_thread_error(error):
+                raise
+
+    topic = telegram.request(
+        "createForumTopic",
+        {"chat_id": chat_id, "name": spec.title, "icon_color": spec.icon_color},
+    )
+    replacement_id = str(topic["message_thread_id"])
+    updates[key] = replacement_id
+    _verify_topic(telegram, chat_id, replacement_id)
+    return True, True
 
 def main() -> None:
     original = ENV_PATH.read_text()
@@ -156,35 +207,29 @@ def main() -> None:
 
     telegram = TelegramClient(bot_token)
     created: list[str] = []
-    for key, spec in WANTED_TOPICS.items():
-        if active_topic_id(env, updates, key):
-            continue
-        topic = telegram.request(
-            "createForumTopic",
-            {"chat_id": chat_id, "name": spec.title, "icon_color": spec.icon_color},
-        )
-        updates[key] = str(topic["message_thread_id"])
-        created.append(key)
-        time.sleep(1.2)
-
     verified: set[str] = set()
-    for key in sorted(set(ALIASES) | set(WANTED_TOPICS)):
+    for key, spec in WANTED_TOPICS.items():
+        was_created, was_verified = ensure_topic(
+            telegram=telegram,
+            chat_id=chat_id,
+            env=env,
+            updates=updates,
+            key=key,
+            spec=spec,
+        )
+        if was_created:
+            created.append(key)
+        if was_verified:
+            verified.add(key)
+        time.sleep(0.4)
+
+    for key in sorted(set(ALIASES) - set(WANTED_TOPICS)):
         thread_id = active_topic_id(env, updates, key)
         if not thread_id:
             continue
-        message = telegram.request(
-            "sendMessage",
-            {
-                "chat_id": chat_id,
-                "message_thread_id": thread_id,
-                "text": "V2 topic wiring check",
-                "disable_notification": "true",
-            },
-        )
-        telegram.request("deleteMessage", {"chat_id": chat_id, "message_id": message["message_id"]})
+        _verify_topic(telegram, chat_id, thread_id)
         verified.add(key)
         time.sleep(0.4)
-
     if updates:
         backup = ENV_PATH.with_suffix(".env.topic-backup-" + time.strftime("%Y%m%d%H%M%S"))
         backup.write_text(original)

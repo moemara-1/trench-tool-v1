@@ -29,7 +29,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import httpx; httpx.get('http://localhost:8001/health').raise_for_status()",
+          "import httpx; httpx.get('http://localhost:8001/live').raise_for_status()",
         ]
       interval: 30s
       timeout: 10s

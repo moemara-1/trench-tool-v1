@@ -1,4 +1,4 @@
-"""Probe specific deleted Telegram topics and delete any that still exist."""
+﻿"""Probe specific deleted Telegram topics and delete any that still exist."""
 
 from __future__ import annotations
 
@@ -29,26 +29,12 @@ DELETE_KEYS = {
     "TELEGRAM_BNB_ANALYZE_TOPIC_ID": "BNB Analyze",
     "TELEGRAM_BASE_BUNDLES_TOPIC_ID": "Base Bundles",
     "TELEGRAM_BASE_ENS_BUYS_TOPIC_ID": "Base ENS Buys",
-    "TELEGRAM_BUNDLES_TOPIC_ID": "Bundles(SOL)",
     "TELEGRAM_SOL_BUNDLES_TOPIC_ID": "Bundles(SOL)",
-    "TELEGRAM_SNS_TOPIC_ID": "SNS Tracker",
     "TELEGRAM_SOL_SNS_TOPIC_ID": "SNS Tracker",
-    "TELEGRAM_SOCIALS_TOPIC_ID": "Socials check",
     "TELEGRAM_SOL_SOCIALS_TOPIC_ID": "Socials check",
-    "TELEGRAM_DEV_HELD_TOPIC_ID": "DEV Held",
-    "TELEGRAM_SOL_DEV_HELD_TOPIC_ID": "DEV Held",
-    "TELEGRAM_GOOD_CREATOR_TOPIC_ID": "Good Token creators",
     "TELEGRAM_SOL_GOOD_CREATOR_TOPIC_ID": "Good Token creators",
-    "TELEGRAM_STRONG_LAUNCH_TOPIC_ID": "Strong launches",
-    "TELEGRAM_SOL_STRONG_LAUNCH_TOPIC_ID": "Strong launches",
-    "TELEGRAM_STREAMFLOW_TOPIC_ID": "Streamflow locks",
     "TELEGRAM_SOL_STREAMFLOW_TOPIC_ID": "Streamflow locks",
     "TELEGRAM_VANISH_TOPIC_ID": "Vanish Buys(SOL)",
-    "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": "Best Wallets Week",
-    "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID": "Best Wallets Month",
-    "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID": "Best Wallets Year",
-    "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "Base Low MC Freshies",
-    "TELEGRAM_FEEDBACK_TOPIC_ID": "Feedback",
 }
 
 

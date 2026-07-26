@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from dataclasses import replace
+
 import pytest
 
 from best_signals import (
@@ -98,6 +100,120 @@ async def test_best_signal_router_dedupes_same_token_across_source_families():
     assert sent == 1
     assert len(sender.messages) == 1
     assert "$WALLET" in sender.messages[0]
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_requires_independent_sources_before_sending_confluence():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=95,
+        min_confluence_sources=2,
+        confluence_window_minutes=30,
+    )
+    sender = RecordingBestSender()
+    now = datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc)
+
+    market_signal = _candidate(
+        98,
+        "0xconfluence",
+        "ALPHA",
+        family="v2_live",
+        confluence_source="market_structure",
+    )
+    repeated_market_signal = _candidate(
+        100,
+        "0xconfluence",
+        "ALPHA",
+        family="v2_live",
+        confluence_source="market_structure",
+    )
+    wallet_signal = _candidate(
+        99,
+        "0xconfluence",
+        "ALPHA",
+        family="best_wallet_coin_week",
+        confluence_source="wallet_confluence",
+    )
+
+    assert router.queue(market_signal, now=now) is True
+    assert await router.flush(sender.send, now=now) == 0
+
+    assert router.queue(repeated_market_signal, now=now) is True
+    assert await router.flush(sender.send, now=now) == 0
+
+    assert router.queue(wallet_signal, now=now) is True
+    assert await router.flush(sender.send, now=now) == 1
+    assert "Confluence: Market structure + Best-wallet buys" in sender.messages[0]
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_allows_strong_market_component_to_confirm_elite_wallet_confluence():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=96,
+        min_confluence_sources=2,
+        min_confluence_component_score=90,
+    )
+    sender = RecordingBestSender()
+    now = datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc)
+
+    market_signal = _candidate(
+        91,
+        "0xconfirm",
+        "CONFIRM",
+        family="v2_live",
+        confluence_source="market_structure",
+    )
+    wallet_signal = _candidate(
+        95,
+        "0xconfirm",
+        "CONFIRM",
+        family="best_wallet_coin_week",
+        confluence_source="wallet_confluence",
+    )
+
+    assert router.queue(market_signal, now=now) is True
+    assert router.queue(wallet_signal, now=now) is True
+    assert await router.flush(sender.send, now=now) == 1
+    assert "Confluence: Market structure + Best-wallet buys" in sender.messages[0]
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_expires_unconfirmed_candidate_before_late_corroboration():
+    router = BestSignalRouter(
+        daily_cap=0,
+        min_score=95,
+        min_confluence_sources=2,
+        confluence_window_minutes=30,
+    )
+    sender = RecordingBestSender()
+    first_seen = datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc)
+    late = datetime(2026, 7, 13, 12, 31, tzinfo=timezone.utc)
+
+    assert router.queue(
+        _candidate(
+            98,
+            "0xexpired",
+            "STALE",
+            family="v2_live",
+            confluence_source="market_structure",
+        ),
+        now=first_seen,
+    ) is True
+    assert await router.flush(sender.send, now=late) == 0
+
+    assert router.queue(
+        _candidate(
+            99,
+            "0xexpired",
+            "STALE",
+            family="best_wallet_coin_week",
+            confluence_source="wallet_confluence",
+        ),
+        now=late,
+    ) is True
+    assert await router.flush(sender.send, now=late) == 0
+    assert router.rejected_by_reason["confluence_window_expired"] == 1
 
 
 @pytest.mark.asyncio
@@ -414,19 +530,187 @@ LS: 120d | CA: 12m
 
 
 @pytest.mark.asyncio
-async def test_v1_solana_best_requires_reported_elite_score():
+async def test_v1_unverified_solana_message_never_reaches_best_signals():
     router = BestSignalRouter(daily_cap=0, min_score=95)
-    sender = RecordingBestSender()
     candidate = candidate_from_v1_message(
-        """SOL Strongfloor
+        """SOL Dormants
 $VAULT Vault Token | Strength: 99/100
-Floor: $0.000816 | Bounces: 4 | Time: 9h
+LS: 120d | CA: 9h
 MC: 977.9k
 <code>2SAt9qF6YjMBz9tb1U9jAYNBBVx5jqWQ7KRXDqD2pump</code>"""
     )
 
     assert candidate is not None
     assert candidate.score == 99
+    assert router.queue(candidate) is False
+    assert router.rejected_by_reason["legacy_v1_unverified"] == 1
+
+
+def test_legacy_v1_candidate_stays_rejected_when_risk_text_is_later_marked_clean():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    candidate = candidate_from_v1_message(
+        """SOL Strongfloor
+$UNSAFE Unverified Floor | Strength: 100/100
+Floor: $0.000816 | Bounces: 4 | Time: 9h
+MC: 977.9k
+<code>2SAt9qF6YjMBz9tb1U9jAYNBBVx5jqWQ7KRXDqD2pump</code>"""
+    )
+
+    assert candidate is not None
+    forged_clean_candidate = replace(
+        candidate,
+        risk_text="low | Tax B/S: 0.0%/0.0% | independent risk checks passed",
+    )
+
+    assert router.queue(forged_clean_candidate) is False
+    assert router.rejected_by_reason["legacy_v1_unverified"] == 1
+
+
+@pytest.mark.asyncio
+async def test_v1_strongfloor_without_independent_risk_evidence_never_reaches_best_signals():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    candidate = candidate_from_v1_message(
+        """SOL Strongfloor
+$UNSAFE Unverified Floor | Strength: 100/100
+Floor: $0.000816 | Bounces: 4 | Time: 9h
+MC: 977.9k
+<code>2SAt9qF6YjMBz9tb1U9jAYNBBVx5jqWQ7KRXDqD2pump</code>"""
+    )
+
+    assert candidate is not None
+    assert router.queue(candidate) is False
+    assert router.rejected_by_reason["legacy_v1_unverified"] == 1
+
+@pytest.mark.asyncio
+async def test_best_signal_router_records_only_successfully_delivered_candidate():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    sender = RecordingBestSender()
+    delivered = []
+    now = datetime(2026, 7, 12, 2, 1, tzinfo=timezone.utc)
+    candidate = _candidate(
+        98,
+        "0xrecorded",
+        "RECORDED",
+        family="v2_live",
+        price_usd=0.0042,
+        provenance="v2_risk_checked",
+    )
+
+    assert router.queue(candidate) is True
+    sent = await router.flush(
+        sender.send,
+        now=now,
+        on_sent=lambda delivered_candidate, sent_at: delivered.append(
+            (delivered_candidate, sent_at)
+        ),
+    )
+
+    assert sent == 1
+    assert delivered == [(replace(candidate, confluence_sources=("v2_live",)), now)]
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_does_not_record_failed_delivery():
+    router = BestSignalRouter(daily_cap=0, min_score=95)
+    delivered = []
+    candidate = _candidate(98, "0xfailed", "FAILED", family="v2_live")
+
+    async def fail_send(text: str) -> bool:
+        return False
+
+    assert router.queue(candidate) is True
+    assert await router.flush(
+        fail_send,
+        on_sent=lambda delivered_candidate, sent_at: delivered.append(
+            (delivered_candidate, sent_at)
+        ),
+    ) == 0
+    assert delivered == []
+
+
+@pytest.mark.asyncio
+async def test_best_signal_router_allows_deep_accumulation_reversal_without_faking_raw_score():
+    router = BestSignalRouter(daily_cap=0, min_score=96)
+    sender = RecordingBestSender()
+    candidate = _candidate(
+        85,
+        "0x7A848a5A8169aa6a2f603D056A749f924F504444",
+        "CZ",
+        family="v2_live",
+        chain="bsc",
+        price_usd=0.006648,
+        market_cap_usd=6_648_750,
+        liquidity_usd=353_378.22,
+        volume_24h_usd=1_751_390.77,
+        buys_5m=33,
+        sells_5m=11,
+        buys_1h=567,
+        sells_1h=302,
+        age_minutes=12_021,
+        price_change_5m=-1.32,
+        price_change_1h=-7.67,
+        price_change_24h=-32.23,
+        provenance="v2_risk_checked",
+    )
+
     assert router.queue(candidate) is True
     assert await router.flush(sender.send) == 1
-    assert "$VAULT" in sender.messages[0]
+    assert "Score: 85/100" in sender.messages[0]
+    assert "Setup: Deep accumulation reversal" in sender.messages[0]
+
+
+def test_best_signal_router_rejects_noisy_near_match_to_accumulation_reversal():
+    router = BestSignalRouter(daily_cap=0, min_score=96)
+    candidate = _candidate(
+        85,
+        "0xnoisy",
+        "NOISY",
+        family="v2_live",
+        chain="bsc",
+        market_cap_usd=6_648_750,
+        liquidity_usd=353_378.22,
+        volume_24h_usd=1_751_390.77,
+        buys_5m=33,
+        sells_5m=22,
+        buys_1h=567,
+        sells_1h=400,
+        age_minutes=12_021,
+        price_change_5m=-1.32,
+        price_change_1h=-7.67,
+        price_change_24h=-32.23,
+        provenance="v2_risk_checked",
+    )
+
+    assert router.queue(candidate) is False
+    assert router.rejected_by_reason["score_below_min"] == 1
+
+@pytest.mark.asyncio
+async def test_accumulation_reversal_failed_send_releases_effective_budget():
+    router = BestSignalRouter(daily_cap=1, min_score=96)
+    sender = RecordingBestSender()
+    candidate = _candidate(
+        85,
+        "0xreversal-retry",
+        "RETRY",
+        family="v2_live",
+        chain="bsc",
+        market_cap_usd=6_648_750,
+        liquidity_usd=353_378.22,
+        volume_24h_usd=1_751_390.77,
+        buys_5m=33,
+        sells_5m=11,
+        buys_1h=567,
+        sells_1h=302,
+        age_minutes=12_021,
+        price_change_5m=-1.32,
+        price_change_1h=-7.67,
+        price_change_24h=-32.23,
+        provenance="v2_risk_checked",
+    )
+
+    async def fail_send(text: str) -> bool:
+        return False
+
+    assert router.queue(candidate) is True
+    assert await router.flush(fail_send) == 0
+    assert await router.flush(sender.send) == 1

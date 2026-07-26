@@ -56,11 +56,15 @@ class SNSTracker:
             rpc_manager = get_rpc_manager()
             max_attempts = max(1, rpc_manager.endpoint_count)
             async with httpx.AsyncClient(timeout=10.0) as client:
-                domain = await self._lookup_domain_with_sns_api(client, wallet_address)
+                domain, sns_api_complete = await self._lookup_domain_with_sns_api(client, wallet_address)
                 if domain:
                     self._domain_cache[wallet_address] = domain
                     logger.info("Found SNS domain via SNS API: %s for wallet %s...", domain, wallet_address[:8])
                     return domain
+                if sns_api_complete:
+                    self._domain_cache[wallet_address] = None
+                    self._negative_lookups += 1
+                    return None
 
                 for _ in range(max_attempts):
                     rpc_url = rpc_manager.get_rpc_url()
@@ -122,30 +126,34 @@ class SNSTracker:
             logger.info("SNS lookup error for %s: %s", wallet_address[:8], exc)
             return None
 
-    async def _lookup_domain_with_sns_api(self, client: httpx.AsyncClient, wallet_address: str) -> Optional[str]:
-        """Return the first SNS domain from the public SNS user domains API."""
+    async def _lookup_domain_with_sns_api(
+        self,
+        client: httpx.AsyncClient,
+        wallet_address: str,
+    ) -> tuple[Optional[str], bool]:
+        """Return a domain and whether the public response is an authoritative lookup."""
         response = await client.get(SNS_API_USER_DOMAINS_URL.format(wallet_address=wallet_address))
         if response.status_code in {429, 500, 502, 503, 504}:
             self._sns_api_transient_errors += 1
             logger.info("SNS API transient HTTP %s for %s, falling back to DAS", response.status_code, wallet_address[:8])
-            return None
+            return None, False
         if response.status_code != 200:
             logger.info("SNS API lookup failed: HTTP %s for %s", response.status_code, wallet_address[:8])
-            return None
+            return None, False
 
         data = response.json()
         if not isinstance(data, dict):
-            return None
+            return None, False
 
         raw_domains = data.get(wallet_address) or data.get(wallet_address.lower())
         if not isinstance(raw_domains, list) or not raw_domains:
-            return None
+            return None, True
 
         for raw_domain in raw_domains:
             domain = _normalize_sns_domain(raw_domain)
             if domain:
-                return domain
-        return None
+                return domain, True
+        return None, True
 
     async def format_sns_alert(
         self,

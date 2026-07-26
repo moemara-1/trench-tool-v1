@@ -434,5 +434,8 @@ def get_best_signal_router() -> BestSignalRouter:
             chain_cooldown_minutes={"solana": settings.best_signals_solana_cooldown_minutes},
             family_daily_caps={"strongfloor": settings.best_signals_strongfloor_daily_cap},
             family_cooldown_minutes={"strongfloor": settings.best_signals_strongfloor_cooldown_minutes},
+            min_confluence_sources=settings.best_signals_min_confluence_sources,
+            confluence_window_minutes=settings.best_signals_confluence_window_minutes,
+            min_confluence_component_score=settings.best_signals_min_confluence_component_score,
         )
     return _best_signal_router

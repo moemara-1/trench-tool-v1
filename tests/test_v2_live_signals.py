@@ -8,6 +8,7 @@ from trench_v2.config import V2Settings
 from trench_v2.core.models import Chain, RiskLevel, RiskReport
 from trench_v2.engine.live_signals import LiveSignalWorker
 from trench_v2.providers.dexscreener import DexPair, DexTokenProfile
+from trench_v2.telegram.topics import TopicFeature
 from wallet_performance import WalletPerformanceCandidate
 
 
@@ -554,7 +555,7 @@ async def test_live_signal_worker_copies_risk_checked_elite_signal_to_best_topic
 
 
 @pytest.mark.asyncio
-async def test_live_signal_worker_default_best_feed_accepts_96_point_risk_checked_signal():
+async def test_live_signal_worker_default_best_feed_waits_for_independent_confluence():
     pair = DexPair(
         chain=Chain.BASE,
         token_address="0xstrong",
@@ -593,7 +594,9 @@ async def test_live_signal_worker_default_best_feed_accepts_96_point_risk_checke
     sent = await worker.run_once()
 
     assert sent[0].quality_score >= 96
-    assert [topic_id for topic_id, _ in sender.messages] == [201, 999]
+    assert [topic_id for topic_id, _ in sender.messages] == [201]
+    assert worker.stats.best_signals_sent == 0
+    assert worker.stats.pending_best_confluence == 1
 
 
 @pytest.mark.asyncio
@@ -653,6 +656,7 @@ async def test_live_signal_worker_backtest_profile_blocks_best_copy_not_source_t
     assert len(sent) == 1
     assert [topic_id for topic_id, _ in sender.messages] == [201]
     assert worker.stats.best_signals_sent == 0
+    assert worker.stats.pending_best_confluence == 0
     assert worker.stats.as_dict()["best_signal_rejected_by_reason"]["backtest_hit_rate_too_low"] == 1
 
 
@@ -703,6 +707,7 @@ async def test_live_signal_worker_blocks_best_copy_when_sell_flow_is_not_elite()
     assert sent[0].quality_score >= 95
     assert [topic_id for topic_id, _ in sender.messages] == [201]
     assert worker.stats.best_signals_sent == 0
+    assert worker.stats.pending_best_confluence == 0
     assert worker.stats.as_dict()["best_signal_rejected_by_reason"]["sell_pressure_too_high"] == 1
 
 
@@ -759,6 +764,7 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
                 "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
                 "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
                 "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID": "901",
+                "TELEGRAM_BEST_WALLET_CONFLUENCE_TOPIC_ID": "902",
                 "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
             }
         ),
@@ -772,7 +778,11 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
                 reasons=["Honeypot.is simulation passed"],
             )
         ),
-        best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
+        best_signal_router=BestSignalRouter(
+            daily_cap=0,
+            min_score=95,
+            min_confluence_sources=2,
+        ),
         wallet_performance_provider=wallet_provider,
     )
 
@@ -781,11 +791,11 @@ async def test_live_signal_worker_copies_elite_best_wallet_signal_to_best_topic(
     assert len(sent) == 1
     assert wallet_provider.calls == [(Chain.BASE, "0xelite", "ELITE", ("week", "month", "year"))]
     assert [topic_id for topic_id, _ in sender.messages] == [201, 901, 999]
-    assert "Best Wallet Coin Week" in sender.messages[1][1]
+    assert "Best Wallet Coin BASE Week" in sender.messages[1][1]
     assert "0xelite" in sender.messages[1][1]
     assert "0x1111111111111111111111111111111111111111" not in sender.messages[1][1]
     assert "0x2222222222222222222222222222222222222222" not in sender.messages[1][1]
-    assert "Best Wallet Coin Week" in sender.messages[2][1]
+    assert "Confluence: Market structure + Best-wallet buys" in sender.messages[2][1]
     assert worker.stats.best_wallet_signals_sent == 1
 
 
@@ -960,6 +970,7 @@ async def test_live_signal_worker_sends_unindexed_medium_risk_to_source_topic_on
     assert len(sent) == 1
     assert [topic_id for topic_id, _ in sender.messages] == [201]
     assert worker.stats.best_signals_sent == 0
+    assert worker.stats.pending_best_confluence == 0
 
 
 @pytest.mark.asyncio
@@ -1409,3 +1420,424 @@ async def test_live_signal_worker_journals_successful_source_alert(tmp_path):
     assert record["risk_text"] == "low | Tax B/S: 0.0%/1.0% | Honeypot.is simulation passed"
     assert worker.stats.journal_records_written == 1
     assert worker.stats.journal_last_error is None
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_routes_elite_robinhood_candidate_to_source_only_without_verified_risk():
+    pair = DexPair(
+        chain=Chain.ROBINHOOD,
+        token_address="0x1111111111111111111111111111111111111111",
+        symbol="EARLY",
+        name="Early Robinhood Token",
+        url="https://dexscreener.com/robinhood/0xpair",
+        market_cap_usd=1_819_152,
+        liquidity_usd=135_145,
+        volume_24h_usd=4_079_521,
+        buys_5m=57,
+        buys_1h=960,
+        buys_24h=3_000,
+        sells_5m=21,
+        sells_1h=332,
+        sells_24h=1_000,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=693),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_RH_FRESHIES_TOPIC_ID": "4663",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.MEDIUM,
+                reasons=["Robinhood Chain independent security indexers unavailable"],
+            )
+        ),
+        best_signal_router=BestSignalRouter(daily_cap=0, min_score=95),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert sent[0].chain is Chain.ROBINHOOD
+    assert sent[0].quality_score == 91
+    assert sent[0].risk_level is RiskLevel.MEDIUM
+    assert [topic_id for topic_id, _ in sender.messages] == [4663]
+    assert worker.stats.best_signals_sent == 0
+    assert worker.stats.best_signal_skipped_by_reason["risk_not_low"] == 1
+
+def test_live_signal_worker_classifies_robinhood_candidates_into_one_distinct_topic():
+    now = datetime.now(timezone.utc)
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env({}),
+        provider=FakeDiscoveryProvider(None),
+        sender=None,
+        risk_provider=FakeRiskProvider(RiskReport(level=RiskLevel.LOW, reasons=["passed"])),
+    )
+
+    low_mc = DexPair(
+        chain=Chain.ROBINHOOD,
+        token_address="0xlow",
+        symbol="LOW",
+        name="Low Cap",
+        url=None,
+        market_cap_usd=250_000,
+        liquidity_usd=100_000,
+        volume_24h_usd=300_000,
+        buys_5m=30,
+        buys_1h=300,
+        buys_24h=700,
+        sells_5m=8,
+        sells_1h=70,
+        sells_24h=250,
+        pair_created_at=now - timedelta(minutes=60),
+    )
+    big_flow = DexPair(
+        chain=Chain.ROBINHOOD,
+        token_address="0xbig",
+        symbol="BIG",
+        name="Large Flow",
+        url=None,
+        market_cap_usd=2_000_000,
+        liquidity_usd=250_000,
+        volume_24h_usd=1_500_000,
+        buys_5m=80,
+        buys_1h=1_200,
+        buys_24h=3_000,
+        sells_5m=30,
+        sells_1h=500,
+        sells_24h=1_200,
+        pair_created_at=now - timedelta(minutes=90),
+    )
+    fresh_deploy = DexPair(
+        chain=Chain.ROBINHOOD,
+        token_address="0xdeploy",
+        symbol="DEPLOY",
+        name="New Pair",
+        url=None,
+        market_cap_usd=2_000_000,
+        liquidity_usd=110_000,
+        volume_24h_usd=300_000,
+        buys_5m=25,
+        buys_1h=300,
+        buys_24h=900,
+        sells_5m=8,
+        sells_1h=90,
+        sells_24h=300,
+        pair_created_at=now - timedelta(hours=2),
+    )
+    standard_freshie = DexPair(
+        chain=Chain.ROBINHOOD,
+        token_address="0xfresh",
+        symbol="FRESH",
+        name="Standard Freshie",
+        url=None,
+        market_cap_usd=1_200_000,
+        liquidity_usd=100_000,
+        volume_24h_usd=300_000,
+        buys_5m=25,
+        buys_1h=300,
+        buys_24h=900,
+        sells_5m=8,
+        sells_1h=90,
+        sells_24h=300,
+        pair_created_at=now - timedelta(hours=10),
+    )
+
+    classifications = {
+        pair.symbol: worker._signals_from_pair(pair)
+        for pair in (low_mc, big_flow, fresh_deploy, standard_freshie)
+    }
+
+    assert {symbol: len(signals) for symbol, signals in classifications.items()} == {
+        "LOW": 1,
+        "BIG": 1,
+        "DEPLOY": 1,
+        "FRESH": 1,
+    }
+    assert classifications["LOW"][0].feature is TopicFeature.LOW_MC_FRESHIES
+    assert classifications["BIG"][0].feature is TopicFeature.BIG_FRESHIES
+    assert classifications["DEPLOY"][0].feature is TopicFeature.DEPLOYS
+    assert classifications["FRESH"][0].feature is TopicFeature.FRESHIES
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_hydrates_recent_journal_dedupe_after_restart(tmp_path):
+    pair = DexPair(
+        chain=Chain.ROBINHOOD,
+        token_address="0xabc",
+        symbol="RESTART",
+        name="Restart Safe",
+        url="https://dexscreener.com/robinhood/0xpair",
+        market_cap_usd=250_000,
+        liquidity_usd=150_000,
+        volume_24h_usd=420_000,
+        buys_5m=45,
+        buys_1h=240,
+        buys_24h=900,
+        sells_5m=10,
+        sells_1h=40,
+        sells_24h=200,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=20),
+    )
+    env = {
+        "TELEGRAM_RH_LOW_MC_FRESHIES_TOPIC_ID": "4663",
+        "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+        "V2_SIGNAL_JOURNAL_PATH": str(tmp_path / "signals.jsonl"),
+    }
+    risk = FakeRiskProvider(
+        RiskReport(level=RiskLevel.LOW, reasons=["canonical Robinhood Chain token"])
+    )
+    first_sender = FakeSender()
+    first = LiveSignalWorker(
+        settings=V2Settings.from_env(env),
+        provider=FakeDiscoveryProvider(pair),
+        sender=first_sender,
+        risk_provider=risk,
+    )
+
+    assert len(await first.run_once()) == 1
+
+    second_sender = FakeSender()
+    restarted = LiveSignalWorker(
+        settings=V2Settings.from_env(env),
+        provider=FakeDiscoveryProvider(pair),
+        sender=second_sender,
+        risk_provider=risk,
+    )
+
+    assert await restarted.run_once() == []
+    assert second_sender.messages == []
+    assert restarted.stats.hydrated_dedupe_keys == 1
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_keeps_unconfirmed_cz_style_reversal_out_of_best_feed(tmp_path):
+    journal_path = tmp_path / "v2-signals.jsonl"
+    pair = DexPair(
+        chain=Chain.BSC,
+        token_address="0x7A848a5A8169aa6a2f603D056A749f924F504444",
+        symbol="CZ",
+        name="The Final Form Bull",
+        url="https://dexscreener.com/bsc/0xd55fa2c5e63ecac3a158ca3fed4c8c2185ed45b2",
+        price_usd=0.006648,
+        market_cap_usd=6_648_750,
+        liquidity_usd=353_378.22,
+        volume_24h_usd=1_751_390.77,
+        buys_5m=33,
+        buys_1h=567,
+        buys_24h=5_976,
+        sells_5m=11,
+        sells_1h=302,
+        sells_24h=5_046,
+        price_change_5m=-1.32,
+        price_change_1h=-7.67,
+        price_change_24h=-32.23,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=12_021),
+    )
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BNB_FRESHIES_TOPIC_ID": "301",
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID": "999",
+                "V2_SIGNAL_JOURNAL_PATH": str(journal_path),
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["GoPlus found no high-risk flags"],
+            )
+        ),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert sent[0].quality_score == 85
+    assert [topic_id for topic_id, _ in sender.messages] == [301]
+    records = [
+        json.loads(line)
+        for line in journal_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record.get("record_type") for record in records] == ["source_signal_sent"]
+    assert worker.stats.best_signals_sent == 0
+    assert worker.stats.pending_best_confluence == 1
+    assert worker.stats.best_signal_journal_records_written == 0
+    assert worker.stats.best_signal_journal_last_error is None
+class ThrowingSender:
+    def __init__(self, failing_topic_id: int):
+        self.failing_topic_id = failing_topic_id
+        self.messages = []
+
+    async def send(self, topic_id: int, text: str) -> bool:
+        self.messages.append((topic_id, text))
+        if topic_id == self.failing_topic_id:
+            raise RuntimeError("message thread not found")
+        return True
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_isolates_failed_sender_calls_and_continues_later_topics():
+    pair = DexPair(
+        chain=Chain.ETHEREUM,
+        token_address="0xdeliveryfailure",
+        symbol="ETHOK",
+        name="Ethereum Token",
+        url="https://dexscreener.com/ethereum/0xdeliveryfailure",
+        market_cap_usd=1_000_000,
+        liquidity_usd=100_000,
+        volume_24h_usd=250_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+    sender = ThrowingSender(failing_topic_id=102)
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_ETH_FRESHIES_TOPIC_ID": "101",
+                "TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID": "102",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "2",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
+    )
+
+    sent = await worker.run_once()
+
+    assert [topic_id for topic_id, _ in sender.messages] == [102, 101]
+    assert [signal.topic_env_key for signal in sent] == ["TELEGRAM_ETH_FRESHIES_TOPIC_ID"]
+    assert worker.stats.delivery_failures_by_topic == {"TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID": 1}
+    assert worker._topic_budgets["TELEGRAM_ETH_BIG_FRESHIES_TOPIC_ID"].sent_count(
+        now=worker.stats.last_run_at
+    ) == 0
+
+
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_continues_after_individual_pair_lookup_failure():
+    healthy_pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xhealthy",
+        symbol="HEALTHY",
+        name="Healthy Base Token",
+        url="https://dexscreener.com/base/0xhealthy",
+        market_cap_usd=1_000_000,
+        liquidity_usd=100_000,
+        volume_24h_usd=250_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+
+    class PartiallyFailingDiscoveryProvider:
+        async def latest_profiles(self):
+            return [
+                DexTokenProfile(chain=Chain.BASE, address="0xfailing"),
+                DexTokenProfile(chain=Chain.BASE, address="0xhealthy"),
+            ]
+
+        async def best_pair(self, profile):
+            if profile.address == "0xfailing":
+                raise RuntimeError("DexScreener token lookup timed out")
+            return healthy_pair
+
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "1",
+            }
+        ),
+        provider=PartiallyFailingDiscoveryProvider(),
+        sender=sender,
+        risk_provider=FakeRiskProvider(
+            RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+        ),
+    )
+
+    sent = await worker.run_once()
+
+    assert [signal.token_address for signal in sent] == ["0xhealthy"]
+    assert [topic_id for topic_id, _ in sender.messages] == [201]
+    assert worker.stats.pair_lookup_failures == 1
+
+@pytest.mark.asyncio
+async def test_live_signal_worker_continues_after_transient_risk_lookup_failure():
+    pair = DexPair(
+        chain=Chain.BASE,
+        token_address="0xriskretry",
+        symbol="RISK",
+        name="Risk Retry Token",
+        url="https://dexscreener.com/base/0xriskretry",
+        market_cap_usd=250_000,
+        liquidity_usd=100_000,
+        volume_24h_usd=250_000,
+        buys_5m=30,
+        buys_1h=180,
+        buys_24h=600,
+        pair_created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+
+    class FailOnceRiskProvider:
+        def __init__(self):
+            self.calls = 0
+
+        async def fetch_risk(self, chain, address):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("risk provider timed out")
+            return RiskReport(
+                level=RiskLevel.LOW,
+                buy_tax_bps=0,
+                sell_tax_bps=0,
+                reasons=["Honeypot.is simulation passed"],
+            )
+
+    sender = FakeSender()
+    worker = LiveSignalWorker(
+        settings=V2Settings.from_env(
+            {
+                "TELEGRAM_BASE_FRESHIES_TOPIC_ID": "201",
+                "TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "202",
+                "V2_SIGNAL_MAX_ALERTS_PER_CYCLE": "2",
+            }
+        ),
+        provider=FakeDiscoveryProvider(pair),
+        sender=sender,
+        risk_provider=FailOnceRiskProvider(),
+    )
+
+    sent = await worker.run_once()
+
+    assert len(sent) == 1
+    assert worker.stats.risk_lookup_failures == 1
+    assert len(sender.messages) == 1

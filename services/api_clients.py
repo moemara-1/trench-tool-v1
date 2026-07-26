@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import httpx
 
 from config import settings
-from services.rpc_manager import get_rpc_manager
+from services.rpc_manager import RPCUnavailableError, get_rpc_manager
 
 logger = logging.getLogger(__name__)
 
@@ -27,44 +27,58 @@ class TokenPrice:
 
 
 class JupiterClient:
-    """Jupiter API client for prices."""
-    
-    PRICE_URL = "https://price.jup.ag/v6/price"
-    
+    """Compatibility client for Solana prices backed by DexScreener."""
+
+    DEXSCREENER_TOKEN_URL = "https://api.dexscreener.com/latest/dex/tokens"
+
     def __init__(self):
         self._cache: Dict[str, TokenPrice] = {}
         self._sol_price: float = 200.0  # Default fallback
-    
+
     async def get_price(self, token_address: str) -> Optional[float]:
-        """Get token price in USD."""
+        """Get a liquid Solana token's USD price without a legacy Jupiter endpoint."""
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
-                    self.PRICE_URL,
-                    params={"ids": token_address}
+                    f"{self.DEXSCREENER_TOKEN_URL}/{token_address}",
+                    timeout=5.0,
                 )
-                
-                if response.status_code != 200:
-                    return None
-                
-                data = response.json()
-                token_data = data.get("data", {}).get(token_address, {})
-                
-                price = token_data.get("price")
-                if price:
-                    self._cache[token_address] = TokenPrice(
-                        address=token_address,
-                        price_usd=float(price),
-                        timestamp=datetime.utcnow(),
-                    )
-                    return float(price)
-                
+            if response.status_code != 200:
                 return None
-                
-        except Exception as e:
-            logger.error(f"Jupiter price error: {e}")
+
+            data = response.json()
+            pairs = data.get("pairs") if isinstance(data, dict) else None
+            if not isinstance(pairs, list):
+                return None
+
+            candidates: list[tuple[float, float]] = []
+            for pair in pairs:
+                if not isinstance(pair, dict) or pair.get("chainId") != "solana":
+                    continue
+                base_token = pair.get("baseToken")
+                if not isinstance(base_token, dict) or base_token.get("address") != token_address:
+                    continue
+                try:
+                    price = float(pair.get("priceUsd"))
+                    liquidity = float((pair.get("liquidity") or {}).get("usd") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if price > 0:
+                    candidates.append((liquidity, price))
+
+            if not candidates:
+                return None
+
+            price = max(candidates, key=lambda item: item[0])[1]
+            self._cache[token_address] = TokenPrice(
+                address=token_address,
+                price_usd=price,
+                timestamp=datetime.utcnow(),
+            )
+            return price
+        except (httpx.HTTPError, TypeError, ValueError) as exc:
+            logger.warning("DexScreener price lookup failed: %s", exc)
             return None
-    
     async def get_sol_price(self) -> float:
         """Get current SOL price in USD."""
         try:
@@ -162,6 +176,7 @@ class EnhancedTokenData:
     telegram: Optional[str] = None
     twitter: Optional[str] = None
     website: Optional[str] = None
+    creator_address: Optional[str] = None
     
     @property
     def mc_string(self) -> str:
@@ -183,6 +198,13 @@ class EnhancedTokenData:
             return f"{m // 60}h"
         return f"{m // 1440}d"
 
+
+
+def _nonempty_string(value: object) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
 
 class HeliusClient:
     """Helius enhanced API client with shared RPC rotation."""
@@ -209,7 +231,10 @@ class HeliusClient:
         last_response = None
 
         for _ in range(self._attempt_count()):
-            rpc_url = self.rpc_url or manager.get_rpc_url()
+            try:
+                rpc_url = self.rpc_url or manager.get_rpc_url()
+            except RPCUnavailableError:
+                return last_response
             if timeout is None:
                 response = await client.post(rpc_url, json=payload)
             else:
@@ -412,10 +437,16 @@ class TokenDataFetcher:
                 # Try DexScreener first
                 token_data = await self._try_dexscreener(client, token_address)
                 
-                # If DexScreener failed, try pump.fun API for pump tokens
-                if not token_data and token_address.endswith("pump"):
-                    token_data = await self._try_pumpfun_api(client, token_address)
-                
+                # Pump.fun provides the actual launch creator, while DexScreener
+                # remains the source of fresh market data when available.
+                if token_address.endswith("pump"):
+                    pump_data = await self._try_pumpfun_api(client, token_address)
+                    if pump_data:
+                        if token_data:
+                            token_data.creator_address = pump_data.creator_address
+                        else:
+                            token_data = pump_data
+
                 # If still no data, try Helius token metadata
                 if not token_data:
                     token_data = await self._try_helius_metadata(client, token_address)
@@ -563,44 +594,43 @@ class TokenDataFetcher:
             return None
     
     async def _try_pumpfun_api(self, client: httpx.AsyncClient, token_address: str) -> Optional[EnhancedTokenData]:
-        """Try fetching from pump.fun API for new pump tokens."""
+        """Fetch current Pump.fun metadata, including the actual launch creator."""
         try:
             response = await client.get(
-                f"https://frontend-api.pump.fun/coins/{token_address}",
-                timeout=5.0
+                f"https://frontend-api-v3.pump.fun/coins/{token_address}",
+                timeout=5.0,
             )
-            
             if response.status_code != 200:
                 return None
-            
-            data = response.json()
-            
-            if not data or not data.get("symbol"):
+
+            payload = response.json()
+            data = payload.get("data", payload) if isinstance(payload, dict) else payload
+            if not isinstance(data, dict) or not data.get("symbol"):
                 return None
-            
-            # Calculate market cap from bonding curve if available
+
             market_cap = None
             if data.get("usd_market_cap"):
                 market_cap = float(data["usd_market_cap"])
-            elif data.get("market_cap"):
-                market_cap = float(data["market_cap"])
-            
-            # Calculate age
+            elif data.get("market_cap_quote"):
+                market_cap = float(data["market_cap_quote"])
+
             age_minutes = 0
             if data.get("created_timestamp"):
                 try:
-                    created = datetime.fromtimestamp(data["created_timestamp"] / 1000)
+                    created_timestamp = float(data["created_timestamp"])
+                    if created_timestamp > 10_000_000_000:
+                        created_timestamp /= 1000
+                    created = datetime.fromtimestamp(created_timestamp)
                     age_minutes = int((datetime.utcnow() - created).total_seconds() / 60)
-                except:
+                except (TypeError, ValueError, OSError, OverflowError):
                     pass
-            
-            logger.info(f"✅ Pump.fun API success: ${data.get('symbol')} {data.get('name')}")
-            
+
+            logger.info(f"Pump.fun API success: ${data.get('symbol')} {data.get('name')}")
             return EnhancedTokenData(
                 address=token_address,
                 symbol=data.get("symbol", "???"),
                 name=data.get("name", "Unknown"),
-                price_usd=None,  # pump.fun API doesn't always have price
+                price_usd=None,
                 market_cap=market_cap,
                 liquidity_usd=None,
                 volume_24h=None,
@@ -608,11 +638,11 @@ class TokenDataFetcher:
                 holder_count=None,
                 dex_name="pump.fun",
                 is_pump_fun=True,
+                creator_address=_nonempty_string(data.get("creator")),
             )
-        except Exception as e:
-            logger.debug(f"Pump.fun API failed for {token_address[:8]}: {e}")
+        except Exception as exc:
+            logger.debug(f"Pump.fun API failed for {token_address[:8]}: {exc}")
             return None
-    
     async def _try_helius_metadata(self, client: httpx.AsyncClient, token_address: str) -> Optional[EnhancedTokenData]:
         """Try fetching token metadata from Helius/Solana."""
         try:

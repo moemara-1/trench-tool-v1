@@ -53,7 +53,7 @@ async def test_sns_tracker_retries_next_rpc_endpoint_after_transient_failure(mon
     manager = FakeRpcManager()
     client = FakeClient(
         [
-            FakeResponse(200, {"wallet": []}),
+            FakeResponse(503),
             FakeResponse(503),
             FakeResponse(
                 200,
@@ -115,3 +115,22 @@ async def test_sns_tracker_stats_expose_provider_errors_and_negative_lookups(mon
     assert stats["lookups_attempted"] == 1
     assert stats["sns_api_transient_errors"] == 1
     assert stats["negative_lookups"] == 1
+
+@pytest.mark.asyncio
+async def test_sns_tracker_does_not_spend_rpc_quota_after_public_negative_lookup(monkeypatch):
+    manager = FakeRpcManager()
+    client = FakeClient(
+        [
+            FakeResponse(200, {"wallet": []}),
+        ]
+    )
+    monkeypatch.setattr(sns_tracker, "get_rpc_manager", lambda: manager)
+    monkeypatch.setattr(sns_tracker.httpx, "AsyncClient", lambda timeout: client)
+
+    tracker = SNSTracker()
+    domain = await tracker.get_wallet_domain("wallet")
+
+    assert domain is None
+    assert client.get_urls == ["https://sns-api.bonfida.com/v2/user/domains/wallet"]
+    assert client.urls == []
+    assert tracker.get_stats()["negative_lookups"] == 1

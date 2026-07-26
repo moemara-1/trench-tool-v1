@@ -108,3 +108,103 @@ async def test_latest_pairs_can_opt_into_geckoterminal_fallback_with_dexscreener
     assert by_chain[Chain.ETHEREUM].liquidity_usd == 60_000
     assert by_chain[Chain.ETHEREUM].buys_1h == 45
     assert by_chain[Chain.ETHEREUM].url == "https://dexscreener.com/ethereum/0xeth"
+
+@pytest.mark.asyncio
+async def test_dexscreener_discovers_robinhood_profiles_and_pairs():
+    class RobinhoodClient:
+        def __init__(self):
+            self.urls = []
+
+        async def get_json(self, url: str):
+            self.urls.append(url)
+            if url.endswith("/token-profiles/latest/v1"):
+                return [{"chainId": "robinhood", "tokenAddress": "0xrh"}]
+            if url.endswith("/token-boosts/latest/v1") or url.endswith("/token-boosts/top/v1"):
+                return []
+            if "/latest/dex/search" in url and "q=robinhood" in url:
+                return {
+                    "pairs": [
+                        {
+                            "chainId": "robinhood",
+                            "url": "https://dexscreener.com/robinhood/0xpair",
+                            "baseToken": {"address": "0xrh", "symbol": "RH", "name": "Robinhood Token"},
+                            "marketCap": 240_000,
+                            "liquidity": {"usd": 80_000},
+                            "volume": {"h24": 180_000},
+                            "txns": {
+                                "m5": {"buys": 15, "sells": 3},
+                                "h1": {"buys": 90, "sells": 20},
+                                "h24": {"buys": 300, "sells": 100},
+                            },
+                            "pairCreatedAt": 1_800_000_000_000,
+                        }
+                    ]
+                }
+            if "/latest/dex/search" in url:
+                return {"pairs": []}
+            return []
+
+    client = RobinhoodClient()
+    provider = DexScreenerProvider(client=client)
+
+    profiles = await provider.latest_profiles()
+    pairs = await provider.latest_pairs()
+
+    assert [(profile.chain, profile.address) for profile in profiles] == [
+        (Chain.ROBINHOOD, "0xrh")
+    ]
+    assert len(pairs) == 1
+    assert pairs[0].chain is Chain.ROBINHOOD
+    assert pairs[0].url == "https://dexscreener.com/robinhood/0xpair"
+    assert any("q=robinhood" in url for url in client.urls)
+
+@pytest.mark.asyncio
+async def test_best_pair_rejects_pair_when_profile_token_is_only_the_quote_asset():
+    from trench_v2.providers.dexscreener import DexTokenProfile
+    requested = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"
+
+    class QuoteOnlyClient:
+        async def get_json(self, url: str):
+            return {
+                "pairs": [
+                    {
+                        "chainId": "robinhood",
+                        "baseToken": {
+                            "address": "0x1111111111111111111111111111111111111111",
+                            "symbol": "CASHCAT",
+                            "name": "Cash Cat",
+                        },
+                        "quoteToken": {
+                            "address": requested,
+                            "symbol": "WETH",
+                            "name": "Wrapped Ether",
+                        },
+                        "liquidity": {"usd": 90000},
+                    }
+                ]
+            }
+
+    pair = await DexScreenerProvider(client=QuoteOnlyClient()).best_pair(
+        DexTokenProfile(chain=Chain.ROBINHOOD, address=requested)
+    )
+
+    assert pair is None
+
+@pytest.mark.asyncio
+async def test_latest_profiles_continues_when_one_discovery_feed_fails():
+    class PartialOutageClient:
+        async def get_json(self, url: str):
+            if url.endswith("/token-profiles/latest/v1"):
+                raise RuntimeError("upstream timeout")
+            if url.endswith("/token-boosts/latest/v1"):
+                return [{"chainId": "base", "tokenAddress": "0xbase"}]
+            if url.endswith("/token-boosts/top/v1"):
+                return [{"chainId": "ethereum", "tokenAddress": "0xeth"}]
+            return []
+
+    profiles = await DexScreenerProvider(client=PartialOutageClient()).latest_profiles()
+
+    assert [(profile.chain, profile.address) for profile in profiles] == [
+        (Chain.BASE, "0xbase"),
+        (Chain.ETHEREUM, "0xeth"),
+    ]

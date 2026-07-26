@@ -55,3 +55,8 @@ def test_alert_decision_suppresses_honeypot_even_with_high_confidence():
     assert decision.should_send is False
     assert decision.priority == "blocked"
     assert "honeypot" in decision.reason.lower()
+
+def test_robinhood_chain_aliases_are_supported():
+    assert Chain.from_hint("rh") is Chain.ROBINHOOD
+    assert Chain.from_hint("robinhood") is Chain.ROBINHOOD
+    assert Chain.ROBINHOOD.label == "RH"

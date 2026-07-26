@@ -12,6 +12,9 @@ ETH_UNISWAP_V2_FACTORY = "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f"
 ETH_UNISWAP_V3_FACTORY = "0x1f98431c8ad98523631ae4a59f267346ea31f984"
 BASE_UNISWAP_V3_FACTORY = "0x33128a8fc17869897dce68ed026d694621f6fdfd"
 BSC_PANCAKE_V2_FACTORY = "0xca143ce32fe78f1f7019d7d551a6402fc5350c73"
+# Verified against live PairCreated/PoolCreated logs and DexScreener-indexed pools.
+ROBINHOOD_UNISWAP_V2_FACTORY = "0x8bceaa40b9acdfaedf85adf4ff01f5ad6517937f"
+ROBINHOOD_UNISWAP_V3_FACTORY = "0x1f7d7550b1b028f7571e69a784071f0205fd2efa"
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +53,10 @@ class EvmLogQueryPlanner:
         Chain.BSC: [
             (BSC_PANCAKE_V2_FACTORY, PAIR_CREATED_TOPIC),
         ],
+        Chain.ROBINHOOD: [
+            (ROBINHOOD_UNISWAP_V2_FACTORY, PAIR_CREATED_TOPIC),
+            (ROBINHOOD_UNISWAP_V3_FACTORY, POOL_CREATED_TOPIC),
+        ],
     }
 
     def queries_for(self, chain: Chain, *, from_block: int, to_block: int) -> list[EvmLogQuery]:
@@ -66,7 +73,7 @@ class EvmLogQueryPlanner:
                 )
             )
 
-        if chain in {Chain.ETHEREUM, Chain.BASE, Chain.BSC}:
+        if chain in {Chain.ETHEREUM, Chain.BASE, Chain.BSC, Chain.ROBINHOOD}:
             queries.append(
                 EvmLogQuery(
                     chain=chain,

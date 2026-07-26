@@ -73,7 +73,7 @@ async def test_v1_send_alert_blocks_signal_routed_to_feedback(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_v1_send_alert_copies_elite_signal_to_best_signals_topic(monkeypatch):
+async def test_v1_send_alert_keeps_unverified_v1_signal_out_of_best_signals(monkeypatch):
     monkeypatch.setattr(telegram_bot.settings, "telegram_best_signals_topic_id", 999, raising=False)
     monkeypatch.setattr(telegram_bot.settings, "best_signals_daily_cap", 7, raising=False)
     monkeypatch.setattr(telegram_bot.settings, "best_signals_min_score", 95, raising=False)
@@ -90,5 +90,4 @@ async def test_v1_send_alert_copies_elite_signal_to_best_signals_topic(monkeypat
     result = await bot.send_alert(ELITE_STRONGFLOOR_MESSAGE, topic_id=3)
 
     assert result == 1
-    assert [call["message_thread_id"] for call in fake_api.calls] == [3, 999]
-    assert "Best Signal" in fake_api.calls[1]["text"]
+    assert [call["message_thread_id"] for call in fake_api.calls] == [3]

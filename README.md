@@ -4,13 +4,13 @@ Solana token monitoring bot with real-time fresh wallet detection and BBB-style 
 
 ## Features
 
-- 🔍 **Freshies Tracking** - Detect fresh wallet purchases in real-time
-- 💰 **Whale Detection** - 🐳 (>15 SOL) and 🐬 (>5 SOL) transactions
-- 🚀 **Launchpad Detection** - Pump.fun, Meteora, Raydium, Orca, etc.
-- 🤖 **Router Detection** - Axiom, BananaGun, Maestro, Trojan, etc.
-- 📊 **Pattern Detection** - Volume spikes, dormant inflows, freshie selling
-- 🎯 **Bundle Detection** - Identify coordinated purchases
-- 📱 **Telegram Alerts** - Real-time notifications with trading links
+- ðŸ” **Freshies Tracking** - Detect fresh wallet purchases in real-time
+- ðŸ’° **Whale Detection** - ðŸ³ (>15 SOL) and ðŸ¬ (>5 SOL) transactions
+- ðŸš€ **Launchpad Detection** - Pump.fun, Meteora, Raydium, Orca, etc.
+- ðŸ¤– **Router Detection** - Axiom, BananaGun, Maestro, Trojan, etc.
+- ðŸ“Š **Pattern Detection** - Volume spikes, dormant inflows, freshie selling
+- ðŸŽ¯ **Bundle Detection** - Identify coordinated purchases
+- ðŸ“± **Telegram Alerts** - Real-time notifications with trading links
 
 ## Quick Start
 
@@ -32,38 +32,45 @@ python main.py
 ## Docker Deployment (24/7)
 
 ```bash
-# Build and run everything
-docker-compose up -d
+# Build and run both alert runtimes: V1 (SOL) and V2 (ETH/Base/Best Wallets)
+docker compose up -d
 
-# View logs
-docker-compose logs -f backend
+# Verify both workers are healthy
+docker compose ps
+curl -f http://localhost:8000/health
+curl -f http://localhost:8001/v2/signals
+curl -f http://localhost:8001/v2/topics
+
+# On the production host, repair any deleted/stale topic IDs and restart both workers
+TRENCH_V2_ENV=.env TRENCH_V1_ENV=.env python scripts/reconcile_v2_topics.py
+docker compose up -d --force-recreate backend v2-backend
 ```
 
 ## Project Structure
 
 ```
 trench-tool/
-├── main.py              # FastAPI entry point
-├── config.py            # Environment configuration
-├── database.py          # PostgreSQL & Redis connections
-├── services/            # Core bot services (29 modules)
-│   ├── solana_listener.py
-│   ├── wallet_classifier.py
-│   ├── freshies_tracker.py
-│   ├── bundle_detector.py
-│   └── ...
-├── filters/             # Transaction filters
-│   ├── launchpad_detector.py
-│   ├── router_detector.py
-│   └── transaction_filter.py
-├── alerts/              # Telegram bot & routing
-│   ├── telegram_bot.py
-│   ├── channel_router.py
-│   └── alert_router.py
-├── models/              # Database models
-├── Dockerfile           # Production container
-├── docker-compose.yml   # Full stack deployment
-└── requirements.txt     # Python dependencies
+â”œâ”€â”€ main.py              # FastAPI entry point
+â”œâ”€â”€ config.py            # Environment configuration
+â”œâ”€â”€ database.py          # PostgreSQL & Redis connections
+â”œâ”€â”€ services/            # Core bot services (29 modules)
+â”‚   â”œâ”€â”€ solana_listener.py
+â”‚   â”œâ”€â”€ wallet_classifier.py
+â”‚   â”œâ”€â”€ freshies_tracker.py
+â”‚   â”œâ”€â”€ bundle_detector.py
+â”‚   â””â”€â”€ ...
+â”œâ”€â”€ filters/             # Transaction filters
+â”‚   â”œâ”€â”€ launchpad_detector.py
+â”‚   â”œâ”€â”€ router_detector.py
+â”‚   â””â”€â”€ transaction_filter.py
+â”œâ”€â”€ alerts/              # Telegram bot & routing
+â”‚   â”œâ”€â”€ telegram_bot.py
+â”‚   â”œâ”€â”€ channel_router.py
+â”‚   â””â”€â”€ alert_router.py
+â”œâ”€â”€ models/              # Database models
+â”œâ”€â”€ Dockerfile           # Production container
+â”œâ”€â”€ docker-compose.yml   # Full stack deployment
+â””â”€â”€ requirements.txt     # Python dependencies
 ```
 
 ## Environment Variables

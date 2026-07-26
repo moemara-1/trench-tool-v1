@@ -72,6 +72,7 @@ def best_signal_from_wallet_performance(
         reasons=tuple(reasons),
         risk_text="wallet-performance signal; verify current token risk before entry",
         url=candidate.evidence_url,
+        provenance="wallet_performance",
     )
 
 
@@ -164,7 +165,7 @@ def best_signal_from_wallet_token_confluence(
         reasons.append(f"{total_trades} combined historical trades")
 
     return BestSignalCandidate(
-        source_label=f"Best Wallet Coin {normalized_period.title()}",
+        source_label=f"Best Wallet Coin {_wallet_chain_label(chain)} {normalized_period.title()}",
         chain=chain.lower().strip(),
         signal_family=f"best_wallet_coin_{normalized_period}",
         token_address=token_address,
@@ -179,6 +180,8 @@ def best_signal_from_wallet_token_confluence(
         buys_1h=buys_1h,
         age_minutes=age_minutes,
         url=url,
+        provenance="wallet_confluence",
+        confluence_source="wallet_confluence",
     )
 
 
@@ -261,6 +264,20 @@ def _has_positive_trade_quality(candidate: WalletPerformanceCandidate) -> bool:
         return candidate.realized_pnl_usd > 0 and candidate.roi_pct >= 50
     return candidate.wins > candidate.losses and candidate.win_rate >= 0.55
 
+
+def _wallet_chain_label(chain: str) -> str:
+    normalized = chain.lower().strip()
+    return {
+        "eth": "ETH",
+        "ethereum": "ETH",
+        "base": "BASE",
+        "bsc": "BNB",
+        "bnb": "BNB",
+        "sol": "SOL",
+        "solana": "SOL",
+        "rh": "RH",
+        "robinhood": "RH",
+    }.get(normalized, normalized.upper())
 
 def _short_wallet(wallet_address: str) -> str:
     stripped = wallet_address.strip()

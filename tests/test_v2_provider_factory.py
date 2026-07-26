@@ -45,3 +45,11 @@ def test_provider_factory_adds_moralis_holder_provider_when_key_is_configured():
     scanner = build_scanner(V2Settings.from_env({"MORALIS_API_KEY": "moralis"}))
 
     assert isinstance(scanner.holder_provider, MoralisHolderClusterProvider)
+
+def test_provider_factory_routes_robinhood_to_conservative_risk_provider():
+    from trench_v2.core.models import Chain
+    from trench_v2.providers.security import RobinhoodRiskProvider
+
+    provider = build_risk_provider(V2Settings.from_env({}))
+
+    assert isinstance(provider.chain_overrides[Chain.ROBINHOOD], RobinhoodRiskProvider)

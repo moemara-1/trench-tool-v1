@@ -55,7 +55,16 @@ class DexScreenerProvider:
         "https://api.dexscreener.com/token-boosts/latest/v1",
         "https://api.dexscreener.com/token-boosts/top/v1",
     )
-    _SEARCH_QUERIES = ("eth", "uniswap", "base", "aerodrome", "baseswap", "bsc", "pancakeswap")
+    _SEARCH_QUERIES = (
+        "eth",
+        "uniswap",
+        "base",
+        "aerodrome",
+        "baseswap",
+        "bsc",
+        "pancakeswap",
+        "robinhood",
+    )
     _GECKO_NETWORKS = {
         "eth": Chain.ETHEREUM,
         "bsc": Chain.BSC,
@@ -66,6 +75,7 @@ class DexScreenerProvider:
         Chain.BSC: "bsc",
         Chain.BASE: "base",
         Chain.SOLANA: "solana",
+        Chain.ROBINHOOD: "robinhood",
     }
 
     _CHAIN_IDS = {
@@ -73,6 +83,7 @@ class DexScreenerProvider:
         "ethereum": Chain.ETHEREUM,
         "base": Chain.BASE,
         "bsc": Chain.BSC,
+        "robinhood": Chain.ROBINHOOD,
     }
 
     def __init__(
@@ -95,7 +106,10 @@ class DexScreenerProvider:
         seen: set[tuple[Chain, str]] = set()
         profiles: list[DexTokenProfile] = []
         for url in self._DISCOVERY_URLS:
-            data = await self.client.get_json(url)
+            try:
+                data = await self.client.get_json(url)
+            except Exception:
+                continue
             if not isinstance(data, list):
                 continue
 
@@ -135,7 +149,11 @@ class DexScreenerProvider:
         normalized = [
             pair
             for pair in (self._pair_from_json(profile, item) for item in pairs)
-            if pair is not None and pair.chain is profile.chain
+            if (
+                pair is not None
+                and pair.chain is profile.chain
+                and _same_token_address(profile.chain, pair.token_address, profile.address)
+            )
         ]
         if not normalized:
             return None
@@ -258,6 +276,12 @@ class DexScreenerProvider:
             price_change_1h=_float_or_none(_nested_value(attributes, "price_change_percentage", "h1")),
             price_change_24h=_float_or_none(_nested_value(attributes, "price_change_percentage", "h24")),
         )
+
+
+def _same_token_address(chain: Chain, left: str, right: str) -> bool:
+    if chain is Chain.SOLANA:
+        return left == right
+    return left.lower() == right.lower()
 
 
 def _str_or_none(value: object) -> str | None:

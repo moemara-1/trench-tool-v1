@@ -39,7 +39,7 @@ class ChainAdapterRegistry:
         if not matches:
             raise ValueError(f"Cannot infer chain for address: {address}")
         if len(matches) > 1:
-            # EVM addresses are valid on ETH/BSC/Base. Default to ETH unless a
+            # EVM addresses are valid on ETH/BSC/Base/Robinhood. Default to ETH unless a
             # command or API caller provides an explicit chain hint.
             return Chain.ETHEREUM
         return matches[0]

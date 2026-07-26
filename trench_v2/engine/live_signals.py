@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import logging
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Protocol
@@ -27,6 +28,9 @@ from wallet_performance import (
     wallet_token_confluence_rejection_reason,
 )
 
+logger = logging.getLogger(__name__)
+
+_BEST_WALLET_CONFLUENCE_TOPIC_ENV = "TELEGRAM_BEST_WALLET_CONFLUENCE_TOPIC_ID"
 
 _BEST_WALLET_TOPIC_ENV_BY_PERIOD = {
     "week": "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID",
@@ -100,19 +104,24 @@ class LiveSignalStats:
     last_run_at: datetime | None = None
     last_error: str | None = None
     profiles_seen: int = 0
+    pair_lookup_failures: int = 0
     candidates_seen: int = 0
     rejected_low_quality: int = 0
     rejected_low_quality_by_reason: dict[str, int] = field(default_factory=dict)
     last_low_quality_rejections: list[dict] = field(default_factory=list)
     alerts_sent: int = 0
+    delivery_failures: int = 0
+    delivery_failures_by_topic: dict[str, int] = field(default_factory=dict)
     deduped: int = 0
     daily_sent: int = 0
     rejected_daily_budget: int = 0
     risk_checked: int = 0
+    risk_lookup_failures: int = 0
     rejected_risk: int = 0
     best_signals_sent: int = 0
     best_signal_candidates_seen: int = 0
     best_signal_skipped_by_reason: dict[str, int] = field(default_factory=dict)
+    pending_best_confluence: int = 0
     pending_best_signal_rechecks: int = 0
     best_wallet_tokens_checked: int = 0
     best_wallet_provider_empty: int = 0
@@ -122,6 +131,9 @@ class LiveSignalStats:
     best_wallet_last_error: str | None = None
     journal_records_written: int = 0
     journal_last_error: str | None = None
+    best_signal_journal_records_written: int = 0
+    best_signal_journal_last_error: str | None = None
+    hydrated_dedupe_keys: int = 0
     best_signal_rejected_by_reason: dict[str, int] = field(default_factory=dict)
     best_wallet_candidates_by_period: dict[str, int] = field(default_factory=dict)
     best_wallet_rejected_by_period: dict[str, int] = field(default_factory=dict)
@@ -143,19 +155,24 @@ class LiveSignalStats:
             "last_run_at": self.last_run_at.isoformat() if self.last_run_at else None,
             "last_error": self.last_error,
             "profiles_seen": self.profiles_seen,
+            "pair_lookup_failures": self.pair_lookup_failures,
             "candidates_seen": self.candidates_seen,
             "rejected_low_quality": self.rejected_low_quality,
             "rejected_low_quality_by_reason": dict(sorted(self.rejected_low_quality_by_reason.items())),
             "last_low_quality_rejections": self.last_low_quality_rejections[-10:],
             "alerts_sent": self.alerts_sent,
+            "delivery_failures": self.delivery_failures,
+            "delivery_failures_by_topic": dict(sorted(self.delivery_failures_by_topic.items())),
             "deduped": self.deduped,
             "daily_sent": self.daily_sent,
             "rejected_daily_budget": self.rejected_daily_budget,
             "risk_checked": self.risk_checked,
+            "risk_lookup_failures": self.risk_lookup_failures,
             "rejected_risk": self.rejected_risk,
             "best_signals_sent": self.best_signals_sent,
             "best_signal_candidates_seen": self.best_signal_candidates_seen,
             "best_signal_skipped_by_reason": dict(sorted(self.best_signal_skipped_by_reason.items())),
+            "pending_best_confluence": self.pending_best_confluence,
             "pending_best_signal_rechecks": self.pending_best_signal_rechecks,
             "best_wallet_tokens_checked": self.best_wallet_tokens_checked,
             "best_wallet_provider_empty": self.best_wallet_provider_empty,
@@ -165,6 +182,9 @@ class LiveSignalStats:
             "best_wallet_last_error": self.best_wallet_last_error,
             "journal_records_written": self.journal_records_written,
             "journal_last_error": self.journal_last_error,
+            "best_signal_journal_records_written": self.best_signal_journal_records_written,
+            "best_signal_journal_last_error": self.best_signal_journal_last_error,
+            "hydrated_dedupe_keys": self.hydrated_dedupe_keys,
             "best_signal_rejected_by_reason": dict(sorted(self.best_signal_rejected_by_reason.items())),
             "best_wallet_candidates_by_period": dict(sorted(self.best_wallet_candidates_by_period.items())),
             "best_wallet_rejected_by_period": dict(sorted(self.best_wallet_rejected_by_period.items())),
@@ -189,6 +209,7 @@ class LiveSignalWorker:
         Chain.ETHEREUM: 500_000_000,
         Chain.BASE: 25_000_000,
         Chain.BSC: 500_000_000,
+        Chain.ROBINHOOD: 250_000_000,
     }
 
     def __init__(
@@ -220,10 +241,18 @@ class LiveSignalWorker:
             daily_cap=settings.best_signals_daily_cap,
             min_score=settings.best_signals_min_score,
             performance_by_family=self._load_best_signal_performance(settings),
+            min_confluence_sources=settings.best_signals_min_confluence_sources,
+            confluence_window_minutes=settings.best_signals_confluence_window_minutes,
+            min_confluence_component_score=settings.best_signals_min_confluence_component_score,
         )
         self._risk_cache: dict[tuple[Chain, str], RiskReport] = {}
         self._pending_best_rechecks: dict[str, tuple[LiveSignal, int]] = {}
-        self._sent_keys: set[str] = set()
+        self._sent_keys = (
+            self.signal_journal.recent_dedupe_keys()
+            if self.signal_journal is not None
+            else set()
+        )
+        self.stats.hydrated_dedupe_keys = len(self._sent_keys)
         self._sent_wallet_signal_keys: set[str] = set()
         self._sent_day: str | None = None
         self._task: asyncio.Task | None = None
@@ -272,7 +301,16 @@ class LiveSignalWorker:
         for profile in profiles:
             if profile.chain not in self._CHAIN_MAX_MC:
                 continue
-            pair = await self.provider.best_pair(profile)
+            try:
+                pair = await self.provider.best_pair(profile)
+            except Exception as exc:
+                self.stats.pair_lookup_failures += 1
+                logger.warning(
+                    "Dex pair lookup failed for %s (%s)",
+                    profile.address,
+                    type(exc).__name__,
+                )
+                continue
             if not pair:
                 continue
             pair_key = (pair.chain, pair.token_address.lower())
@@ -307,7 +345,11 @@ class LiveSignalWorker:
                     _increment(self.stats.rejected_budget_by_topic, checked_signal.topic_env_key)
                     continue
             topic_id = (self.settings.telegram_topic_ids or {}).get(checked_signal.topic_env_key, 0)
-            if await self.sender.send(topic_id, self._format_signal(checked_signal)):
+            if await self._send_to_topic(
+                checked_signal.topic_env_key,
+                topic_id,
+                self._format_signal(checked_signal),
+            ):
                 self._sent_keys.add(checked_signal.dedupe_key)
                 self.stats.alerts_sent += 1
                 self.stats.daily_sent = self._daily_sent_count(now=self.stats.last_run_at)
@@ -349,11 +391,45 @@ class LiveSignalWorker:
             if previous is None or signal.quality_score > previous.quality_score:
                 best_by_topic[signal.topic_env_key] = signal
 
+    async def _send_to_topic(self, topic_env_key: str, topic_id: int, text: str) -> bool:
+        sender = self.sender
+        if sender is None:
+            return False
+
+        try:
+            delivered = await sender.send(topic_id, text)
+        except Exception as exc:
+            self._record_delivery_failure(topic_env_key)
+            logger.warning(
+                "Telegram delivery failed for %s (%s)",
+                topic_env_key,
+                type(exc).__name__,
+            )
+            return False
+
+        if not delivered:
+            self._record_delivery_failure(topic_env_key)
+            logger.warning("Telegram delivery returned no confirmation for %s", topic_env_key)
+        return delivered
+
+    def _record_delivery_failure(self, topic_env_key: str) -> None:
+        self.stats.delivery_failures += 1
+        _increment(self.stats.delivery_failures_by_topic, topic_env_key)
+
     async def _risk_checked_signal(self, signal: LiveSignal) -> LiveSignal | None:
         key = (signal.chain, signal.token_address.lower())
         report = self._risk_cache.get(key)
         if report is None:
-            report = await self.risk_provider.fetch_risk(signal.chain, signal.token_address)
+            try:
+                report = await self.risk_provider.fetch_risk(signal.chain, signal.token_address)
+            except Exception as exc:
+                self.stats.risk_lookup_failures += 1
+                logger.warning(
+                    "Risk lookup failed for %s (%s)",
+                    signal.token_address,
+                    type(exc).__name__,
+                )
+                return None
             self._risk_cache[key] = report
             self.stats.risk_checked += 1
 
@@ -432,28 +508,43 @@ class LiveSignalWorker:
 
         age_minutes = self._age_minutes(pair)
         quality_score, quality_reasons = self._quality_score(pair, age_minutes)
-        if quality_score < self.settings.signal_min_quality:
+        min_quality = max(
+            self.settings.signal_min_quality,
+            90 if pair.chain is Chain.ROBINHOOD else self.settings.signal_min_quality,
+        )
+        if quality_score < min_quality:
             self._reject_low_quality(pair, "quality_score_below_min")
             return []
 
-        feature_reasons: list[tuple[TopicFeature, list[str]]] = [
-            (TopicFeature.FRESHIES, ["latest profile", *quality_reasons])
-        ]
-        if market_cap <= 500_000:
-            feature_reasons.append(
-                (TopicFeature.LOW_MC_FRESHIES, ["latest profile", *quality_reasons, "low market cap"])
+        if pair.chain is Chain.ROBINHOOD:
+            feature_reasons = self._robinhood_feature_reasons(
+                pair,
+                age_minutes=age_minutes,
+                quality_reasons=quality_reasons,
             )
-        if pair.chain in {Chain.ETHEREUM, Chain.BSC} and (
-            quality_score >= 80 or pair.buys_1h >= 100 or pair.buys_5m >= 20
-        ):
-            feature_reasons.append(
-                (TopicFeature.BIG_FRESHIES, ["latest profile", *quality_reasons, "high quality activity"])
-            )
-        if pair.chain is Chain.BASE and age_minutes is not None and age_minutes <= 12 * 60:
-            feature_reasons.append(
-                (TopicFeature.DEPLOYS, ["latest profile", *quality_reasons, "fresh Base deploy"])
-            )
-
+            if not feature_reasons:
+                return []
+        else:
+            feature_reasons: list[tuple[TopicFeature, list[str]]] = [
+                (TopicFeature.FRESHIES, ["latest profile", *quality_reasons])
+            ]
+            if market_cap <= 500_000:
+                feature_reasons.append(
+                    (TopicFeature.LOW_MC_FRESHIES, ["latest profile", *quality_reasons, "low market cap"])
+                )
+            if pair.chain in {Chain.ETHEREUM, Chain.BSC} and (
+                quality_score >= 80 or pair.buys_1h >= 100 or pair.buys_5m >= 20
+            ):
+                feature_reasons.append(
+                    (TopicFeature.BIG_FRESHIES, ["latest profile", *quality_reasons, "high quality activity"])
+                )
+            if pair.chain is Chain.BASE and age_minutes is not None and age_minutes <= 12 * 60:
+                feature_reasons.append(
+                    (
+                        TopicFeature.DEPLOYS,
+                        ["latest profile", *quality_reasons, "fresh Base deploy"],
+                    )
+                )
         return [
             LiveSignal(
                 chain=pair.chain,
@@ -483,6 +574,60 @@ class LiveSignalWorker:
             for feature, reasons in feature_reasons
         ]
 
+    def _robinhood_feature_reasons(
+        self,
+        pair: DexPair,
+        *,
+        age_minutes: int | None,
+        quality_reasons: list[str],
+    ) -> list[tuple[TopicFeature, list[str]]]:
+        """Assign exactly one RH topic so each feed represents a distinct setup."""
+
+        if age_minutes is None or age_minutes > 24 * 60:
+            self._reject_low_quality(pair, "robinhood_pair_not_fresh")
+            return []
+
+        base_reasons = ["latest profile", *quality_reasons]
+        market_cap = pair.market_cap_usd or 0
+        if market_cap <= 500_000:
+            return [
+                (
+                    TopicFeature.LOW_MC_FRESHIES,
+                    [*base_reasons, "Robinhood low-cap freshie"],
+                )
+            ]
+        if self._has_robinhood_big_flow(pair):
+            return [
+                (
+                    TopicFeature.BIG_FRESHIES,
+                    [*base_reasons, "large liquid Robinhood buy flow"],
+                )
+            ]
+        if age_minutes <= 4 * 60:
+            return [
+                (
+                    TopicFeature.DEPLOYS,
+                    [*base_reasons, "fresh Robinhood deployment"],
+                )
+            ]
+        return [
+            (
+                TopicFeature.FRESHIES,
+                [*base_reasons, "standard Robinhood freshie"],
+            )
+        ]
+
+    @staticmethod
+    def _has_robinhood_big_flow(pair: DexPair) -> bool:
+        liquidity = pair.liquidity_usd or 0
+        volume = pair.volume_24h_usd or 0
+        if liquidity < 200_000 or volume < max(1_000_000, liquidity * 4):
+            return False
+        if pair.buys_5m < 75 or pair.buys_1h < 1_000:
+            return False
+        if pair.sells_5m > pair.buys_5m * 0.65:
+            return False
+        return pair.sells_1h <= pair.buys_1h * 0.55
     def _reject_low_quality(self, pair: DexPair, reason: str) -> None:
         self.stats.rejected_low_quality += 1
         _increment(self.stats.rejected_low_quality_by_reason, reason)
@@ -687,6 +832,7 @@ class LiveSignalWorker:
             score=signal.quality_score,
             reasons=signal.reasons,
             risk_text=_risk_text(signal),
+            price_usd=signal.price_usd,
             market_cap_usd=signal.market_cap_usd,
             liquidity_usd=signal.liquidity_usd,
             volume_24h_usd=signal.volume_24h_usd,
@@ -699,6 +845,8 @@ class LiveSignalWorker:
             price_change_1h=signal.price_change_1h,
             price_change_24h=signal.price_change_24h,
             url=signal.url,
+            provenance="v2_risk_checked",
+            confluence_source="market_structure",
         )
 
     def _record_signal_journal(self, signal: LiveSignal) -> None:
@@ -715,6 +863,21 @@ class LiveSignalWorker:
             return
         self.stats.journal_records_written += 1
         self.stats.journal_last_error = None
+
+    def _record_best_signal_journal(
+        self,
+        candidate: BestSignalCandidate,
+        sent_at: datetime,
+    ) -> None:
+        if not self.signal_journal:
+            return
+        try:
+            self.signal_journal.record_best(candidate, sent_at=sent_at)
+        except Exception as exc:
+            self.stats.best_signal_journal_last_error = type(exc).__name__
+            return
+        self.stats.best_signal_journal_records_written += 1
+        self.stats.best_signal_journal_last_error = None
 
     async def _queue_best_wallet_signals(self, signal: LiveSignal) -> None:
         if not self.wallet_performance_provider:
@@ -785,15 +948,23 @@ class LiveSignalWorker:
     ) -> bool:
         if not self.sender:
             return False
+        topic_ids = self.settings.telegram_topic_ids or {}
         topic_key = _BEST_WALLET_TOPIC_ENV_BY_PERIOD.get(period.lower().strip())
         if not topic_key:
             return False
-        topic_id = (self.settings.telegram_topic_ids or {}).get(topic_key, 0)
+        topic_id = topic_ids.get(topic_key, 0)
+        if topic_id <= 0:
+            topic_key = _BEST_WALLET_CONFLUENCE_TOPIC_ENV
+            topic_id = topic_ids.get(topic_key, 0)
         if topic_id <= 0:
             return False
         if candidate.dedupe_key in self._sent_wallet_signal_keys:
             return False
-        if await self.sender.send(topic_id, format_best_signal(candidate)):
+        if await self._send_to_topic(
+            topic_key,
+            topic_id,
+            format_best_signal(candidate),
+        ):
             self._sent_wallet_signal_keys.add(candidate.dedupe_key)
             return True
         return False
@@ -804,16 +975,22 @@ class LiveSignalWorker:
             return
 
         async def send_best(text: str) -> bool:
-            return await self.sender.send(best_topic_id, text)
+            return await self._send_to_topic(
+                "TELEGRAM_BEST_SIGNALS_TOPIC_ID",
+                best_topic_id,
+                text,
+            )
 
         self.stats.best_signals_sent += await self._best_signal_router.flush(
             send_best,
             now=self.stats.last_run_at,
+            on_sent=self._record_best_signal_journal,
         )
         self._sync_best_signal_router_stats()
 
     def _sync_best_signal_router_stats(self) -> None:
         self.stats.best_signal_rejected_by_reason = self._best_signal_router.rejected_by_reason
+        self.stats.pending_best_confluence = self._best_signal_router.pending_confluence_count
 
     def _reset_daily_counter_if_needed(self, now: datetime) -> None:
         day = now.date().isoformat()
@@ -956,6 +1133,18 @@ def _provider_gap_allows_source_alert(report: RiskReport, signal: LiveSignal | N
     joined = " ".join(reason.lower() for reason in report.reasons)
     if "rate limited" in joined or "unexpected payload" in joined:
         return False
+    if (
+        signal.chain is Chain.ROBINHOOD
+        and "independent security indexers unavailable" in joined
+    ):
+        return (
+            signal.quality_score >= 90
+            and (signal.liquidity_usd or 0) >= 100_000
+            and (signal.volume_24h_usd or 0) >= max(200_000, (signal.liquidity_usd or 0) * 1.5)
+            and signal.buys_1h >= 100
+            and signal.sells_1h <= signal.buys_1h * 0.5
+            and signal.sells_5m <= signal.buys_5m * 0.5
+        )
     if "holder data missing or zero holders reported" not in joined:
         return False
     provider_gap = any(
@@ -1020,6 +1209,7 @@ _CHAIN_ORDER = {
     Chain.ETHEREUM: 0,
     Chain.BASE: 1,
     Chain.BSC: 2,
+    Chain.ROBINHOOD: 3,
 }
 
 _FEATURE_ORDER = {

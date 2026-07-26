@@ -60,6 +60,7 @@ class TopicFeature(str, Enum):
     BEST_WALLETS_WEEK = "best_wallets_week"
     BEST_WALLETS_MONTH = "best_wallets_month"
     BEST_WALLETS_YEAR = "best_wallets_year"
+    BEST_WALLET_CONFLUENCE = "best_wallet_confluence"
     BEST_SIGNALS = "best_signals"
     FEEDBACK = "feedback"
 
@@ -73,7 +74,11 @@ class TopicTarget:
 
 
 def topic_env_key(chain: Chain, feature: TopicFeature) -> str:
-    chain_slug = "ETH" if chain is Chain.ETHEREUM else "BNB" if chain is Chain.BSC else chain.label
+    chain_slug = {
+        Chain.ETHEREUM: "ETH",
+        Chain.BSC: "BNB",
+        Chain.ROBINHOOD: "RH",
+    }.get(chain, chain.label)
     feature_slug = feature.value.upper()
     return f"TELEGRAM_{chain_slug}_{feature_slug}_TOPIC_ID"
 
@@ -145,10 +150,24 @@ def build_default_topic_plan() -> tuple[TopicTarget, ...]:
     ]:
         add(Chain.BSC, feature, title)
 
+    for feature, title in [
+        (TopicFeature.FRESHIES, "RH Freshies"),
+        (TopicFeature.BIG_FRESHIES, "RH Big Freshies"),
+        (TopicFeature.LOW_MC_FRESHIES, "RH Low MC Freshies"),
+        (TopicFeature.DEPLOYS, "RH Deploys"),
+    ]:
+        add(Chain.ROBINHOOD, feature, title)
+
     add_global(TopicFeature.BEST_SIGNALS, "Best Signals", "TELEGRAM_BEST_SIGNALS_TOPIC_ID")
+    add_global(TopicFeature.FEEDBACK, "Feedback", "TELEGRAM_FEEDBACK_TOPIC_ID")
     add_global(TopicFeature.BEST_WALLETS_WEEK, "Best Wallets Week", "TELEGRAM_BEST_WALLETS_WEEK_TOPIC_ID")
     add_global(TopicFeature.BEST_WALLETS_MONTH, "Best Wallets Month", "TELEGRAM_BEST_WALLETS_MONTH_TOPIC_ID")
     add_global(TopicFeature.BEST_WALLETS_YEAR, "Best Wallets Year", "TELEGRAM_BEST_WALLETS_YEAR_TOPIC_ID")
+    add_global(
+        TopicFeature.BEST_WALLET_CONFLUENCE,
+        "Best Wallet Confluence",
+        "TELEGRAM_BEST_WALLET_CONFLUENCE_TOPIC_ID",
+    )
 
     return tuple(targets)
 

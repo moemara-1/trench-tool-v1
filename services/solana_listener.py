@@ -17,8 +17,10 @@ from services.tx_tracker import get_tx_tracker
 from services.rpc_manager import get_rpc_manager
 from alerts.telegram_bot import get_telegram_bot
 from alerts.channel_router import get_channel_router, FreshieChannel
-from services.late_migration_tracker import get_late_migration_tracker
+from services.late_migration_tracker import PUMPFUN_PROGRAM, get_late_migration_tracker
 from services.strong_launch_tracker import get_strong_launch_tracker
+from services.streamflow_tracker import STREAMFLOW_PROGRAM
+from services.pumpportal_listener import PumpPortalEvent, PumpPortalListener
 
 logger = logging.getLogger(__name__)
 
@@ -45,77 +47,77 @@ EXCLUDED_TOKENS = {
 # TRUE LAUNCHPADS - Only these generate freshie alerts (actual meme coin launchpads)
 TRUE_LAUNCHPADS = {
     # Pump.fun - THE main meme launchpad
-    "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P": ("pump.fun", "💊"),
+    "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P": ("pump.fun", "ðŸ’Š"),
     
     # Moonshot
-    "MoonCVVNZFSYkqNXP6bxHLPL6QQJiMagDL3qcqUQTrG": ("moonshot", "🌙"),
+    "MoonCVVNZFSYkqNXP6bxHLPL6QQJiMagDL3qcqUQTrG": ("moonshot", "ðŸŒ™"),
     
     # Bonk launchpad (LetsBonk.fun)
-    "BSwp6bEBihVLdqJRKGgzjcGLHkcTuzmSo1TQkHepzH8p": ("bonk", "🐕"),
-    "FfYek5vEz23cMkWsdJwG2oa6EphsvXSHrGpdALN4g6W1": ("letsbonk", "🐕"),
+    "BSwp6bEBihVLdqJRKGgzjcGLHkcTuzmSo1TQkHepzH8p": ("bonk", "ðŸ•"),
+    "FfYek5vEz23cMkWsdJwG2oa6EphsvXSHrGpdALN4g6W1": ("letsbonk", "ðŸ•"),
     
     # Meteora (TRUMP, MELANIA type launches)
-    "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo": ("meteora", "☄️"),
-    "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB": ("meteora_dlmm", "☄️"),
+    "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo": ("meteora", "â˜„ï¸"),
+    "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB": ("meteora_dlmm", "â˜„ï¸"),
     
     # Believe.app (uses Meteora DBC Program)
-    "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN": ("believe", "🙏"),
-    "5qWya6UjwWnGVhdSBL3hyZ7B45jbk6Byt1hwd7ohEGXE": ("believe_authority", "🙏"),
+    "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN": ("believe", "ðŸ™"),
+    "5qWya6UjwWnGVhdSBL3hyZ7B45jbk6Byt1hwd7ohEGXE": ("believe_authority", "ðŸ™"),
     
     # Bags.fm
-    "FEE2tBhCKAt7shrod19QttSVREUYPiyMzoku1mL1gqVK": ("bags", "👜"),
-    "FEEhPbKVKnco9EXnaY3i4R5rQVUx91wgVfu8qokixw": ("bags_v1", "👜"),
+    "FEE2tBhCKAt7shrod19QttSVREUYPiyMzoku1mL1gqVK": ("bags", "ðŸ‘œ"),
+    "FEEhPbKVKnco9EXnaY3i4R5rQVUx91wgVfu8qokixw": ("bags_v1", "ðŸ‘œ"),
     
     # Boop.fun
-    "boop8hVGQGqehUK2iVEMEnMrL5RbjywRzHKBmBE7ry4": ("boop", "💋"),
+    "boop8hVGQGqehUK2iVEMEnMrL5RbjywRzHKBmBE7ry4": ("boop", "ðŸ’‹"),
 }
 
 # DEXs - For trading but not launchpad detection (used for routing only)
 DEXES = {
     # Raydium (all variants)
-    "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": ("raydium", "®️"),
-    "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK": ("raydium_clmm", "®️"),
-    "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C": ("raydium_cpmm", "®️"),
-    "routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS": ("raydium_router", "®️"),
+    "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": ("raydium", "Â®ï¸"),
+    "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK": ("raydium_clmm", "Â®ï¸"),
+    "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C": ("raydium_cpmm", "Â®ï¸"),
+    "routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS": ("raydium_router", "Â®ï¸"),
 
     
     # Jupiter
-    "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": ("jupiter_v6", "🪐"),
-    "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB": ("jupiter_v4", "🪐"),
-    "JUP2jxvXaqu7NQY1GmNF4m1vodw12LVXYxbFL2uJvfo": ("jupiter_v2", "🪐"),
+    "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": ("jupiter_v6", "ðŸª"),
+    "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB": ("jupiter_v4", "ðŸª"),
+    "JUP2jxvXaqu7NQY1GmNF4m1vodw12LVXYxbFL2uJvfo": ("jupiter_v2", "ðŸª"),
     
     # Orca
-    "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc": ("orca", "🐋"),
-    "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP": ("orca_v2", "🐋"),
+    "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc": ("orca", "ðŸ‹"),
+    "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP": ("orca_v2", "ðŸ‹"),
     
     # OpenBook / Serum
-    "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX": ("openbook", "📖"),
-    "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb": ("openbook_v2", "📖"),
-    "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin": ("serum_v3", "💧"),
+    "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX": ("openbook", "ðŸ“–"),
+    "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb": ("openbook_v2", "ðŸ“–"),
+    "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin": ("serum_v3", "ðŸ’§"),
     
     # Phoenix
-    "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY": ("phoenix", "🔥"),
+    "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY": ("phoenix", "ðŸ”¥"),
     
     # Lifinity
-    "EewxydAPCCVuNEyrVN68PuSYdQ7wKn27V9Gjeoi8dy3S": ("lifinity", "♾️"),
+    "EewxydAPCCVuNEyrVN68PuSYdQ7wKn27V9Gjeoi8dy3S": ("lifinity", "â™¾ï¸"),
     
     # Fluxbeam
-    "FLUXubRmkEi2q6K3Y9kBPg9248ggaZVsoSFhtJHSrm1X": ("fluxbeam", "⚡"),
+    "FLUXubRmkEi2q6K3Y9kBPg9248ggaZVsoSFhtJHSrm1X": ("fluxbeam", "âš¡"),
     
     # Invariant
-    "HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt": ("invariant", "📐"),
+    "HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt": ("invariant", "ðŸ“"),
     
     # GooseFX
-    "GFXsSL5sSaDfNFQUYsHekbWBW1TsFdjDYzACh62tEHxn": ("goosefx", "🦆"),
+    "GFXsSL5sSaDfNFQUYsHekbWBW1TsFdjDYzACh62tEHxn": ("goosefx", "ðŸ¦†"),
     
     # Aldrin
-    "AMM55ShdkoGRB5jVYPjWziwk8m5MpwyDgsMWHaMSQWH6": ("aldrin", "🔷"),
+    "AMM55ShdkoGRB5jVYPjWziwk8m5MpwyDgsMWHaMSQWH6": ("aldrin", "ðŸ”·"),
     
     # Saber
-    "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ": ("saber", "⚔️"),
+    "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ": ("saber", "âš”ï¸"),
     
     # Marinade
-    "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD": ("marinade", "🧂"),
+    "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD": ("marinade", "ðŸ§‚"),
 }
 
 
@@ -145,6 +147,14 @@ def _is_socials_queue_size_error(error: Exception) -> bool:
 
 # Combined for backward compatibility (all programs we monitor)
 LAUNCHPADS = {**TRUE_LAUNCHPADS, **DEXES}
+def _websocket_source_label(program_id: str | None) -> str:
+    if program_id in TRUE_LAUNCHPADS:
+        return TRUE_LAUNCHPADS[program_id][0]
+    if program_id in DEXES:
+        return DEXES[program_id][0]
+    if program_id == STREAMFLOW_PROGRAM:
+        return "streamflow"
+    return "unknown"
 
 # Known CEX addresses for funding source labeling
 CEX_ADDRESSES = {
@@ -209,7 +219,7 @@ class SolanaListener:
 
             max_length = max(1, settings.socials_queue_max_length)
             await self._redis_client.ltrim(queue_key, 0, max_length - 1)
-            logger.debug(f"📤 [Socials] Queued {token_data.symbol} for checking")
+            logger.debug(f"ðŸ“¤ [Socials] Queued {token_data.symbol} for checking")
             
         except Exception as e:
             logger.error(f"Error queuing socials check: {e}")
@@ -217,6 +227,10 @@ class SolanaListener:
     def __init__(self):
         # Use RPC manager for rotating endpoints
         self.rpc_manager = get_rpc_manager()
+        self.pumpportal = PumpPortalListener(
+            ws_url=settings.pumpportal_ws_url,
+            api_key=settings.pumpportal_api_key,
+        )
         self._redis_client = None  # Lazy init
         
         self._running = False
@@ -308,15 +322,22 @@ class SolanaListener:
         self._strong_launch_alerts_sent = 0
         self._strongfloor_alerts_sent = 0
         self._errors = 0
+        self._rpc_rate_limited_skips = 0
         
-        # Rate limiting - max 5 concurrent RPC requests
-        self._rpc_semaphore = asyncio.Semaphore(2)  # Reduced from 5 to stay under rate limits
+        # Keep provider usage below free-tier request limits without blocking the event loop.
+        self._rpc_semaphore = asyncio.Semaphore(max(1, settings.solana_rpc_concurrency))
         self._max_tx_queue_size = 500
         self._fresh_tx_queue_target_size = 250
         self._tx_queue: asyncio.Queue = asyncio.Queue(maxsize=self._max_tx_queue_size)
         self._tx_dropped = 0
         self._tx_skipped_by_reason = defaultdict(int)
     
+        self._queued_signature_sources: dict[str, str] = {}
+        self._tx_dropped_by_source = defaultdict(int)
+        self._websocket_notifications_by_source = defaultdict(int)
+        self._ws_failed_notifications = 0
+        self._ws_subscription_confirmations_by_source = defaultdict(int)
+        self._ws_subscription_errors_by_source = defaultdict(int)
     def detect_launchpad(self, program_ids: list) -> tuple:
         """Detect launchpad from program IDs."""
         for pid in program_ids:
@@ -393,7 +414,7 @@ class SolanaListener:
         # If not a valid alert, skip
         if not classification.is_valid_alert:
             if amount_sol >= 0.47: # Only log significant skips
-                logger.info(f"⛔ Skipped {ticker}: {amount_sol:.2f} SOL | Age {hours_since_funding}h | Tx {tx_count}")
+                logger.info(f"â›” Skipped {ticker}: {amount_sol:.2f} SOL | Age {hours_since_funding}h | Tx {tx_count}")
             # Record as dormant buy in tracker
             await self.tx_tracker.record_buy(token_address, wallet_address, 0, amount_sol)
             return None, classification
@@ -495,7 +516,7 @@ class SolanaListener:
                 is_known_launchpad_token = True
 
         if not is_true_launchpad and not classification.is_via_router and not is_known_launchpad_token:
-            logger.debug(f"⛔ Skipped {token_address[:12]}... (Not launchpad/router/known token)")
+            logger.debug(f"â›” Skipped {token_address[:12]}... (Not launchpad/router/known token)")
             return None, classification
         
         # Record buy for pattern detection
@@ -516,7 +537,7 @@ class SolanaListener:
         )
         
         if not verification.is_verified:
-            logger.debug(f"⚠️ Token not verified: {ticker} | {verification.rejection_reason}")
+            logger.debug(f"âš ï¸ Token not verified: {ticker} | {verification.rejection_reason}")
             # NOTE: Still send freshies alerts, but skip pattern tracking for unverified tokens
         
         if verification.is_verified:
@@ -580,15 +601,15 @@ class SolanaListener:
         # Build emoji indicators
         indicators = []
         if is_first:
-            indicators.append("⭐️")
+            indicators.append("â­ï¸")
         if classification.is_old_freshie:
-            indicators.append("🐌")  # Old freshie indicator
+            indicators.append("ðŸŒ")  # Old freshie indicator
         if classification.router_emoji:
             indicators.append(classification.router_emoji)
         if amount_sol >= 15:
-            indicators.append("🐳")
+            indicators.append("ðŸ³")
         elif amount_sol >= 5:
-            indicators.append("🐬")
+            indicators.append("ðŸ¬")
         
         indicator_str = " ".join(indicators) + (" " if indicators else "")
         
@@ -599,9 +620,9 @@ class SolanaListener:
         time_since_funding = classification.funding_time_ago
         
         # Build message
-        # Example: 🟠 SOL TG Freshies
-        # ⭐️ 🔱 $MCP MyCrypto 5.07 💊 Kraken 🟢 2h
-        # 👶 87 ♦️ 62 🔶 101 ⏳ 14
+        # Example: ðŸŸ  SOL TG Freshies
+        # â­ï¸ ðŸ”± $MCP MyCrypto 5.07 ðŸ’Š Kraken ðŸŸ¢ 2h
+        # ðŸ‘¶ 87 â™¦ï¸ 62 ðŸ”¶ 101 â³ 14
         # MC: 851k | CA: 1h
         # contract
         # links
@@ -620,9 +641,9 @@ class SolanaListener:
             pair_address = token_address
             logger.debug(f"No pair address found for {token_address[:8]}, using CA for Axiom link")
         
-        message = f"""🟠 SOL {channel_title}
-{indicator_str}${ticker} {name} {amount_sol:.2f} {launchpad_emoji} {funding_source} 🟢 {time_since_funding}
-👶 {fresh_buys} ♦️ {fresh_sells} 🔶 {partial_sells} ⏳ {dormant_buys}
+        message = f"""ðŸŸ  SOL {channel_title}
+{indicator_str}${ticker} {name} {amount_sol:.2f} {launchpad_emoji} {funding_source} ðŸŸ¢ {time_since_funding}
+ðŸ‘¶ {fresh_buys} â™¦ï¸ {fresh_sells} ðŸ”¶ {partial_sells} â³ {dormant_buys}
 MC: {mc_str} | CA: {age_str}
 <code>{token_address}</code>
 <a href="https://photon-sol.tinyastro.io/en/lp/{token_address}">PH</a> | <a href="https://axiom.trade/meme/{pair_address}?chain=sol">AX</a> | <a href="https://t.me/paris_trojanbot?start={token_address}">TJ</a> | <a href="https://t.me/BananaGunSolana_bot?start={token_address}">BA</a> | <a href="https://trade.padre.gg/trade/solana/{token_address}">PR</a> | <a href="https://t.me/BloomSolana_bot?start={token_address}">BL</a> | <a href="https://t.me/MaestroSniperBot?start={token_address}">MA</a> | <a href="https://t.me/MaestroProBot?start={token_address}">MT</a> | <a href="https://neo.bullx.io/terminal?chainId=1399811149&address={token_address}">NE</a> | <a href="https://dexscreener.com/solana/{token_address}">DS</a> | <a href="https://pump.fun/{token_address}">PF</a>"""
@@ -712,6 +733,25 @@ MC: {mc_str} | CA: {age_str}
         """Snapshot first-seen state before format_alert mutates _seen_tokens."""
         return token_address not in self._seen_tokens
 
+    async def _record_actual_pump_dev_holding(
+        self,
+        token_address: str,
+        creator_wallet: str | None,
+    ) -> bool:
+        if not creator_wallet:
+            return False
+        current_balance = await get_helius_client().get_wallet_token_balance(
+            creator_wallet,
+            token_address,
+        )
+        if current_balance <= 0:
+            return False
+        self.dev_held_tracker.record_dev_wallet(
+            token_address,
+            creator_wallet,
+            current_balance,
+        )
+        return True
     def _record_sns_alert_sent(self, token_address: str) -> None:
         """Keep listener and SNS tracker alert counters in sync."""
         self._sns_alerts_sent += 1
@@ -719,7 +759,24 @@ MC: {mc_str} | CA: {age_str}
         increment = getattr(self.sns_tracker, "increment_alerts_sent", None)
         if callable(increment):
             increment()
-    
+
+    def _record_dev_held_delivery(self, token_address: str, message_id: int | None) -> bool:
+        if not message_id:
+            logger.warning("DEV HELD alert delivery failed for %s", token_address[:12])
+            return False
+        self.dev_held_tracker.mark_alerted(token_address)
+        self.dev_held_tracker.increment_alerts()
+        self._dev_held_alerts_sent += 1
+        return True
+
+    def _record_strong_launch_delivery(self, message_id: int | None) -> bool:
+        if not message_id:
+            logger.warning("Strong Launch alert delivery failed")
+            return False
+        self.strong_launch_tracker.increment_alerts()
+        self._strong_launch_alerts_sent += 1
+        return True
+
     async def start(self):
         """Start the listener with WebSocket + parallel polling."""
         self._running = True
@@ -728,49 +785,51 @@ MC: {mc_str} | CA: {age_str}
         self._last_ws_connected_at = None
         self._last_tx_received_at = None
         
-        logger.info("🚀 Starting Solana listener...")
+        logger.info("ðŸš€ Starting Solana listener...")
         
         # Send startup notification
         # Send startup notification via Feedback channel
         try:
-            startup_msg = """🟢 <b>TRENCH TOOL V1 - SYSTEMS ONLINE</b>
+            startup_msg = """ðŸŸ¢ <b>TRENCH TOOL V1 - SYSTEMS ONLINE</b>
 
 <b>Solana Monitors:</b>
-✅ Fresh Wallets (Age &lt; 7d)
-✅ Dormant Wallets (&gt; 30d)
-✅ Bundle Detection
-✅ Pattern Recognition
-✅ Smart Socials (FrontrunPro + Gemini)
-✅ Strong Launches & Floors
-✅ Late Migrations & Dev Tracking
-✅ Max Market Cap Filter (<$100M)
+âœ… Fresh Wallets (Age &lt; 7d)
+âœ… Dormant Wallets (&gt; 30d)
+âœ… Bundle Detection
+âœ… Pattern Recognition
+âœ… Smart Socials (FrontrunPro + Gemini)
+âœ… Strong Launches & Floors
+âœ… Late Migrations & Dev Tracking
+âœ… Max Market Cap Filter (<$100M)
 
 <b>Infrastructure:</b>
-📡 Helius RPC: Connected
-🤖 Gemini AI: Active
-🔌 FrontrunPro Extension: Loaded"""
+ðŸ“¡ Helius RPC: Connected
+ðŸ¤– Gemini AI: Active
+ðŸ”Œ FrontrunPro Extension: Loaded"""
 
             topic_id = settings.telegram_feedback_topic_id if settings.telegram_feedback_topic_id > 0 else None
             if not topic_id:
                 logger.info("Startup stats suppressed because feedback topic is disabled")
             
-            logger.info(f"📢 Sending startup stats to Topic ID: {topic_id}")
+            logger.info(f"ðŸ“¢ Sending startup stats to Topic ID: {topic_id}")
             
             if topic_id:
                 await self.telegram.send_alert(startup_msg, topic_id=topic_id)
         except Exception as e:
             logger.error(f"Failed to send startup alert: {e}")
         
-        # Start both WebSocket and parallel polling + background monitors
-        await asyncio.gather(
+        tasks = [
             self._websocket_listener(),
             self._parallel_poll_transactions(),
-            self._background_monitor(),  # New: periodic checks for time-based trackers
-        )
-    
+            self._background_monitor(),
+        ]
+        if settings.pumpportal_enabled:
+            tasks.append(self.pumpportal.run(self._handle_pumpportal_event, lambda: self._running))
+        await asyncio.gather(*tasks)
+
     async def _background_monitor(self):
         """Background task for time-based tracker checks (Dev Held, Strong Launch, etc.)."""
-        logger.info("🔄 Starting background monitor (60s interval, status report every 5 min)...")
+        logger.info("ðŸ”„ Starting background monitor (60s interval, status report every 5 min)...")
         
         report_counter = 0
         while self._running:
@@ -789,10 +848,10 @@ MC: {mc_str} | CA: {age_str}
                 
                 # Regular debug log for active trackers
                 if dev_stats["devs_holding"] > 0:
-                    logger.debug(f"💎 Dev Held: {dev_stats['devs_holding']} tokens with dev holding")
+                    logger.debug(f"ðŸ’Ž Dev Held: {dev_stats['devs_holding']} tokens with dev holding")
 
                 if floor_stats["tokens_tracked"] > 0:
-                    logger.debug(f"🧱 Strongfloor: Tracking {floor_stats['tokens_tracked']} tokens")
+                    logger.debug(f"ðŸ§± Strongfloor: Tracking {floor_stats['tokens_tracked']} tokens")
 
                 # === SOCIALS ALERT FLUSH ===
                 # Transaction processing can discover strong socials before enrichment is available.
@@ -817,7 +876,7 @@ MC: {mc_str} | CA: {age_str}
                             self.socials_checker.increment_alerts()
                             self._socials_alerts_sent += 1
                             logger.info(
-                                f"ðŸ“± SOCIALS ALERT FLUSHED: {social_profile.token_address[:12]}... | "
+                                f"Ã°Å¸â€œÂ± SOCIALS ALERT FLUSHED: {social_profile.token_address[:12]}... | "
                                 f"Score: {max(social_profile.enhanced_score, social_profile.social_score)}/100"
                             )
                     except Exception as e:
@@ -856,12 +915,9 @@ MC: {mc_str} | CA: {age_str}
 
                                 # Send alert
                                 topic = dev_held_topic_id()
-                                await self.telegram.send_alert(dev_msg, topic_id=topic)
-
-                                # Mark as alerted
-                                self.dev_held_tracker.mark_alerted(token_address)
-                                self.dev_held_tracker.increment_alerts()
-                                logger.info(f"💎 DEV HELD ALERT SENT: {token_data.symbol} | {holding.holding_hours}h | {supply_pct:.0f}%")
+                                message_id = await self.telegram.send_alert(dev_msg, topic_id=topic)
+                                if self._record_dev_held_delivery(token_address, message_id):
+                                    logger.info(f"ðŸ’Ž DEV HELD ALERT SENT: {token_data.symbol} | {holding.holding_hours}h | {supply_pct:.0f}%")
 
                     except Exception as e:
                         logger.debug(f"Error checking dev holding for {token_address[:12]}: {e}")
@@ -872,29 +928,29 @@ MC: {mc_str} | CA: {age_str}
                 # === COMPREHENSIVE STATUS REPORT (every 5 minutes) ===
                 if report_counter % 5 == 0:
                     logger.info("=" * 60)
-                    logger.info("📊 NEW MODULES STATUS REPORT")
+                    logger.info("ðŸ“Š NEW MODULES STATUS REPORT")
                     logger.info("=" * 60)
                     
                     # Late Migration
-                    logger.info(f"🕐 Late Migration: pending_bondings={late_mig_stats['pending_bondings']} | migrations_detected={late_mig_stats['migrations_detected']} | alerts={late_mig_stats['alerts_sent']}")
+                    logger.info(f"ðŸ• Late Migration: pending_bondings={late_mig_stats['pending_bondings']} | migrations_detected={late_mig_stats['migrations_detected']} | alerts={late_mig_stats['alerts_sent']}")
                     
                     # Streamflow
-                    logger.info(f"🔒 Streamflow: tokens_with_locks={streamflow_stats['tokens_with_locks']} | total_locks={streamflow_stats['total_locks']} | alerts={streamflow_stats['alerts_sent']}")
+                    logger.info(f"ðŸ”’ Streamflow: tokens_with_locks={streamflow_stats['tokens_with_locks']} | total_locks={streamflow_stats['total_locks']} | alerts={streamflow_stats['alerts_sent']}")
                     
                     # Dev Held
-                    logger.info(f"💎 Dev Held: tokens_tracked={dev_stats['tokens_tracked']} | devs_holding={dev_stats['devs_holding']} | alerts={dev_stats['alerts_sent']}")
+                    logger.info(f"ðŸ’Ž Dev Held: tokens_tracked={dev_stats['tokens_tracked']} | devs_holding={dev_stats['devs_holding']} | alerts={dev_stats['alerts_sent']}")
                     
                     # Creator Analyzer
-                    logger.info(f"👑 Creator: creators_analyzed={creator_stats['creators_analyzed']} | good_creators={creator_stats['good_creators']} | alerts={creator_stats['alerts_sent']}")
+                    logger.info(f"ðŸ‘‘ Creator: creators_analyzed={creator_stats['creators_analyzed']} | good_creators={creator_stats['good_creators']} | alerts={creator_stats['alerts_sent']}")
                     
                     # Socials Checker
-                    logger.info(f"📱 Socials: tokens_checked={socials_stats['tokens_checked']} | strong_socials={socials_stats['strong_socials']} | alerts={socials_stats['alerts_sent']}")
+                    logger.info(f"ðŸ“± Socials: tokens_checked={socials_stats['tokens_checked']} | strong_socials={socials_stats['strong_socials']} | alerts={socials_stats['alerts_sent']}")
                     
                     # Strong Launch
-                    logger.info(f"🚀 Strong Launch: strong_launches={launch_stats['strong_launches']} | alerts={launch_stats['alerts_sent']}")
+                    logger.info(f"ðŸš€ Strong Launch: strong_launches={launch_stats['strong_launches']} | alerts={launch_stats['alerts_sent']}")
                     
                     # Strongfloor
-                    logger.info(f"🧱 Strongfloor: tokens_tracked={floor_stats['tokens_tracked']} | strongfloors_detected={floor_stats['strongfloors_detected']} | alerts={floor_stats['alerts_sent']}")
+                    logger.info(f"ðŸ§± Strongfloor: tokens_tracked={floor_stats['tokens_tracked']} | strongfloors_detected={floor_stats['strongfloors_detected']} | alerts={floor_stats['alerts_sent']}")
                     
                     # Check if modules are actually being called
                     total_activity = (
@@ -908,9 +964,9 @@ MC: {mc_str} | CA: {age_str}
                     )
                     
                     if total_activity == 0:
-                        logger.warning("⚠️ WARNING: No new module activity detected! Modules may not be properly integrated.")
+                        logger.warning("âš ï¸ WARNING: No new module activity detected! Modules may not be properly integrated.")
                     else:
-                        logger.info(f"✅ Total activity across new modules: {total_activity} items tracked")
+                        logger.info(f"âœ… Total activity across new modules: {total_activity} items tracked")
                     
                     logger.info("=" * 60)
                 
@@ -926,16 +982,187 @@ MC: {mc_str} | CA: {age_str}
         
         logger.info("Solana listener stopped")
     
+    async def _handle_pumpportal_event(self, event: PumpPortalEvent) -> None:
+        """Route PumpPortal's free events only through evidence-backed workflows."""
+        if event.kind == "new_token":
+            self._launchpad_tokens.add(event.mint)
+            await self._handle_pumpportal_new_token(event)
+            return
+        if event.kind == "migration":
+            await self._handle_pumpportal_migration(event)
+
+    async def _handle_pumpportal_new_token(self, event: PumpPortalEvent) -> None:
+        if not event.creator_wallet:
+            return
+        if event.initial_buy_sol is None or event.initial_buy_sol < settings.pumpportal_min_initial_buy_sol:
+            return
+
+        try:
+            creator_profile = await self.creator_analyzer.analyze_creator(
+                event.creator_wallet,
+                current_token_address=event.mint,
+            )
+        except Exception:
+            logger.exception("PumpPortal creator analysis failed for %s", event.mint[:12])
+            return
+
+        if not creator_profile or not self.creator_analyzer.check_is_good_creator(creator_profile):
+            return
+        if not self.creator_analyzer.should_alert(event.creator_wallet):
+            return
+
+        token_data = await self.token_fetcher.get_token_data(event.mint)
+        if not token_data:
+            return
+        liquidity_usd = token_data.liquidity_usd or 0.0
+        market_cap = token_data.market_cap or 0.0
+        if liquidity_usd < self.token_verifier.MIN_LIQUIDITY_USD:
+            return
+        if market_cap < self.token_verifier.MIN_MARKET_CAP_USD:
+            return
+
+        verification = self.token_verifier.verify_from_data(
+            token_address=event.mint,
+            dex_name="pump.fun",
+            liquidity_usd=liquidity_usd,
+            market_cap=market_cap,
+            program_ids=[PUMPFUN_PROGRAM],
+        )
+        if not verification.is_verified:
+            return
+
+        creator_msg = await self.creator_analyzer.format_good_creator_alert(
+            ticker=token_data.symbol,
+            token_name=token_data.name,
+            contract_address=event.mint,
+            creator_wallet=event.creator_wallet,
+            successful_tokens=len(creator_profile.successful_tokens),
+            wallet_value_str="$" + f"{creator_profile.total_wallet_value_usd:,.0f}",
+            market_cap_str=token_data.mc_string,
+        )
+        message_id = await self.telegram.send_alert(creator_msg, topic_id=good_creator_topic_id())
+        if not message_id:
+            return
+        self.creator_analyzer.mark_alerted(event.creator_wallet)
+        self.creator_analyzer.increment_alerts()
+        self._creator_alerts_sent += 1
+        logger.info(
+            "PumpPortal good creator alert: %s | initial_buy=%.2f SOL",
+            token_data.symbol,
+            event.initial_buy_sol,
+        )
+
+    async def _handle_pumpportal_migration(self, event: PumpPortalEvent) -> None:
+        try:
+            late_bonding = await self.late_migration_tracker.check_late_bonding(
+                event.mint,
+                [PUMPFUN_PROGRAM],
+            )
+        except Exception:
+            logger.exception("PumpPortal late-migration check failed for %s", event.mint[:12])
+            return
+        if not late_bonding:
+            return
+
+        token_data = await self.token_fetcher.get_token_data(event.mint)
+        if not token_data:
+            return
+        migration_msg = await self.late_migration_tracker.format_late_migration_alert(
+            ticker=token_data.symbol,
+            token_name=token_data.name,
+            contract_address=event.mint,
+            delay_hours=late_bonding.delay_hours,
+            market_cap_str=token_data.mc_string,
+        )
+        message_id = await self.telegram.send_alert(
+            migration_msg,
+            topic_id=_positive_topic_id(settings.telegram_late_migration_topic_id),
+        )
+        if not message_id:
+            return
+        self.late_migration_tracker.increment_alerts()
+        self._late_migration_alerts_sent += 1
+        logger.info("PumpPortal late migration alert: %s", token_data.symbol)
+
+    def _websocket_program_ids(self) -> list[str]:
+        """Keep default websocket intake focused on high-signal launch sources."""
+        program_ids = list(TRUE_LAUNCHPADS)
+        if settings.solana_monitor_generic_dexes:
+            program_ids.extend(DEXES)
+        program_ids.append(STREAMFLOW_PROGRAM)
+        return list(dict.fromkeys(program_ids))
+
+    def _backup_poll_programs(self) -> list[tuple[str, str]]:
+        """Return low-volume launch sources for use only while the websocket is stale."""
+        focused_programs = [
+            ("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", "pump.fun"),
+            ("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo", "Meteora"),
+            (STREAMFLOW_PROGRAM, "Streamflow"),
+        ]
+        if not settings.solana_monitor_generic_dexes:
+            return focused_programs
+        return [
+            ("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8", "Raydium"),
+            ("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", "Jupiter"),
+            *focused_programs,
+        ]
+    def _handle_websocket_subscription_response(
+        self,
+        data: dict,
+        request_programs: dict[int, str],
+        subscription_programs: dict[int, str],
+    ) -> None:
+        """Record provider acknowledgements before trusting a log subscription."""
+        request_id = data.get("id")
+        if request_id not in request_programs:
+            return
+
+        program_id = request_programs[request_id]
+        source = _websocket_source_label(program_id)
+        if "error" in data:
+            self._ws_subscription_errors_by_source[source] += 1
+            error = data.get("error")
+            detail = error.get("message", "unknown error") if isinstance(error, dict) else str(error)
+            logger.warning("WebSocket subscription rejected for %s: %s", source, detail)
+            return
+
+        subscription_id = data.get("result")
+        if not isinstance(subscription_id, int):
+            self._ws_subscription_errors_by_source[source] += 1
+            logger.warning("WebSocket returned an invalid subscription id for %s", source)
+            return
+
+        subscription_programs[subscription_id] = program_id
+        self._ws_subscription_confirmations_by_source[source] += 1
+    def _handle_websocket_notification(self, value: dict, source: str) -> None:
+        """Admit only successful, unseen log notifications to the RPC queue."""
+        self._websocket_notifications_by_source[source] += 1
+        if value.get("err") is not None:
+            self._ws_failed_notifications += 1
+            if hasattr(self, "_tx_skipped_by_reason"):
+                self._record_tx_skip("failed_log_notification")
+            return
+
+        signature = value.get("signature")
+        if not signature or signature in self._processed_sigs:
+            return
+
+        self._processed_sigs.add(signature)
+        self._tx_received += 1
+        self._last_tx_received_at = datetime.utcnow()
+        if len(self._processed_sigs) > 5000:
+            self._processed_sigs = set(list(self._processed_sigs)[-2500:])
+        self._enqueue_signature(signature, source)
     async def _websocket_listener(self):
         """Listen for transactions via Helius WebSocket (real-time)."""
         import websockets
         import json
         
         ws_url = self.rpc_manager.get_ws_url()
-        logger.info(f"🔌 Connecting to WebSocket: {ws_url[:50]}...")
+        logger.info(f"ðŸ”Œ Connecting to WebSocket: {ws_url[:50]}...")
         
         # All DEX programs to subscribe to
-        DEX_PROGRAMS = list(LAUNCHPADS.keys())
+        DEX_PROGRAMS = self._websocket_program_ids()
         
         while self._running:
             ws_url = self.rpc_manager.get_ws_url()
@@ -943,23 +1170,27 @@ MC: {mc_str} | CA: {age_str}
                 async with websockets.connect(ws_url, ping_interval=30) as ws:
                     self._ws_connected = True
                     self._last_ws_connected_at = datetime.utcnow()
-                    logger.info(f"✅ WebSocket connected! Subscribing to {len(DEX_PROGRAMS)} DEX programs...")
+                    logger.info(f"âœ… WebSocket connected! Subscribing to {len(DEX_PROGRAMS)} DEX programs...")
                     
-                    # Subscribe to logs for each DEX program
-                    for i, program_id in enumerate(DEX_PROGRAMS):
+                    # Map response subscription IDs back to their signal source.
+                    subscription_requests = {
+                        index: program_id
+                        for index, program_id in enumerate(DEX_PROGRAMS, start=1)
+                    }
+                    subscription_programs: dict[int, str] = {}
+                    for request_id, program_id in subscription_requests.items():
                         subscribe_msg = {
                             "jsonrpc": "2.0",
-                            "id": i + 1,
+                            "id": request_id,
                             "method": "logsSubscribe",
                             "params": [
                                 {"mentions": [program_id]},
-                                {"commitment": "confirmed"}
-                            ]
+                                {"commitment": "confirmed"},
+                            ],
                         }
                         await ws.send(json.dumps(subscribe_msg))
-                    
-                    logger.info(f"📡 Subscribed to {len(DEX_PROGRAMS)} DEX log streams")
-                    
+
+                    logger.info(f"Sent {len(DEX_PROGRAMS)} focused log subscription requests")
                     # Start worker tasks to process transactions (limit concurrency)
                     workers = [asyncio.create_task(self._tx_worker()) for _ in range(20)]
                     
@@ -971,23 +1202,21 @@ MC: {mc_str} | CA: {age_str}
                         try:
                             data = json.loads(message)
                             
-                            # Check if it's a notification (not subscription confirmation)
-                            if data.get("method") == "logsNotification":
-                                result = data.get("params", {}).get("result", {})
-                                value = result.get("value", {})
-                                signature = value.get("signature")
-                                
-                                if signature and signature not in self._processed_sigs:
-                                    self._processed_sigs.add(signature)
-                                    self._tx_received += 1
-                                    self._last_tx_received_at = datetime.utcnow()
-                                    
-                                    # Limit cache size
-                                    if len(self._processed_sigs) > 5000:
-                                        self._processed_sigs = set(list(self._processed_sigs)[-2500:])
-                                    
-                                    self._enqueue_signature(signature)
-                        
+                            request_id = data.get("id")
+                            if request_id in subscription_requests:
+                                self._handle_websocket_subscription_response(
+                                    data,
+                                    subscription_requests,
+                                    subscription_programs,
+                                )
+                            elif data.get("method") == "logsNotification":
+                                params = data.get("params", {})
+                                value = params.get("result", {}).get("value", {})
+                                program_id = subscription_programs.get(params.get("subscription"))
+                                self._handle_websocket_notification(
+                                    value,
+                                    _websocket_source_label(program_id),
+                                )
                         except json.JSONDecodeError:
                             continue
                         except Exception as e:
@@ -1012,6 +1241,7 @@ MC: {mc_str} | CA: {age_str}
             try:
                 # Wait for a signature from the queue
                 signature = await asyncio.wait_for(self._tx_queue.get(), timeout=5.0)
+                self._queued_signature_sources.pop(signature, None)
                 
                 # Process with rate limiting delay
                 await asyncio.sleep(0.5)  # 500ms between requests per worker to stay under limits
@@ -1025,10 +1255,12 @@ MC: {mc_str} | CA: {age_str}
                 logger.error(f"TX worker error: {e}")
                 await asyncio.sleep(1)
 
-    def _enqueue_signature(self, signature: str) -> None:
-        """Keep SOL alert processing fresh by dropping stale backlog first."""
+    def _enqueue_signature(self, signature: str, source: str = "unknown") -> None:
+        """Keep recent high-signal transactions while accounting for queue loss."""
+        source = source or "unknown"
         try:
             self._tx_queue.put_nowait(signature)
+            self._queued_signature_sources[signature] = source
             return
         except asyncio.QueueFull:
             pass
@@ -1036,29 +1268,36 @@ MC: {mc_str} | CA: {age_str}
         dropped_now = 0
         while self._tx_queue.qsize() >= self._fresh_tx_queue_target_size:
             try:
-                self._tx_queue.get_nowait()
+                dropped_signature = self._tx_queue.get_nowait()
                 self._tx_queue.task_done()
+                dropped_source = self._queued_signature_sources.pop(dropped_signature, "unknown")
+                self._tx_dropped_by_source[dropped_source] += 1
                 dropped_now += 1
             except asyncio.QueueEmpty:
                 break
 
         try:
             self._tx_queue.put_nowait(signature)
+            self._queued_signature_sources[signature] = source
             self._tx_dropped += dropped_now
-            if self._tx_dropped and (self._tx_dropped == dropped_now or self._tx_dropped % 10000 < dropped_now):
+            if self._tx_dropped and (
+                self._tx_dropped == dropped_now
+                or self._tx_dropped % 10000 < dropped_now
+            ):
                 logger.warning(
                     "SOL tx queue saturated; dropped stale signatures to keep alerts fresh "
                     f"(dropped={self._tx_dropped}, max={self._max_tx_queue_size})"
                 )
         except asyncio.QueueFull:
+            self._queued_signature_sources.pop(signature, None)
+            self._tx_dropped_by_source[source] += dropped_now + 1
             self._tx_dropped += dropped_now + 1
             self._errors += 1
-     
     async def _fetch_and_process_tx(self, signature: str):
         """Fetch transaction details and process with rate limiting."""
         async with self._rpc_semaphore:
             try:
-                await asyncio.sleep(0.25)
+                await asyncio.sleep(max(0.0, settings.solana_tx_fetch_delay_seconds))
 
                 tx_payload = {
                     "jsonrpc": "2.0",
@@ -1077,14 +1316,12 @@ MC: {mc_str} | CA: {age_str}
 
                     if tx_response.status_code == 429:
                         self.rpc_manager.report_error(rpc_url, is_rate_limit=True)
-                        if attempt < max_attempts - 1:
-                            logger.warning(
-                                f"Rate limited on {rpc_url[-20:]}, rotating and retrying "
-                                f"({attempt + 1}/{max_attempts})..."
-                            )
-                            await asyncio.sleep(0.5)
-                            continue
-                        break
+                        self._rpc_rate_limited_skips = getattr(self, "_rpc_rate_limited_skips", 0) + 1
+                        logger.warning(
+                            "Rate limited while fetching TX %s; skipping cross-provider fan-out",
+                            signature[:16],
+                        )
+                        return
 
                     if tx_response.status_code in {500, 502, 503, 504}:
                         self.rpc_manager.report_error(rpc_url, is_rate_limit=False)
@@ -1117,20 +1354,13 @@ MC: {mc_str} | CA: {age_str}
 
     async def _parallel_poll_transactions(self):
         """Parallel polling fallback - only activates when WebSocket fails."""
-        logger.info("🔄 Parallel polling on standby (WebSocket primary)...")
+        logger.info("ðŸ”„ Parallel polling on standby (WebSocket primary)...")
         
         # Wait for WebSocket to connect first
         await asyncio.sleep(5)
         
-        # Only 4 key DEXes for backup polling (reduced to avoid rate limits)
-        DEX_PROGRAMS = [
-            ("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8", "Raydium"),
-            ("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", "pump.fun"),
-            ("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", "Jupiter"),
-            ("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo", "Meteora"),
-            ("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m", "Streamflow"),
-        ]
-        
+        DEX_PROGRAMS = self._backup_poll_programs()
+
         async def poll_dex(program_id: str, dex_name: str, stagger_delay: float):
             """Poll a single DEX as backup when WebSocket is down."""
             # Stagger start times to avoid hitting API all at once
@@ -1143,7 +1373,7 @@ MC: {mc_str} | CA: {age_str}
                         await asyncio.sleep(30)  # Check every 30s if WS is still up
                         continue
 
-                    logger.info(f"📡 Backup polling {dex_name} (WebSocket down)")
+                    logger.info(f"ðŸ“¡ Backup polling {dex_name} (WebSocket down)")
                     
                     payload = {
                         "jsonrpc": "2.0",
@@ -1190,7 +1420,7 @@ MC: {mc_str} | CA: {age_str}
     
     async def _process_transaction(self, tx_data: dict, signature: str):
         """Process a transaction and send alert if applicable."""
-        logger.info(f"📥 Processing TX: {signature}")
+        logger.info(f"ðŸ“¥ Processing TX: {signature}")
         try:
             meta = tx_data.get("meta", {})
             if meta.get("err"):
@@ -1339,7 +1569,7 @@ MC: {mc_str} | CA: {age_str}
                                  )
                                  await session.commit()
                                  sell_type = "Full" if is_full_sell else "Partial"
-                                 logger.info(f"📉 Freshie {sell_type} Sell: {wallet[:8]}... sold {token_sold:.2f} tokens of {token_mint[:8]}...")
+                                 logger.info(f"ðŸ“‰ Freshie {sell_type} Sell: {wallet[:8]}... sold {token_sold:.2f} tokens of {token_mint[:8]}...")
                     except Exception as e:
                         logger.error(f"Error processing sell: {e}")
                     
@@ -1391,7 +1621,7 @@ MC: {mc_str} | CA: {age_str}
 
             # Log that we have a valid token purchase
             self._tx_processed += 1
-            logger.info(f"💰 Token buy: {sol_spent:.2f} SOL ({token_bought:.0f} tokens) -> {token_mint[:8]}... from wallet {wallet[:8]}...")
+            logger.info(f"ðŸ’° Token buy: {sol_spent:.2f} SOL ({token_bought:.0f} tokens) -> {token_mint[:8]}... from wallet {wallet[:8]}...")
             
             # ... (rest of classification logic)
             
@@ -1424,20 +1654,13 @@ MC: {mc_str} | CA: {age_str}
             
             # Log what we detected
             if detected_launchpad:
-                logger.info(f"🎯 Launchpad: {detected_launchpad} {detected_launchpad_emoji} | {sol_spent:.2f} SOL")
+                logger.info(f"ðŸŽ¯ Launchpad: {detected_launchpad} {detected_launchpad_emoji} | {sol_spent:.2f} SOL")
             elif detected_dex:
-                logger.info(f"📊 DEX trade: {detected_dex} | {sol_spent:.2f} SOL")
+                logger.info(f"ðŸ“Š DEX trade: {detected_dex} | {sol_spent:.2f} SOL")
             elif is_vanish:
-                logger.info(f"🐍 Vanish Protocol trade | {sol_spent:.2f} SOL")
+                logger.info(f"ðŸ Vanish Protocol trade | {sol_spent:.2f} SOL")
             elif is_streamflow:
-                logger.info(f"🔒 Streamflow lock tx detected")
-            
-            # === DEV HELD TRACKING (Run for all Pump.fun txs) ===
-            if detected_launchpad == "pump.fun":
-                 # Only record if we haven't seen this token before
-                if token_mint not in self._seen_tokens:
-                    self.dev_held_tracker.record_dev_wallet(token_mint, wallet, token_bought)
-            
+                logger.info(f"ðŸ”’ Streamflow lock tx detected")
             
             # === LATE BONDING DETECTION (Pump.fun -> Raydium Migration) ===
             late_bonding = await self.late_migration_tracker.check_late_bonding(token_mint, program_ids)
@@ -1467,23 +1690,30 @@ MC: {mc_str} | CA: {age_str}
             
             if alert_msg:
                 # === DEV HELD & CREATOR ANALYSIS (New Token / First Mention) ===
-                creator_profile = None  # Initialize to avoid unbound variable error
-                if first_seen_for_enrichment:
+                creator_profile = None
+                token_data = await self.token_fetcher.get_token_data(token_mint)
+                creator_wallet = getattr(token_data, "creator_address", None) if token_data else None
+                if first_seen_for_enrichment and detected_launchpad == "pump.fun":
+                    await self._record_actual_pump_dev_holding(token_mint, creator_wallet)
+                if first_seen_for_enrichment and creator_wallet:
                     # 1. Analyze Creator
                     # We assume the wallet in a freshie alert *might* be the creator/early buyer
                     #Ideally we'd fetch the actual mint tx, but evaluating the current wallet is a good proxy for "early whale"
-                    logger.info(f"👑 [Creator] Analyzing first-seen token creator: {wallet[:8]}...")
+                    logger.info(f"ðŸ‘‘ [Creator] Analyzing first-seen token creator: {creator_wallet[:8]}...")
                     try:
-                        creator_profile = await self.creator_analyzer.analyze_creator(wallet)
+                        creator_profile = await self.creator_analyzer.analyze_creator(
+                            creator_wallet,
+                            current_token_address=token_mint,
+                        )
                         if creator_profile:
-                            logger.info(f"👑 [Creator] Profile: wallet={wallet[:8]}... | is_good={creator_profile.is_good_creator} | value=${creator_profile.total_wallet_value_usd:,.0f} | score={creator_profile.score}")
+                            logger.info(f"ðŸ‘‘ [Creator] Profile: wallet={creator_wallet[:8]}... | is_good={creator_profile.is_good_creator} | value=${creator_profile.total_wallet_value_usd:,.0f} | score={creator_profile.score}")
                         else:
-                            logger.info(f"👑 [Creator] No profile returned for {wallet[:8]}...")
+                            logger.info(f"ðŸ‘‘ [Creator] No profile returned for {creator_wallet[:8]}...")
                     except Exception as e:
-                        logger.error(f"👑 [Creator] Error analyzing {wallet[:8]}...: {e}")
+                        logger.error(f"ðŸ‘‘ [Creator] Error analyzing {creator_wallet[:8]}...: {e}")
                         creator_profile = None
 
-                    if creator_profile and self.creator_analyzer.check_is_good_creator(creator_profile) and self.creator_analyzer.should_alert(wallet):
+                    if creator_profile and self.creator_analyzer.check_is_good_creator(creator_profile) and self.creator_analyzer.should_alert(creator_wallet):
                         # Send Good Creator Alert
                         # Need token data again if format_alert didn't cache it publicly (it doesn't)
                         # But format_alert calls get_token_data, which is cached.
@@ -1493,36 +1723,25 @@ MC: {mc_str} | CA: {age_str}
                                 ticker=token_data.symbol,
                                 token_name=token_data.name,
                                 contract_address=token_mint,
-                                creator_wallet=wallet,
+                                creator_wallet=creator_wallet,
                                 successful_tokens=len(creator_profile.successful_tokens),
                                 wallet_value_str=f"${creator_profile.total_wallet_value_usd:,.0f}",
                                 market_cap_str=token_data.mc_string,
                             )
                             await self.telegram.send_alert(creator_msg, topic_id=good_creator_topic_id())
-                            self.creator_analyzer.mark_alerted(wallet)
+                            self.creator_analyzer.mark_alerted(creator_wallet)
                             self.creator_analyzer.increment_alerts()
                             self._creator_alerts_sent += 1
-                            logger.info(f"👑 GOOD CREATOR ALERT SENT: {token_data.symbol} | Wallet: ${creator_profile.total_wallet_value_usd:,.0f}")
+                            logger.info(f"ðŸ‘‘ GOOD CREATOR ALERT SENT: {token_data.symbol} | Wallet: ${creator_profile.total_wallet_value_usd:,.0f}")
 
 
                 
-                # Update Dev Holdings (on every tx)
-                # Need current supply held by dev. This requires fetching dev wallet balance.
-                # Simplification: If this tx IS the dev (mapped in tracker), update their balance.
-                # But we don't have the dev wallet balance here, only the trade amount.
-                # So we'll trigger a background update or just skip for now?
-                # Better: The tracker needs the dev's current balance.
-                # We'll skip per-tx update here and let the _background_monitor handle strict updates,
-                # OR we pass the wallet if it matches.
-                pass 
-
                 # === STRONG LAUNCH EVALUATION ===
                 # If valid freshie, check if it's a strong launch
-                token_data = await self.token_fetcher.get_token_data(token_mint)
                 if token_data:
                     # FILTER: Max Market Cap Check
                     if settings.max_market_cap > 0 and token_data.market_cap and token_data.market_cap > settings.max_market_cap:
-                         logger.info(f"🚫 IGNORED: {token_data.symbol} MC ${token_data.market_cap:,.0f} > ${settings.max_market_cap:,.0f} limit")
+                         logger.info(f"ðŸš« IGNORED: {token_data.symbol} MC ${token_data.market_cap:,.0f} > ${settings.max_market_cap:,.0f} limit")
                          return
                     # Gather scores (simulated/placeholder logic for now as we build up history)
                     # In real impl, we'd pull from compiled risk score
@@ -1557,7 +1776,7 @@ MC: {mc_str} | CA: {age_str}
                             self.socials_checker.mark_alerted(token_mint)
                             self.socials_checker.increment_alerts()
                             self._socials_alerts_sent += 1
-                            logger.info(f"📱 SOCIALS ALERT: {token_data.symbol} | Score: {social_profile.enhanced_score}/100 | Smart: {social_profile.smart_followers}")
+                            logger.info(f"ðŸ“± SOCIALS ALERT: {token_data.symbol} | Score: {social_profile.enhanced_score}/100 | Smart: {social_profile.smart_followers}")
                     
                     strong_launch = self.strong_launch_tracker.evaluate_launch(
                         token_address=token_mint,
@@ -1576,9 +1795,11 @@ MC: {mc_str} | CA: {age_str}
                             market_cap_str=token_data.mc_string,
                             coin_age_str=token_data.age_string,
                         )
-                        await self.telegram.send_alert(launch_msg, topic_id=strong_launch_topic_id())
-                        self.strong_launch_tracker.increment_alerts()
-                        self._strong_launch_alerts_sent += 1
+                        message_id = await self.telegram.send_alert(
+                            launch_msg,
+                            topic_id=strong_launch_topic_id(),
+                        )
+                        self._record_strong_launch_delivery(message_id)
 
                 # Send to Freshies topic if configured
                 freshies_topic = settings.telegram_freshies_topic_id if settings.telegram_freshies_topic_id > 0 else None
@@ -1589,22 +1810,22 @@ MC: {mc_str} | CA: {age_str}
                     self._alerts_sent += 1
                     
                     channel_title = self.channel_router.get_channel_title(classification.primary_channel)
-                    logger.info(f"✅ ALERT SENT [{channel_title}] {sol_spent:.2f} SOL | {classification.funding_time_ago} old | Total: {self._alerts_sent}")
+                    logger.info(f"âœ… ALERT SENT [{channel_title}] {sol_spent:.2f} SOL | {classification.funding_time_ago} old | Total: {self._alerts_sent}")
                 else:
-                    logger.error(f"❌ Failed to send alert for {token_mint}")
+                    logger.error(f"âŒ Failed to send alert for {token_mint}")
             else:
                 # Log why alert was not generated
                 mc = classification.market_cap
                 mc_str = f"${mc:,.0f}" if mc else "?"
-                logger.info(f"🚫 NO ALERT: {sol_spent:.2f} SOL | MC: {mc_str} | Wallet age: {classification.wallet_age_hours}h | TX count: {classification.wallet_tx_count} | Valid: {classification.is_valid_alert}")
+                logger.info(f"ðŸš« NO ALERT: {sol_spent:.2f} SOL | MC: {mc_str} | Wallet age: {classification.wallet_age_hours}h | TX count: {classification.wallet_tx_count} | Valid: {classification.is_valid_alert}")
                 if classification.wallet_tx_count > 50:
-                    logger.info(f"   └─ Reason: Wallet has {classification.wallet_tx_count} txs (max 50 for freshie)")
+                    logger.info(f"   â””â”€ Reason: Wallet has {classification.wallet_tx_count} txs (max 50 for freshie)")
                 elif classification.wallet_age_hours >= 60*24:
-                    logger.info(f"   └─ Reason: Wallet too old ({classification.wallet_age_hours}h = {classification.wallet_age_hours//24}d, max 60d)")
+                    logger.info(f"   â””â”€ Reason: Wallet too old ({classification.wallet_age_hours}h = {classification.wallet_age_hours//24}d, max 60d)")
                 elif sol_spent < settings.min_transaction_sol:
-                    logger.info(f"   └─ Reason: Amount {sol_spent:.2f} SOL < {settings.min_transaction_sol} SOL minimum")
+                    logger.info(f"   â””â”€ Reason: Amount {sol_spent:.2f} SOL < {settings.min_transaction_sol} SOL minimum")
                 elif mc and mc < settings.min_market_cap:
-                    logger.info(f"   └─ Reason: Market cap ${mc:,.0f} < ${settings.min_market_cap:,.0f} minimum")
+                    logger.info(f"   â””â”€ Reason: Market cap ${mc:,.0f} < ${settings.min_market_cap:,.0f} minimum")
             
             # === DORMANT WALLET DETECTION ===
             # Check if wallet qualifies for dormant alert (separate from freshies)
@@ -1623,7 +1844,7 @@ MC: {mc_str} | CA: {age_str}
                 is_low_activity = avg_txs_per_day < 5  # Less than 5 txs per day on average
 
                 # LOGGING FOR VERIFICATION
-                logger.info(f"🔍 [Dormant Check] {wallet[:8]}... | Age={age_days}d | TxCount={tx_count} | AvgTx={avg_txs_per_day:.1f}/d | LowActivity={is_low_activity}")
+                logger.info(f"ðŸ” [Dormant Check] {wallet[:8]}... | Age={age_days}d | TxCount={tx_count} | AvgTx={avg_txs_per_day:.1f}/d | LowActivity={is_low_activity}")
                 
                 # Use age_days as days_inactive if low activity, otherwise estimate
                 if is_low_activity and age_days >= settings.dormant_min_days:
@@ -1650,7 +1871,7 @@ MC: {mc_str} | CA: {age_str}
                         
                         if msg_id:
                             self._dormant_alerts_sent += 1
-                            logger.info(f"⏳ [Dormants] {sol_spent:.2f} SOL | {days_inactive}d inactive")
+                            logger.info(f"â³ [Dormants] {sol_spent:.2f} SOL | {days_inactive}d inactive")
             
             # === SNS WALLET DETECTION ===
             # Check if wallet has an SNS domain (.sol)
@@ -1697,7 +1918,7 @@ MC: {mc_str} | CA: {age_str}
                 
                 if msg_id:
                     self._record_sns_alert_sent(token_mint)
-                    logger.info(f"🏷️ [SNS] {domain} bought {sol_spent:.2f} SOL of ${ticker}")
+                    logger.info(f"ðŸ·ï¸ [SNS] {domain} bought {sol_spent:.2f} SOL of ${ticker}")
             
             # === VANISH PROTOCOL DETECTION ===
             # Check if transaction uses Vanish Protocol
@@ -1749,7 +1970,7 @@ MC: {mc_str} | CA: {age_str}
                         self._vanish_alerts_sent += 1
                         is_big = vanish_class.vanish_type.value == "vanish_big_buys"
                         self.vanish_tracker.increment_alerts(is_big=is_big)
-                        logger.info(f"🐍 [Vanish] {sol_spent:.2f} SOL {'BIG ' if is_big else ''}buy of ${ticker}")
+                        logger.info(f"ðŸ [Vanish] {sol_spent:.2f} SOL {'BIG ' if is_big else ''}buy of ${ticker}")
             
             # === BUNDLE DETECTION ===
             # Add transaction to bundle detector and check for coordinated activity
@@ -1782,7 +2003,7 @@ MC: {mc_str} | CA: {age_str}
                 if bundle_info.is_opening_bundle:
                     if bundle_info.supply_percent >= 1.0 or bundle_info.coordination_score >= 60:
                         should_alert = True
-                        logger.info(f"📦 Opening bundle qualifies: supply={bundle_info.supply_percent:.2f}%, score={bundle_info.coordination_score:.0f}")
+                        logger.info(f"ðŸ“¦ Opening bundle qualifies: supply={bundle_info.supply_percent:.2f}%, score={bundle_info.coordination_score:.0f}")
                 
                 if should_alert:
                     # Alert on coordinated activity (bundles)
@@ -1791,7 +2012,7 @@ MC: {mc_str} | CA: {age_str}
                     ticker = token_data.symbol if token_data else "???"
                     name = token_data.name if token_data else ""
                     
-                    logger.info(f"📦 Bundle detected: {bundle_info.wallet_count} wallets, score={bundle_info.coordination_score:.0f}")
+                    logger.info(f"ðŸ“¦ Bundle detected: {bundle_info.wallet_count} wallets, score={bundle_info.coordination_score:.0f}")
                     
                     # Format and send bundle alert
                     if bundle_info.action == "buy":
@@ -1816,7 +2037,7 @@ MC: {mc_str} | CA: {age_str}
                     
                     if msg_id:
                         self._bundle_alerts_sent += 1
-                        logger.info(f"📦 [Bundle] {bundle_info.wallet_count} wallets / {bundle_info.total_volume_sol:.2f} SOL on ${ticker}")
+                        logger.info(f"ðŸ“¦ [Bundle] {bundle_info.wallet_count} wallets / {bundle_info.total_volume_sol:.2f} SOL on ${ticker}")
             
             # === SOCIALS CHECK ===
             # Push to Redis queue for local processor (FrontrunPro requires browser)
@@ -1858,7 +2079,7 @@ MC: {mc_str} | CA: {age_str}
                         self._strongfloor_alerts_sent += 1
                         self.strongfloor_tracker.mark_alerted(strongfloor)
                         self.strongfloor_tracker.increment_alerts()
-                        logger.info(f"🧱 [Strongfloor] Floor detected for ${strongfloor.ticker}")
+                        logger.info(f"ðŸ§± [Strongfloor] Floor detected for ${strongfloor.ticker}")
             
         except Exception as e:
             logger.error(f"Error processing transaction: {e}")
@@ -1948,7 +2169,7 @@ MC: {mc_str} | CA: {age_str}
                 mark_alerted = getattr(self.streamflow_tracker, "mark_alerted", None)
                 if callable(mark_alerted):
                     mark_alerted(token_mint)
-                logger.info(f"🔒 [Streamflow] Direct lock detected for ${ticker}")
+                logger.info(f"ðŸ”’ [Streamflow] Direct lock detected for ${ticker}")
                 return True
 
         return False
@@ -1993,6 +2214,7 @@ MC: {mc_str} | CA: {age_str}
             "strong_launch_alerts": self._strong_launch_alerts_sent,
             "strongfloor_alerts": self._strongfloor_alerts_sent,
             "errors": self._errors,
+            "rpc_rate_limited_skips": getattr(self, "_rpc_rate_limited_skips", 0),
             "running": self._running,
             "unique_tokens": len(self._seen_tokens),
             "websocket_connected": getattr(self, "_ws_connected", False),
@@ -2003,6 +2225,12 @@ MC: {mc_str} | CA: {age_str}
             "queue_max_size": getattr(self, "_max_tx_queue_size", 0),
             "queue_fresh_target_size": getattr(self, "_fresh_tx_queue_target_size", 0),
             "transactions_dropped": getattr(self, "_tx_dropped", 0),
+            "transactions_dropped_by_source": dict(sorted(getattr(self, "_tx_dropped_by_source", {}).items())),
+            "websocket_notifications_by_source": dict(sorted(getattr(self, "_websocket_notifications_by_source", {}).items())),
+            "websocket_failed_notifications": getattr(self, "_ws_failed_notifications", 0),
+            "websocket_subscription_confirmations_by_source": dict(sorted(getattr(self, "_ws_subscription_confirmations_by_source", {}).items())),
+            "websocket_subscription_errors_by_source": dict(sorted(getattr(self, "_ws_subscription_errors_by_source", {}).items())),
+            "pumpportal": getattr(self, "pumpportal", None).get_stats() if getattr(self, "pumpportal", None) else {"connected": False, "events_received": 0},
             "transaction_skipped_by_reason": dict(sorted(getattr(self, "_tx_skipped_by_reason", {}).items())),
             "modules": {
                 "sns": self.sns_tracker.get_stats(),

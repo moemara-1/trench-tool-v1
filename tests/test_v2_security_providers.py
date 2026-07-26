@@ -169,3 +169,100 @@ async def test_composite_risk_provider_ignores_provider_outage_when_another_prov
 
     assert report.level is RiskLevel.LOW
     assert report.reasons == ["GoPlus found no high-risk flags"]
+
+@pytest.mark.asyncio
+async def test_robinhood_risk_provider_only_marks_canonical_assets_low_risk():
+    from trench_v2.providers.security import RobinhoodRiskProvider
+
+    provider = RobinhoodRiskProvider()
+    canonical = await provider.fetch_risk(
+        Chain.ROBINHOOD,
+        "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+    )
+    third_party = await provider.fetch_risk(
+        Chain.ROBINHOOD,
+        "0x1111111111111111111111111111111111111111",
+    )
+
+    assert canonical.level is RiskLevel.LOW
+    assert "canonical Robinhood Chain token" in canonical.reasons
+    assert third_party.level is RiskLevel.MEDIUM
+    assert any("independent security indexers unavailable" in reason for reason in third_party.reasons)
+
+
+@pytest.mark.asyncio
+async def test_robinhood_risk_provider_marks_renounced_nonproxy_contract_low_risk():
+    from trench_v2.providers.security import RobinhoodRiskProvider
+
+    class FakeRpcClient:
+        def __init__(self):
+            self.calls = []
+
+        async def post_json(self, url, payload):
+            self.calls.append((url, payload))
+            method = payload["method"]
+            if method == "eth_getCode":
+                return {"result": "0x60016000556001600055"}
+            if method == "eth_getStorageAt":
+                return {"result": "0x" + "0" * 64}
+            if method == "eth_call":
+                return {"result": "0x" + "0" * 64}
+            raise AssertionError(method)
+
+    client = FakeRpcClient()
+    provider = RobinhoodRiskProvider(rpc_url="https://rh.example", client=client)
+
+    report = await provider.fetch_risk(
+        Chain.ROBINHOOD,
+        "0x1111111111111111111111111111111111111111",
+    )
+
+    assert report.level is RiskLevel.LOW
+    assert report.malicious_contract is False
+    assert report.reasons == ["on-chain code present and owner renounced"]
+    assert [payload["method"] for _, payload in client.calls] == [
+        "eth_getCode",
+        "eth_getStorageAt",
+        "eth_call",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_robinhood_risk_provider_blocks_contract_with_active_owner_control():
+    from trench_v2.providers.security import RobinhoodRiskProvider
+
+    class FakeRpcClient:
+        async def post_json(self, url, payload):
+            if payload["method"] == "eth_getCode":
+                return {"result": "0x60016000556001600055"}
+            if payload["method"] == "eth_getStorageAt":
+                return {"result": "0x" + "0" * 64}
+            if payload["method"] == "eth_call":
+                return {"result": "0x" + "0" * 24 + "1234567890abcdef1234567890abcdef12345678"}
+            raise AssertionError(payload["method"])
+
+    provider = RobinhoodRiskProvider(rpc_url="https://rh.example", client=FakeRpcClient())
+
+    report = await provider.fetch_risk(
+        Chain.ROBINHOOD,
+        "0x1111111111111111111111111111111111111111",
+    )
+
+    assert report.level is RiskLevel.HIGH
+    assert report.malicious_contract is True
+    assert "active owner control" in report.reasons
+
+
+@pytest.mark.asyncio
+async def test_unsupported_security_chain_is_not_treated_as_low_risk():
+    go_plus = await GoPlusRiskProvider(client=FakeGetClient({})).fetch_risk(
+        Chain.ROBINHOOD,
+        "0x1111111111111111111111111111111111111111",
+    )
+    honeypot = await HoneypotRiskProvider(client=FakeGetClient({})).fetch_risk(
+        Chain.ROBINHOOD,
+        "0x1111111111111111111111111111111111111111",
+    )
+
+    assert go_plus.level is RiskLevel.MEDIUM
+    assert honeypot.level is RiskLevel.MEDIUM

@@ -47,6 +47,8 @@ def test_default_topic_plan_covers_live_signal_suites():
     assert (None, TopicFeature.BEST_WALLETS_WEEK) in global_pairs
     assert (None, TopicFeature.BEST_WALLETS_MONTH) in global_pairs
     assert (None, TopicFeature.BEST_WALLETS_YEAR) in global_pairs
+    assert (None, TopicFeature.BEST_WALLET_CONFLUENCE) in global_pairs
+    assert (None, TopicFeature.FEEDBACK) in global_pairs
 
 
 def test_working_topic_ids_filters_zero_and_missing_values():
@@ -65,3 +67,14 @@ def test_working_topic_ids_filters_zero_and_missing_values():
     assert topics["TELEGRAM_BNB_FRESHIES_TOPIC_ID"] == 456
     assert "TELEGRAM_ETH_DORMANTS_TOPIC_ID" not in topics
     assert "TELEGRAM_BASE_DEPLOYS_TOPIC_ID" not in topics
+
+def test_robinhood_live_topic_suite_is_routable():
+    assert topic_env_key(Chain.ROBINHOOD, TopicFeature.FRESHIES) == "TELEGRAM_RH_FRESHIES_TOPIC_ID"
+
+    pairs = {(target.chain, target.feature) for target in build_default_topic_plan()}
+    assert {
+        (Chain.ROBINHOOD, TopicFeature.FRESHIES),
+        (Chain.ROBINHOOD, TopicFeature.BIG_FRESHIES),
+        (Chain.ROBINHOOD, TopicFeature.LOW_MC_FRESHIES),
+        (Chain.ROBINHOOD, TopicFeature.DEPLOYS),
+    }.issubset(pairs)

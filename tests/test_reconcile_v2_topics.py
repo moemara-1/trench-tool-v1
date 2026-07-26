@@ -18,3 +18,49 @@ def test_reconcile_topic_plan_assigns_allowed_icon_colors_to_every_topic():
 
     assert WANTED_TOPICS
     assert all(topic.icon_color in allowed_colors for topic in WANTED_TOPICS.values())
+
+def test_reconcile_topic_plan_creates_robinhood_topics():
+    assert WANTED_TOPICS["TELEGRAM_RH_FRESHIES_TOPIC_ID"].title == "RH Freshies"
+    assert WANTED_TOPICS["TELEGRAM_RH_BIG_FRESHIES_TOPIC_ID"].title == "RH Big Freshies"
+    assert WANTED_TOPICS["TELEGRAM_RH_LOW_MC_FRESHIES_TOPIC_ID"].title == "RH Low MC Freshies"
+    assert WANTED_TOPICS["TELEGRAM_RH_DEPLOYS_TOPIC_ID"].title == "RH Deploys"
+
+
+def test_reconcile_topic_plan_creates_feedback_topic_for_v1_startup_messages():
+    assert WANTED_TOPICS["TELEGRAM_FEEDBACK_TOPIC_ID"].title == "Feedback"
+
+
+class _DeletedTopicTelegram:
+    def __init__(self):
+        self.calls = []
+
+    def request(self, method, payload, retries=6):
+        self.calls.append((method, payload))
+        if method == "sendMessage" and payload["message_thread_id"] == "123":
+            raise RuntimeError("Bad Request: message thread not found")
+        if method == "createForumTopic":
+            return {"message_thread_id": 456}
+        if method == "sendMessage":
+            return {"message_id": 99}
+        if method == "deleteMessage":
+            return True
+        raise AssertionError(f"unexpected Telegram request: {method}")
+
+
+def test_reconcile_replaces_a_deleted_configured_topic_id():
+    from scripts import reconcile_v2_topics
+
+    env = {"TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "123"}
+    updates = {}
+    created, verified = reconcile_v2_topics.ensure_topic(
+        telegram=_DeletedTopicTelegram(),
+        chat_id="-100",
+        env=env,
+        updates=updates,
+        key="TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID",
+        spec=WANTED_TOPICS["TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID"],
+    )
+
+    assert created is True
+    assert verified is True
+    assert updates == {"TELEGRAM_BASE_LOW_MC_FRESHIES_TOPIC_ID": "456"}

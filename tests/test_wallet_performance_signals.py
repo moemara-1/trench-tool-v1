@@ -83,7 +83,7 @@ def test_wallet_token_confluence_alerts_coin_without_wallet_addresses():
     )
 
     assert signal is not None
-    assert signal.source_label == "Best Wallet Coin Week"
+    assert signal.source_label == "Best Wallet Coin BASE Week"
     assert signal.signal_family == "best_wallet_coin_week"
     assert signal.token_address == "0xtoken"
     assert signal.symbol == "ALPHA"
@@ -227,7 +227,7 @@ async def test_wallet_performance_signals_do_not_send_wallet_addresses_to_best_f
     sent = await router.flush(lambda text: _record(sent_messages, text))
 
     assert sent == 1
-    assert "Best Wallet Coin Week" in sent_messages[0]
+    assert "Best Wallet Coin BASE Week" in sent_messages[0]
     assert "0x1111111111111111111111111111111111111111" not in sent_messages[0]
 
 
